@@ -1947,7 +1947,9 @@
   async function refreshEntities(keys, detail = "state", options = {}) {
     const now = Date.now();
     const forceMissing = options.forceMissing === true;
-    const refreshKeys = keys.filter((key) => forceMissing || !isKnownOptionalMissingEntity(key, now));
+    const refreshKeys = keys.filter((key) =>
+      forceMissing || SERVICE_STATUS_ENTITY_KEYS.has(key) || !isKnownOptionalMissingEntity(key, now)
+    );
     if (!refreshKeys.length) {
       return;
     }
