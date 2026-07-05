@@ -242,14 +242,20 @@ class OpenQuattWebAuthRequestHandler : public AsyncWebHandler {
     }
 
     if (url == "/api-security/status" && request->method() == HTTP_GET) {
-      const std::string key = json_escape_string_(this->parent_->get_api_security_key());
+      const bool enabled = this->parent_->is_api_security_enabled();
+      const bool transport_active = this->parent_->is_api_security_transport_active();
+      const bool pending_restart = this->parent_->is_api_security_restart_pending();
+      const bool key_present = this->parent_->has_api_security_key();
+      const bool expose_key = key_present && (enabled || transport_active || pending_restart);
+      const std::string key = expose_key ? json_escape_string_(this->parent_->get_api_security_key()) : "";
       const std::string source = json_escape_string_(this->parent_->get_api_security_source());
       const std::string csrf_token = json_escape_string_(this->parent_->get_csrf_token());
       auto *stream = request->beginResponseStream("application/json");
-      stream->printf(R"({"enabled":%s,"transport_active":%s,"pending_restart":%s,"key":"%s","source":"%s","csrf_token":"%s"})",
-                     this->parent_->is_api_security_enabled() ? "true" : "false",
-                     this->parent_->is_api_security_transport_active() ? "true" : "false",
-                     this->parent_->is_api_security_restart_pending() ? "true" : "false",
+      stream->printf(R"({"enabled":%s,"transport_active":%s,"pending_restart":%s,"key_present":%s,"key":"%s","source":"%s","csrf_token":"%s"})",
+                     enabled ? "true" : "false",
+                     transport_active ? "true" : "false",
+                     pending_restart ? "true" : "false",
+                     key_present ? "true" : "false",
                      key.c_str(),
                      source.c_str(),
                      csrf_token.c_str());

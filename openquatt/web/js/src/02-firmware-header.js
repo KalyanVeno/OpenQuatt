@@ -1609,10 +1609,7 @@
     if (status.transport_active === true) {
       return "De native API is beveiligd. Je kunt de sleutel hier bekijken, kopiëren of vernieuwen.";
     }
-    if (status.key) {
-      return "De sleutel blijft opgeslagen, ook wanneer encryptie uit staat. Je kunt hem hier meteen kopiëren of opnieuw inschakelen.";
-    }
-    return "Er is nog geen API-sleutel opgeslagen. Deze wijziging wordt actief na herstart.";
+    return "API-encryptie staat uit. Schakel in om een sleutel te bekijken, kopiëren of vernieuwen.";
   }
 
   function getApiSecurityToggleLabel() {
@@ -1664,6 +1661,7 @@
       || (typeof status.enabled === "boolean"
         && typeof status.transport_active === "boolean"
         && status.enabled !== status.transport_active));
+    const showKeySection = hasKey || status.transport_active === true || restartPending;
     const modalNotice = state.apiSecurityNotice;
     const errorMarkup = state.apiSecurityError
       ? `<div class="oq-helper-modal-note oq-helper-modal-note--error" aria-live="assertive">${escapeHtml(state.apiSecurityError)}</div>`
@@ -1698,6 +1696,7 @@
                 ${escapeHtml(getApiSecurityToggleLabel())}
               </button>
             </div>
+            ${showKeySection ? `
             <div class="oq-settings-api-security-key">
               <div class="oq-settings-field-head">
                 <h3>API-sleutel</h3>
@@ -1735,6 +1734,7 @@
                 `
                 : ""}
             </div>
+            ` : ""}
           </div>
           <div class="oq-helper-modal-actions">
             ${restartPending ? `

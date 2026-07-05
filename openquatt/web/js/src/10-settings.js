@@ -4887,10 +4887,7 @@
     if (status.transport_active === true) {
       return "API-encryptie staat aan. Gebruik dezelfde sleutel in Home Assistant.";
     }
-    if (status.key) {
-      return "De sleutel blijft opgeslagen, maar de native API staat nu open op je lokale netwerk.";
-    }
-    return "Er is nog geen API-sleutel opgeslagen.";
+    return "De native API staat nu open op je lokale netwerk.";
   }
 
   function getApiSecurityActionLabel() {
