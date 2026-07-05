@@ -1594,6 +1594,12 @@
       return "We halen de huidige API-beveiliging op.";
     }
     if (status.pending_restart) {
+      if (status.enabled === true && status.transport_active === false) {
+        return "API-encryptie wordt ingeschakeld na herstart. Kopieer de sleutel nu alvast voor Home Assistant.";
+      }
+      if (status.enabled === false && status.transport_active === true) {
+        return "API-encryptie wordt uitgeschakeld na herstart. Tot die tijd blijft de native API nog beveiligd.";
+      }
       return "Deze wijziging wordt actief na herstart. Je kunt de sleutel hier bekijken, kopiëren of vernieuwen.";
     }
     if (status.transport_active === true) {
@@ -1609,6 +1615,12 @@
     const status = state.apiSecurityStatus;
     if (!status) {
       return "Laden...";
+    }
+    if (status.pending_restart && status.enabled === true && status.transport_active === false) {
+      return "Annuleer inschakelen";
+    }
+    if (status.pending_restart && status.enabled === false && status.transport_active === true) {
+      return "Annuleer uitschakelen";
     }
     return status.enabled ? "Uitschakelen" : "Inschakelen";
   }

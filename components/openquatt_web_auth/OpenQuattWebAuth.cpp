@@ -366,7 +366,7 @@ void OpenQuattWebAuth::loop() {
 #ifdef USE_API_NOISE
   if (api::global_api_server != nullptr) {
     this->api_security_transport_active_ = api::global_api_server->get_noise_ctx().has_psk();
-    if (!this->api_security_restart_pending_ && this->api_security_enabled_ == this->api_security_transport_active_) {
+    if (this->api_security_restart_pending_ && this->api_security_enabled_ == this->api_security_transport_active_) {
       this->api_security_restart_pending_ = false;
     }
   }
@@ -684,7 +684,7 @@ bool OpenQuattWebAuth::initialize_api_security_() {
   if (this->api_security_ready_) {
     return true;
   }
-  if (api::global_api_server == nullptr) {
+  if (api::global_api_server == nullptr || !api::global_api_server->is_in_loop_state()) {
     return false;
   }
 
