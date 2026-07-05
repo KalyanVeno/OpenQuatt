@@ -2117,6 +2117,7 @@
     state.mqttDraftUsername = String(status.username || "");
     state.mqttDraftPassword = "";
     state.mqttDraftClearPassword = false;
+    state.mqttDraftDirty = false;
   }
 
   function syncMqttDraftFromInput(input) {
@@ -2127,6 +2128,7 @@
 
     state.mqttNotice = "";
     state.mqttError = "";
+    state.mqttDraftDirty = true;
     if (mqttField === "enabled") {
       state.mqttDraftEnabled = Boolean(input.checked);
     } else if (mqttField === "broker") {
@@ -2332,7 +2334,9 @@
       const nextSignature = getMqttStatusSignature(nextStatus);
       state.mqttStatus = nextStatus;
       if (previousSignature !== nextSignature) {
-        syncMqttDraftsFromStatus();
+        if (!(state.systemModal === "mqtt" && state.mqttDraftDirty)) {
+          syncMqttDraftsFromStatus();
+        }
         state.mqttNotice = "";
       }
       state.mqttError = "";
@@ -4209,6 +4213,7 @@
     if (action === "open-mqtt-modal") {
       state.systemModal = "mqtt";
       syncMqttDraftsFromStatus();
+      state.mqttDraftDirty = false;
       state.mqttNotice = "";
       state.mqttError = "";
       render();
@@ -6281,6 +6286,7 @@
       if (!response.ok || !payload.ok) {
         throw new Error(payload.error || `HTTP ${response.status}`);
       }
+      state.mqttDraftDirty = false;
       await refreshMqttStatus({ force: true });
       state.mqttDraftPassword = "";
       state.mqttDraftClearPassword = false;

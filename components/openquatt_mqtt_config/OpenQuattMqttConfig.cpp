@@ -597,6 +597,10 @@ void OpenQuattMqttConfig::mqtt_event_handler_(void *handler_args, esp_event_base
           event->data_len == event->total_data_len &&
           self->dew_point_topic_.size() == static_cast<size_t>(event->topic_len) &&
           memcmp(event->topic, self->dew_point_topic_.data(), event->topic_len) == 0) {
+        if (event->retain) {
+          ESP_LOGW(TAG, "Ignoring retained MQTT cooling dew point payload");
+          break;
+        }
         self->queue_dew_point_payload_(event->data, event->data_len);
       }
       break;
@@ -609,14 +613,15 @@ void OpenQuattMqttConfig::mqtt_event_handler_(void *handler_args, esp_event_base
 }
 
 void OpenQuattMqttConfig::queue_dew_point_payload_(const char *data, int len) {
-  if (data == nullptr || len <= 0) {
+  if (data == nullptr || len < 0) {
     return;
   }
+  size_t copy_len = 0;
   if (static_cast<size_t>(len) >= PAYLOAD_MAX_LEN) {
     ESP_LOGW(TAG, "Ignoring overlong MQTT cooling dew point payload (%d bytes)", len);
-    return;
+  } else {
+    copy_len = std::min(static_cast<size_t>(len), PAYLOAD_MAX_LEN - 1U);
   }
-  const size_t copy_len = std::min(static_cast<size_t>(len), PAYLOAD_MAX_LEN - 1U);
   portENTER_CRITICAL(&this->pending_lock_);
   memcpy(this->pending_dew_point_payload_, data, copy_len);
   this->pending_dew_point_payload_[copy_len] = '\0';
@@ -649,12 +654,19 @@ void OpenQuattMqttConfig::handle_dew_point_payload_(const char *payload) {
 
   float value = NAN;
   if (!parse_dew_point_payload_(payload, &value) || value < -20.0f || value > 35.0f) {
-    ESP_LOGW(TAG, "Ignoring invalid MQTT cooling dew point payload: %s", payload);
+    ESP_LOGW(TAG, "Invalidating MQTT cooling dew point after invalid payload: %s", payload);
+    this->invalidate_dew_point_();
     return;
   }
 
   this->last_valid_dew_point_c_ = value;
   this->last_valid_dew_point_ms_ = millis();
+  this->publish_runtime_state_(true);
+}
+
+void OpenQuattMqttConfig::invalidate_dew_point_() {
+  this->last_valid_dew_point_c_ = NAN;
+  this->last_valid_dew_point_ms_ = 0;
   this->publish_runtime_state_(true);
 }
 

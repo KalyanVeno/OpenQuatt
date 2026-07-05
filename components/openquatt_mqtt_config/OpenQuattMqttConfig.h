@@ -90,6 +90,7 @@ class OpenQuattMqttConfig : public Component {
   void queue_dew_point_payload_(const char *data, int len);
   void consume_pending_dew_point_payload_();
   void handle_dew_point_payload_(const char *payload);
+  void invalidate_dew_point_();
   void publish_runtime_state_(bool force);
   void publish_float_if_changed_(sensor::Sensor *sensor, float value, bool force);
   void publish_binary_if_changed_(binary_sensor::BinarySensor *binary_sensor, bool value, bool force);

@@ -180,6 +180,7 @@
     mqttDraftUsername: "",
     mqttDraftPassword: "",
     mqttDraftClearPassword: false,
+    mqttDraftDirty: false,
     mqttBusy: false,
     mqttNotice: "",
     mqttError: "",
