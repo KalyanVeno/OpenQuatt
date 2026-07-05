@@ -4848,7 +4848,11 @@
     if (!status) {
       return "Laden...";
     }
-    if (status.pending_restart) {
+    const restartPending = Boolean(status.pending_restart
+      || (typeof status.enabled === "boolean"
+        && typeof status.transport_active === "boolean"
+        && status.enabled !== status.transport_active));
+    if (restartPending) {
       return "Herstart nodig";
     }
     if (status.transport_active === true) {
@@ -4865,7 +4869,11 @@
     if (!status) {
       return "API-encryptie wordt geladen.";
     }
-    if (status.pending_restart) {
+    const restartPending = Boolean(status.pending_restart
+      || (typeof status.enabled === "boolean"
+        && typeof status.transport_active === "boolean"
+        && status.enabled !== status.transport_active));
+    if (restartPending) {
       if (status.enabled === true && status.transport_active === false) {
         return "API-encryptie wordt ingeschakeld na herstart. Kopieer de sleutel nu voor Home Assistant.";
       }

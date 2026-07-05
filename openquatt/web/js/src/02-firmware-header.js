@@ -1593,7 +1593,11 @@
     if (!status) {
       return "We halen de huidige API-beveiliging op.";
     }
-    if (status.pending_restart) {
+    const restartPending = Boolean(status.pending_restart
+      || (typeof status.enabled === "boolean"
+        && typeof status.transport_active === "boolean"
+        && status.enabled !== status.transport_active));
+    if (restartPending) {
       if (status.enabled === true && status.transport_active === false) {
         return "API-encryptie wordt ingeschakeld na herstart. Kopieer de sleutel nu alvast voor Home Assistant.";
       }
@@ -1616,10 +1620,14 @@
     if (!status) {
       return "Laden...";
     }
-    if (status.pending_restart && status.enabled === true && status.transport_active === false) {
+    const restartPending = Boolean(status.pending_restart
+      || (typeof status.enabled === "boolean"
+        && typeof status.transport_active === "boolean"
+        && status.enabled !== status.transport_active));
+    if (restartPending && status.enabled === true && status.transport_active === false) {
       return "Annuleer inschakelen";
     }
-    if (status.pending_restart && status.enabled === false && status.transport_active === true) {
+    if (restartPending && status.enabled === false && status.transport_active === true) {
       return "Annuleer uitschakelen";
     }
     return status.enabled ? "Uitschakelen" : "Inschakelen";
@@ -1652,7 +1660,10 @@
     const status = state.apiSecurityStatus || {};
     const enabled = status.enabled === true;
     const hasKey = Boolean(status.key);
-    const restartPending = Boolean(status.pending_restart);
+    const restartPending = Boolean(status.pending_restart
+      || (typeof status.enabled === "boolean"
+        && typeof status.transport_active === "boolean"
+        && status.enabled !== status.transport_active));
     const modalNotice = state.apiSecurityNotice;
     const errorMarkup = state.apiSecurityError
       ? `<div class="oq-helper-modal-note oq-helper-modal-note--error" aria-live="assertive">${escapeHtml(state.apiSecurityError)}</div>`
