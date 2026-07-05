@@ -1709,7 +1709,7 @@
                 : (status.transport_active
                     ? "Gebruik deze sleutel in Home Assistant voor de ESPHome-integratie."
                     : status.key
-                      ? "De sleutel blijft opgeslagen, maar de native API staat nu open op je lokale netwerk."
+                      ? "Bewaar deze sleutel voor later gebruik of kopieer hem nu."
                       : "Er is nog geen API-sleutel opgeslagen."))}</p>
               ${hasKey ? `<div class="oq-settings-api-security-key-row"><div class="oq-settings-api-security-key-value">${escapeHtml(status.key)}</div></div>` : ""}
               ${hasKey
