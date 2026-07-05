@@ -2119,6 +2119,42 @@
     state.mqttDraftClearPassword = false;
   }
 
+  function syncMqttDraftFromInput(input) {
+    const mqttField = input?.dataset?.oqMqttField;
+    if (!mqttField) {
+      return false;
+    }
+
+    state.mqttNotice = "";
+    state.mqttError = "";
+    if (mqttField === "enabled") {
+      state.mqttDraftEnabled = Boolean(input.checked);
+    } else if (mqttField === "broker") {
+      state.mqttDraftBroker = String(input.value || "");
+    } else if (mqttField === "port") {
+      state.mqttDraftPort = String(input.value || "");
+    } else if (mqttField === "username") {
+      state.mqttDraftUsername = String(input.value || "");
+    } else if (mqttField === "password") {
+      state.mqttDraftPassword = String(input.value || "");
+    } else if (mqttField === "clear-password") {
+      state.mqttDraftClearPassword = Boolean(input.checked);
+      if (state.mqttDraftClearPassword) {
+        state.mqttDraftPassword = "";
+      }
+      const passwordInput = input.closest(".oq-helper-modal")?.querySelector('[data-oq-mqtt-field="password"]');
+      if (passwordInput) {
+        passwordInput.value = state.mqttDraftPassword;
+        passwordInput.disabled = state.mqttBusy || state.mqttDraftClearPassword;
+      }
+    }
+
+    input.closest(".oq-helper-modal")?.querySelectorAll(".oq-helper-modal-success, .oq-helper-modal-note--error").forEach((node) => {
+      node.remove();
+    });
+    return true;
+  }
+
   function shouldRefreshSupplementaryStatus(lastRefreshAt, options = {}, intervalMs = SUPPLEMENTARY_STATUS_REFRESH_INTERVAL_MS) {
     if (options.force === true) {
       return true;
@@ -3750,25 +3786,7 @@
 
     const mqttField = event.target.dataset.oqMqttField;
     if (mqttField) {
-      state.mqttNotice = "";
-      state.mqttError = "";
-      if (mqttField === "enabled") {
-        state.mqttDraftEnabled = Boolean(event.target.checked);
-      } else if (mqttField === "broker") {
-        state.mqttDraftBroker = String(event.target.value || "");
-      } else if (mqttField === "port") {
-        state.mqttDraftPort = String(event.target.value || "");
-      } else if (mqttField === "username") {
-        state.mqttDraftUsername = String(event.target.value || "");
-      } else if (mqttField === "password") {
-        state.mqttDraftPassword = String(event.target.value || "");
-      } else if (mqttField === "clear-password") {
-        state.mqttDraftClearPassword = Boolean(event.target.checked);
-        if (state.mqttDraftClearPassword) {
-          state.mqttDraftPassword = "";
-        }
-      }
-      render();
+      syncMqttDraftFromInput(event.target);
       return;
     }
 
@@ -3799,30 +3817,6 @@
         return;
       }
 
-      const mqttField = event.target.dataset.oqMqttField;
-      if (!mqttField) {
-        return;
-      }
-
-      state.mqttNotice = "";
-      state.mqttError = "";
-      if (mqttField === "enabled") {
-        state.mqttDraftEnabled = Boolean(event.target.checked);
-      } else if (mqttField === "broker") {
-        state.mqttDraftBroker = String(event.target.value || "");
-      } else if (mqttField === "port") {
-        state.mqttDraftPort = String(event.target.value || "");
-      } else if (mqttField === "username") {
-        state.mqttDraftUsername = String(event.target.value || "");
-      } else if (mqttField === "password") {
-        state.mqttDraftPassword = String(event.target.value || "");
-      } else if (mqttField === "clear-password") {
-        state.mqttDraftClearPassword = Boolean(event.target.checked);
-        if (state.mqttDraftClearPassword) {
-          state.mqttDraftPassword = "";
-        }
-      }
-      render();
       return;
     }
 
