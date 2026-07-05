@@ -365,8 +365,16 @@ void OpenQuattWebAuth::loop() {
   }
 #ifdef USE_API_NOISE
   if (api::global_api_server != nullptr) {
-    this->api_security_transport_active_ = api::global_api_server->get_noise_ctx().has_psk();
-    if (this->api_security_restart_pending_ && this->api_security_enabled_ == this->api_security_transport_active_) {
+    const bool transport_active = api::global_api_server->get_noise_ctx().has_psk();
+    this->api_security_transport_active_ = transport_active;
+    bool pending_applied = this->api_security_enabled_ == transport_active;
+    if (pending_applied && this->api_security_enabled_) {
+      ApiSecurityStorage storage{};
+      pending_applied = this->load_api_security_storage_(&storage) && storage.key_present &&
+                        std::equal(storage.key.begin(), storage.key.end(),
+                                   api::global_api_server->get_noise_ctx().get_psk().begin());
+    }
+    if (this->api_security_restart_pending_ && pending_applied) {
       this->api_security_restart_pending_ = false;
     }
   }
