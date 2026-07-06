@@ -30,6 +30,7 @@ switch:
   - platform: template
     id: oq_q_status_leds_enabled
     name: "Status LEDs enabled"
+    internal: true
     icon: mdi:led-on
     entity_category: config
     optimistic: true
