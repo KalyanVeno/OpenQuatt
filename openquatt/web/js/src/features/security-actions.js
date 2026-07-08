@@ -2,8 +2,8 @@ import { copyTextToClipboard } from "../core/browser-utils.js";
 import { LOGIN_MODAL_AUTH_STATUS_REFRESH_INTERVAL_MS } from "../core/config.js";
 import { shouldRefreshSupplementaryStatus, triggerNamedButton } from "../core/entity-actions.js";
 import { isSystemSettingsGroupActive } from "../core/entity-sync.js";
-import { state } from "../core/runtime.js";
-import { render } from "../views/shell.js";
+import { state } from "../core/state.js";
+import { render } from "../core/render-scheduler.js";
 
   export function getAuthStatusSignature(status = state.authStatus || {}) {
     return [

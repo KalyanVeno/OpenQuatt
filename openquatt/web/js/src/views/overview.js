@@ -4,11 +4,12 @@ import { formatOpenQuattResumeDateTime, getEntityValue, hasOpenQuattResumeSchedu
 import { getOverviewControlsRenderSignature, getRenderSignature } from "../core/entity-sync.js";
 import { formatNumericState } from "../core/formatting.js";
 import { escapeHtml } from "../core/html.js";
-import { DEFAULT_TREND_WINDOW_HOURS, isTrendHistoryFlashEnabled, normalizeTrendWindowHours, setTrendWindowHours, state, TREND_WINDOW_HOURS_OPTIONS } from "../core/runtime.js";
+import { DEFAULT_TREND_WINDOW_HOURS, state, TREND_WINDOW_HOURS_OPTIONS } from "../core/state.js";
+import { isTrendHistoryFlashEnabled, normalizeTrendWindowHours, setTrendWindowHours } from "../core/runtime.js";
 import { formatCoolingBlockReason } from "../settings/cooling.js";
 import { getInstallationMonitoringModel } from "../settings/installation.js";
 import { isSystemInStandby, replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfChanged } from "./heatpump.js";
-import { render } from "./shell.js";
+import { render } from "../core/render-scheduler.js";
 
   export function renderOverviewStatCardMarkup({ label, value, tone, note, status = false }) {
     return `

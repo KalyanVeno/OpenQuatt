@@ -1,9 +1,9 @@
 import { copyTextToClipboard } from "../core/browser-utils.js";
 import { refreshEntities } from "../core/entity-sync.js";
-import { state } from "../core/runtime.js";
+import { state } from "../core/state.js";
 import { getBasePath } from "../core/url-path.js";
 import { escapeHtml } from "../core/html.js";
-import { render } from "../views/shell.js";
+import { render } from "../core/render-scheduler.js";
 
 export const WEB_SERVER_LOG_MAX_ENTRIES = 250;
 

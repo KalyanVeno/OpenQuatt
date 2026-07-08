@@ -2,7 +2,9 @@ import { renderAppNav, syncDocumentTheme, syncDocumentTitle } from "../core/app-
 import { LOGO_MARKUP } from "../core/config.js";
 import { getSettingsRenderSignature } from "../core/entity-sync.js";
 import { escapeHtml } from "../core/html.js";
-import { bindHeaderDevControls, clearLegacyMotionVariables, startMotionLoop, state, stopMotionLoop, syncNativeVisibility } from "../core/runtime.js";
+import { setRenderCallback } from "../core/render-scheduler.js";
+import { state } from "../core/state.js";
+import { bindHeaderDevControls, clearLegacyMotionVariables, startMotionLoop, stopMotionLoop, syncNativeVisibility } from "../core/runtime.js";
 import { renderDeviceReconnectModal, renderUpdateModal } from "../features/firmware-update.js";
 import { getDeviceVersionLabel, getHeaderRenderSignature, renderDevPanel, renderHeaderStatus, renderNativeSurfaceShell, renderSystemModal } from "../features/header-status.js";
 import { getMqttSensorsModalRenderSignature } from "../features/mqtt-actions.js";
@@ -267,3 +269,5 @@ export function renderSettingsView() {
     queueQuickStartScrollRestore(quickStartScrollState);
     queueSettingsPageScrollRestore(settingsPageScrollState);
   }
+
+setRenderCallback(render);

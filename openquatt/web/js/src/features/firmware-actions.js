@@ -4,10 +4,10 @@ import { buildEntityPath } from "../core/domain-helpers.js";
 import { setEntityBackupValue } from "../core/entity-actions.js";
 import { getEntityValue } from "../core/entity-store.js";
 import { isLikelyDeviceConnectionError, refreshEntities } from "../core/entity-sync.js";
-import { state } from "../core/runtime.js";
+import { state } from "../core/state.js";
 import { getFirmwareConnectionLabel, getFirmwareTopologyLabel, getInstallationTopology } from "./device-context.js";
 import { beginFirmwareOtaQuietWindow, getFirmwareConnectionSwitchModel, getFirmwareCurrentVersion, getFirmwareLatestVersion, getFirmwareTestAssetUrls, getFirmwareTestPrNumber, getFirmwareTestTargetModel, getFirmwareTopologySwitchModel, getFirmwareUpdateEntity, pollFirmwareInstallState, pollFirmwareUpdateState, primeFirmwareUpdateState, resetFirmwareInstallUiState, resetFirmwareManualUploadSelection, resetFirmwareTestSelection } from "./firmware-update.js";
-import { render } from "../views/shell.js";
+import { render } from "../core/render-scheduler.js";
 
   export async function triggerFirmwareUpdateCheck() {
     const entity = ENTITY_DEFS.checkFirmwareUpdates;

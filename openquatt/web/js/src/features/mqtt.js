@@ -1,6 +1,6 @@
 import { getEntityNumericValue, hasEntity, isEntityActive } from "../core/app-shared.js";
 import { renderOqIcon } from "../core/config.js";
-import { state } from "../core/runtime.js";
+import { state } from "../core/state.js";
 import { escapeHtml } from "../core/html.js";
 
   export function getMqttStatusLabel() {

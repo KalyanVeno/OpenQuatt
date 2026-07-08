@@ -1,7 +1,7 @@
 import { hasEntity, isEntityActive } from "../core/app-shared.js";
 import { TOPOLOGY_HINT_KEYS } from "../core/config.js";
 import { getEntityValue } from "../core/entity-store.js";
-import { state } from "../core/runtime.js";
+import { state } from "../core/state.js";
 
   export function getDeviceMeta() {
     const meta = typeof window !== "undefined" && window.__OQ_DEV_META && typeof window.__OQ_DEV_META === "object"

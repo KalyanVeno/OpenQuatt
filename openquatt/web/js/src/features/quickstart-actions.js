@@ -4,9 +4,9 @@ import { buildEntityPath } from "../core/domain-helpers.js";
 import { setEntityBackupValue } from "../core/entity-actions.js";
 import { getEntityValue } from "../core/entity-store.js";
 import { refreshEntities } from "../core/entity-sync.js";
-import { state } from "../core/runtime.js";
+import { state } from "../core/state.js";
 import { getQuickStartFlowSourceModel, getQuickStartThermostatSourceModel } from "./quickstart.js";
-import { render } from "../views/shell.js";
+import { render } from "../core/render-scheduler.js";
 
   export function getQuickStartStepHydrationKeys(stepId = state.currentStep) {
     const base = ["setupComplete", "strategy", ...HEADER_ENTITY_KEYS];

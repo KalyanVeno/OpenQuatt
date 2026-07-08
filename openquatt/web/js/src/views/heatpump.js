@@ -2,14 +2,15 @@ import { getEntityDisplayUnit, getEntityNumericValue, getEntityStateText, hasEnt
 import { HP_PANEL_CONFIGS } from "../core/config.js";
 import { getEntityValue } from "../core/entity-store.js";
 import { getOverviewControlsRenderSignature, getRenderSignature } from "../core/entity-sync.js";
-import { refreshMotionTargets, state } from "../core/runtime.js";
+import { state } from "../core/state.js";
+import { refreshMotionTargets } from "../core/runtime.js";
 import { getInstallationTopology } from "../features/device-context.js";
 import { formatWarningFailures } from "../settings/core.js";
 import { getInstallationMonitoringModel } from "../settings/installation.js";
 import { formatNumericState } from "../core/formatting.js";
 import { getHeatPumpPanelStatusLabel, getOverviewStatusCards, getOverviewStrategyLabel, getOverviewStrategySectionModel, getOverviewTempsModel, getOverviewTempsRenderSignature, getOverviewTopCards, getOverviewTrendRenderSignature, patchHpPanelStatusRow, patchOverviewTrendCurrentValues, renderHpPanelStatusRow, renderOverviewControlPanels, renderOverviewInstallationMonitoringNotice, renderOverviewNarrativePanel, renderOverviewStatCards, renderOverviewStatusPanel, renderOverviewSummaryShell, renderOverviewTempsPanel, renderOverviewTrendsPanel, renderTempRow, syncOverviewTrendInteractions } from "./overview.js";
 import { escapeHtml } from "../core/html.js";
-import { render } from "./shell.js";
+import { render } from "../core/render-scheduler.js";
 
   export function getHeatPumpRuntimeModel(title, keys, accent) {
     const mode = formatWorkingMode(getEntityStateText(keys.mode, "Unknown"));

@@ -2,11 +2,12 @@ import { hasEntity } from "../core/app-shared.js";
 import { FIRMWARE_MODAL_KEYS, FIRMWARE_OTA_START_QUIET_MS, FIRMWARE_RELEASE_URLS } from "../core/config.js";
 import { getEntityValue } from "../core/entity-store.js";
 import { refreshEntities } from "../core/entity-sync.js";
-import { startEntityPolling, state, stopEntityPolling } from "../core/runtime.js";
+import { state } from "../core/state.js";
+import { startEntityPolling, stopEntityPolling } from "../core/runtime.js";
 import { getDeviceMeta, getFirmwareAlternateConnection, getFirmwareAlternateTopology, getFirmwareBuildConnection, getFirmwareBuildLabelFor, getFirmwareConnectionLabel, getFirmwareDeviceLabel, getFirmwareHardwareProfile, getFirmwareTopologyLabel, getInstallationTopology, normalizeFirmwareConnection, normalizeInstallationTopologyLabel } from "./device-context.js";
 import { closeWebServerLogStream } from "./webserver-logs.js";
 import { escapeHtml } from "../core/html.js";
-import { render } from "../views/shell.js";
+import { render } from "../core/render-scheduler.js";
 
   export function getFirmwareUpdateTargetOptions() {
     const targetEntity = state.entities.firmwareUpdateTarget || {};

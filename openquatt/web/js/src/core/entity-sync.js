@@ -1,9 +1,9 @@
 import { getSetupCompleteState, isTrendHistoryEnabled, renderAppSummary } from "./app-shared.js";
 import { BULK_POLL_INTERVAL_MS, CIC_COMPATIBILITY_KEYS, CIC_POLLING_DIAGNOSTIC_KEYS, CIC_POLLING_SETTING_KEYS, COMMISSIONING_STATE_KEYS, COMPRESSOR_SETTING_KEYS, CONNECTIVITY_PROBE_SUCCESS_TTL_MS, CONNECTIVITY_PROBE_TIMEOUT_MS, COOLING_SETTING_KEYS, CURVE_POINTS, CURVE_SETTING_KEYS, ENTITY_DEFS, ENTITY_REFRESH_CONCURRENCY, FAST_OVERVIEW_KEYS, FAST_VIEW_ENTITY_REFRESH_CONCURRENCY, FIRMWARE_ENTITY_KEYS, FLOW_SETTING_KEYS, FLOW_TUNING_KEYS, HEADER_ENTITY_KEYS, HIDDEN_POLL_INTERVAL_MS, INSTALLATION_MONITORING_STATE_KEYS, LIMIT_KEYS, ODU_RUNTIME_FREQUENCY_KEYS, OPENTHERM_DIAGNOSTIC_KEYS, OPENTHERM_SETTING_KEYS, OVERVIEW_ENERGY_COLUMN_CONFIGS, OVERVIEW_KEYS, OVERVIEW_METADATA_KEYS, POWER_HOUSE_KEYS, QUICK_START_FLOW_SOURCE_KEYS, QUICK_START_THERMOSTAT_SOURCE_KEYS, SENSOR_CALIBRATION_KEYS, SENSOR_CALIBRATION_STATE_KEYS, SENSOR_SELECTION_KEYS, SENSOR_SELECTION_STATE_KEYS, SERVICE_STATUS_ENTITY_KEYS, SETTINGS_GROUP_IDS, SETTINGS_GROUPS, SETTINGS_KEYS, SILENT_SETTING_KEYS, STATIC_POLL_INTERVAL_MS } from "./config.js";
 import { buildEntityPath, isCurveMode } from "./domain-helpers.js";
-import { scheduleOverviewPrefetch } from "./entity-actions.js";
 import { getEntityValue, parseLooseNumber } from "./entity-store.js";
-import { getDefaultAppView, getUrlAppView, setAppView, state } from "./runtime.js";
+import { state } from "./state.js";
+import { getDefaultAppView, getUrlAppView, setAppView } from "./runtime.js";
 import { beginDeviceReconnect, clearDeviceReconnect, isFirmwareOtaQuietActive, markDeviceReconnectRecovered } from "../features/firmware-update.js";
 import { getHeaderRenderSignature, patchHeaderDom } from "../features/header-status.js";
 import { getMqttSensorsModalRenderSignature, refreshMqttStatus, shouldRefreshMqttStatusForCurrentSurface } from "../features/mqtt-actions.js";
@@ -15,7 +15,31 @@ import { getInstallationMonitoringModel, syncInstallationMonitoringDetailsState 
 import { patchEnergyDom, patchResultsDom } from "../views/energy.js";
 import { patchOverviewDom } from "../views/heatpump.js";
 import { patchDiagnosisDom } from "../views/overview.js";
-import { render } from "../views/shell.js";
+import { render } from "./render-scheduler.js";
+
+  export function scheduleOverviewPrefetch() {
+    if (state.nativeOpen || state.appView !== "settings") {
+      return;
+    }
+
+    const run = () => {
+      if (state.nativeOpen || state.appView !== "settings") {
+        return;
+      }
+      if (state.loadingEntities || state.focusedField || state.draggingCurveKey || state.busyAction || state.settingsInteractionLock) {
+        window.setTimeout(scheduleOverviewPrefetch, 250);
+        return;
+      }
+      void syncEntities({ prefetchView: "overview", forceFast: true });
+    };
+
+    if (typeof window.requestIdleCallback === "function") {
+      window.requestIdleCallback(run, { timeout: 2000 });
+      return;
+    }
+
+    window.setTimeout(run, 0);
+  }
 
   export async function hydrateOverviewMetadata() {
     if (state.nativeOpen || !isInitialOverviewView() || state.overviewMetadataHydrated || state.overviewMetadataHydrating) {

@@ -1,5 +1,5 @@
 import { CURVE_POINTS, OPENQUATT_RESUME_CLEAR_VALUE } from "./config.js";
-import { state } from "./runtime.js";
+import { state } from "./state.js";
 
   export function hasEntity(key) {
     const entity = state.entities[key];

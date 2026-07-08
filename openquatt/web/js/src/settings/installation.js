@@ -3,7 +3,7 @@ import { getOduRuntimeFrequencyControlKey, getOduRuntimeFrequencyValueKey, ODU_R
 import { HP_GENERATION_IMAGE_V1, HP_GENERATION_IMAGE_V2 } from "../core/embedded-assets.js";
 import { renderNumberInputControl } from "../core/entity-actions.js";
 import { getEntityValue, getInputDraftValue, getNumberMeta, parseLooseNumber } from "../core/entity-store.js";
-import { state } from "../core/runtime.js";
+import { state } from "../core/state.js";
 import { getDebugRecordingStatusCopy, getDebugRecordingStatusLabel } from "../features/debug-recording.js";
 import { formatDiagnosticsDateTime, formatUptimeFromMeta, getDeviceIpAddress, getInstallationLabel } from "../features/device-context.js";
 import { getUpdateStatus } from "../features/firmware-update.js";

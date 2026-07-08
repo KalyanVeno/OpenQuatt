@@ -2,7 +2,7 @@ import { getEntityNumericValue, getEntityStateText, hasEntity, isEntityActive } 
 import { renderOqIcon } from "../core/config.js";
 import { formatOpenQuattResumeDateTime, getEntityValue, getOpenQuattPauseDraftValue, hasOpenQuattResumeSchedule } from "../core/entity-store.js";
 import { getEntitySignatureFragment } from "../core/entity-sync.js";
-import { state } from "../core/runtime.js";
+import { state } from "../core/state.js";
 import { getDebugRecordingHubStatusLabel, renderDebugRecordingHeaderStatus, renderDebugRecordingModal } from "./debug-recording.js";
 import { formatDeviceClock, formatUptimeFromMeta, getDeviceIpAddress, getInstallationLabel } from "./device-context.js";
 import { getFirmwareUpdateEntity, getUpdateStatus, isDeviceReconnectRecovering, isFirmwareUpdateAvailable } from "./firmware-update.js";
@@ -14,7 +14,7 @@ import { renderSilentSettingsFields } from "../settings/silent.js";
 import { renderSettingsBackupImportModal, renderSettingsBackupRestoreModal, renderSettingsHistoryStorageModal } from "../settings/storage.js";
 import { formatNumericState } from "../core/formatting.js";
 import { escapeHtml } from "../core/html.js";
-import { render } from "../views/shell.js";
+import { render } from "../core/render-scheduler.js";
 
   export function getHeaderRenderSignature() {
     return [

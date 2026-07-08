@@ -1,4 +1,4 @@
-import { state } from "../core/runtime.js";
+import { state } from "../core/state.js";
 import { escapeHtml } from "../core/html.js";
 
   export function getWebAuthStatusLabel() {

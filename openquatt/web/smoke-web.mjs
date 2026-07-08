@@ -284,6 +284,34 @@ async function checkSharedCoreUtilityContracts() {
   }
 }
 
+async function checkRuntimeBoundaryContracts() {
+  const stateSource = await readFile(path.join(jsSourceDir, "core", "state.js"), "utf8");
+  const shellSource = await readFile(path.join(jsSourceDir, "views", "shell.js"), "utf8");
+  const runtimeSource = await readFile(path.join(jsSourceDir, "core", "runtime.js"), "utf8");
+  assertContains(stateSource, "export const state", "shared state module");
+  assertContains(shellSource, "setRenderCallback(render)", "render callback registration");
+  assertContains(runtimeSource, 'from "./event-handlers.js"', "runtime event handler indirection");
+
+  const sourceFiles = await collectFiles(jsSourceDir, (filePath) => filePath.endsWith(".js"));
+  const errors = [];
+  for (const filePath of sourceFiles) {
+    const relativePath = toBundlePath(path.relative(jsSourceDir, filePath));
+    const source = await readFile(filePath, "utf8");
+    if (relativePath !== "views/shell.js" && /\bimport\s+\{[^}]*\brender\b[^}]*\}\s+from\s+["'][^"']*shell\.js["']/.test(source)) {
+      errors.push(`${relativePath} imports render from views/shell.js; use core/render-scheduler.js`);
+    }
+    if (/\bimport\s+\{[^}]*\bstate\b[^}]*\}\s+from\s+["'][^"']*runtime\.js["']/.test(source)) {
+      errors.push(`${relativePath} imports state from runtime.js; use core/state.js`);
+    }
+    if (relativePath === "core/runtime.js" && source.includes('from "./entity-actions.js"')) {
+      errors.push("core/runtime.js imports entity-actions directly; use core/event-handlers.js");
+    }
+  }
+  if (errors.length) {
+    throw new Error(`Runtime boundary check failed:\n- ${errors.join("\n- ")}`);
+  }
+}
+
 async function checkBasePathNormalization() {
   const source = await readFile(path.join(jsSourceDir, "core", "url-path.js"), "utf8");
   const sandbox = {};
@@ -318,6 +346,7 @@ async function main() {
   await checkWriteActionContracts();
   await checkSharedBrowserUtilityContracts();
   await checkSharedCoreUtilityContracts();
+  await checkRuntimeBoundaryContracts();
   await checkJavaScriptBundleFresh();
   await checkCssBundleFresh();
   console.log("Web smoke ok");

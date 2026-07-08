@@ -2,7 +2,7 @@ import { getEntityNumericValue, getEntityStateText, hasEntity, isEntityActive } 
 import { QUICK_STEPS } from "../core/config.js";
 import { isCurveMode } from "../core/domain-helpers.js";
 import { formatValue, getEntityValue, toTimeInputValue } from "../core/entity-store.js";
-import { state } from "../core/runtime.js";
+import { state } from "../core/state.js";
 import { getDeviceMeta, getInstallationTopology } from "./device-context.js";
 import { isWebServerLogScrollerNearBottom } from "./webserver-logs.js";
 import { formatSettingsOptionLabel, renderSettingsFieldCard, renderSettingsInfoToggle } from "../settings/core.js";

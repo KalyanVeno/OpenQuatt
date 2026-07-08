@@ -3,7 +3,8 @@ import { CURVE_POINTS, ENTITY_DEFS, FIRMWARE_ENTITY_KEYS, FLOW_SETTING_KEYS, get
 import { buildEntityPath, isCurveMode } from "./domain-helpers.js";
 import { formatOpenQuattResumeDateTime, formatValue, getCurveFallbackSuggestion, getEntityValue, getInputDraftValue, getNumberMeta, getOpenQuattPauseDraftValue, getOpenQuattPausePresetValue, normalizeDateTimeValue, normalizeNumber, normalizeTimeValue, parseLooseNumber, toDateTimeInputValue } from "./entity-store.js";
 import { getSettingsRefreshKeys, refreshEntities, syncEntities } from "./entity-sync.js";
-import { ensureNativeFrontendLoaded, setAppView, setDevPanelOpen, setHpLayoutMode, setHpVisualMode, setInterfacePanelOpen, setOverviewTheme, setSettingsGroup, setStoredSurface, setTrendWindowHours, state, syncSurfaceRuntime } from "./runtime.js";
+import { state } from "./state.js";
+import { ensureNativeFrontendLoaded, setAppView, setDevPanelOpen, setHpLayoutMode, setHpVisualMode, setInterfacePanelOpen, setOverviewTheme, setSettingsGroup, setStoredSurface, setTrendWindowHours, syncSurfaceRuntime } from "./runtime.js";
 import { clearDebugRecordingDevicePollTimer, copyDebugRecordingBundle, downloadDebugRecordingBundle, freezeDebugRecording, refreshDebugRecordingDeviceStatus, scheduleDebugRecordingDeviceStatusPoll, setDebugRecordingSelectedMinutes, startDebugRecording, startRollingDebugRecording, stopDebugRecording } from "../features/debug-recording.js";
 import { hydrateFirmwareUpdateModal, installFirmwareConnectionSwitch, installFirmwareTestUpdate, installFirmwareTopologySwitch, installFirmwareUpdate, triggerFirmwareUpdateCheck, uploadFirmwareUpdate } from "../features/firmware-actions.js";
 import { beginDeviceReconnect, getFirmwareTestAssetUrls, getFirmwareTestPrNumber, getFirmwareTestTargetModel, pollFirmwareUpdateState, primeFirmwareUpdateState, resetFirmwareManualUploadSelection, resetFirmwareTestSelection } from "../features/firmware-update.js";
@@ -17,7 +18,7 @@ import { clearWebServerLogOutput, copyWebServerLogOutput, openWebServerLogsModal
 import { handleOduRuntimeFrequencyInputKeyDown } from "../settings/installation.js";
 import { handleEnergyHistoryPointerMove, setEnergyHistoryPeriodToNow, setEnergyHistoryPeriodValue, setEnergyHistoryView, shiftEnergyHistoryPeriod } from "../views/energy.js";
 import { escapeHtml } from "./html.js";
-import { render } from "../views/shell.js";
+import { render } from "./render-scheduler.js";
 
   export function shouldRefreshSupplementaryStatus(lastRefreshAt, options = {}, intervalMs = SUPPLEMENTARY_STATUS_REFRESH_INTERVAL_MS) {
     if (options.force === true) {
@@ -104,30 +105,6 @@ import { render } from "../views/shell.js";
     }
 
     throw new Error(`${entity.name} kan niet worden hersteld.`);
-  }
-
-  export function scheduleOverviewPrefetch() {
-    if (state.nativeOpen || state.appView !== "settings") {
-      return;
-    }
-
-    const run = () => {
-      if (state.nativeOpen || state.appView !== "settings") {
-        return;
-      }
-      if (state.loadingEntities || state.focusedField || state.draggingCurveKey || state.busyAction || state.settingsInteractionLock) {
-        window.setTimeout(scheduleOverviewPrefetch, 250);
-        return;
-      }
-      void syncEntities({ prefetchView: "overview", forceFast: true });
-    };
-
-    if (typeof window.requestIdleCallback === "function") {
-      window.requestIdleCallback(run, { timeout: 2000 });
-      return;
-    }
-
-    window.setTimeout(run, 0);
   }
 
   export function handleFocusChange() {

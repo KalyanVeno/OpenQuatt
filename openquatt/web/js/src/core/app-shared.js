@@ -3,7 +3,7 @@ import { isCurveMode } from "./domain-helpers.js";
 import { formatValue, getEntityValue, hasEntity } from "./entity-store.js";
 import { formatNumericState } from "./formatting.js";
 import { escapeHtml } from "./html.js";
-import { state } from "./runtime.js";
+import { state } from "./state.js";
 
 export { hasEntity } from "./entity-store.js";
 

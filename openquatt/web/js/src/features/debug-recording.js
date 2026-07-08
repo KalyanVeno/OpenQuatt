@@ -3,13 +3,13 @@ import { copyTextToClipboard, downloadTextFile } from "../core/browser-utils.js"
 import { DEBUG_RECORDING_BUSY_RETRY_MS, DEBUG_RECORDING_DURATION_OPTIONS, DEBUG_RECORDING_EVENT_LIMIT, DEBUG_RECORDING_KEYS, DEBUG_RECORDING_LOG_LIMIT, DEBUG_RECORDING_SAMPLE_INTERVAL_MS, ENTITY_DEFS, FAST_VIEW_ENTITY_REFRESH_CONCURRENCY } from "../core/config.js";
 import { getEntityValue, parseLooseNumber } from "../core/entity-store.js";
 import { buildBulkEntityChunks, refreshEntities } from "../core/entity-sync.js";
-import { state } from "../core/runtime.js";
+import { state } from "../core/state.js";
 import { getBasePath } from "../core/url-path.js";
 import { getFirmwareDeviceLabel, getInstallationLabel, getInstallationTopology } from "./device-context.js";
 import { getFirmwareCurrentVersion } from "./firmware-update.js";
 import { patchDebugRecordingHeaderStatus } from "./header-status.js";
 import { escapeHtml } from "../core/html.js";
-import { render } from "../views/shell.js";
+import { render } from "../core/render-scheduler.js";
 
 export function getDebugRecordingSampleCount() {
   if (state.debugRecordingDeviceStatus) {

@@ -5,12 +5,13 @@ import { buildEntityPath } from "../core/domain-helpers.js";
 import { setEntityBackupValue } from "../core/entity-actions.js";
 import { formatValue, getEntityValue, normalizeDateTimeValue, normalizeTimeValue, parseLooseNumber } from "../core/entity-store.js";
 import { isSystemSettingsGroupActive, refreshEntities, syncEntities } from "../core/entity-sync.js";
-import { DEFAULT_TREND_WINDOW_HOURS, normalizeTrendWindowHours, setTrendWindowHours, state } from "../core/runtime.js";
+import { DEFAULT_TREND_WINDOW_HOURS, state } from "../core/state.js";
+import { normalizeTrendWindowHours, setTrendWindowHours } from "../core/runtime.js";
 import { getBasePath } from "../core/url-path.js";
 import { getFirmwareDeviceLabel, getInstallationLabel, getInstallationTopology } from "./device-context.js";
 import { getFirmwareCurrentVersion } from "./firmware-update.js";
 import { getEnergyHistoryRequestQuery } from "../views/energy.js";
-import { render } from "../views/shell.js";
+import { render } from "../core/render-scheduler.js";
 
   export function energyHistoryImportRecordHasHour(row) {
     return Object.prototype.hasOwnProperty.call(row, "hour") ||

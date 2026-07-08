@@ -3,7 +3,7 @@ import { CURVE_POINTS, STRATEGY_OPTION_CURVE, STRATEGY_OPTION_POWER_HOUSE } from
 import { isCurveMode, isManualFlowMode } from "../core/domain-helpers.js";
 import { renderNumberInputField } from "../core/entity-actions.js";
 import { getCurveFallbackSuggestion, getEntityValue, normalizeNumber } from "../core/entity-store.js";
-import { state } from "../core/runtime.js";
+import { state } from "../core/state.js";
 import { renderSettingsChoiceOption, renderSettingsFieldCard, renderSettingsMiniNumberField, renderSettingsNumberField, renderSettingsSection, renderSettingsSelectField } from "./core.js";
 import { formatNumericState } from "../core/formatting.js";
 import { escapeHtml } from "../core/html.js";

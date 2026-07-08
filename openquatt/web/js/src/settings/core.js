@@ -3,7 +3,7 @@ import { renderOqIcon, SETTINGS_GROUP_IDS, SETTINGS_GROUPS, STRATEGY_OPTION_CURV
 import { isCurveMode } from "../core/domain-helpers.js";
 import { renderNumberInputControl } from "../core/entity-actions.js";
 import { formatValue, getEntityValue, getInputDraftValue, getNumberMeta, normalizeNumber, parseLooseNumber, toTimeInputValue } from "../core/entity-store.js";
-import { state } from "../core/runtime.js";
+import { state } from "../core/state.js";
 import { formatDiagnosticsDateTime, formatUptimeFromMeta, getDeviceIpAddress, getInstallationLabel } from "../features/device-context.js";
 import { getUpdateStatus } from "../features/firmware-update.js";
 import { getEspTemperatureLabel } from "../features/header-status.js";

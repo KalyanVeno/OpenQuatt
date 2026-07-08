@@ -1,9 +1,9 @@
 import { copyTextToClipboard } from "../core/browser-utils.js";
 import { shouldRefreshSupplementaryStatus } from "../core/entity-actions.js";
 import { getEntitySignatureFragment, isIntegrationsSettingsGroupActive } from "../core/entity-sync.js";
-import { state } from "../core/runtime.js";
+import { state } from "../core/state.js";
 import { getMqttInputTopic } from "./mqtt.js";
-import { render } from "../views/shell.js";
+import { render } from "../core/render-scheduler.js";
 
   export function getMqttStatusSignature(status = state.mqttStatus || {}) {
     const inputTopics = status.input_topics && typeof status.input_topics === "object"

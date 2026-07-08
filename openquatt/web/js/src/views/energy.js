@@ -1,11 +1,11 @@
 import { formatOverviewStatValue, getDerivedEfficiencyValue, getEntityNumericValue, getEntityStateText, hasEntity, isEfficiencyKey } from "../core/app-shared.js";
 import { OVERVIEW_ENERGY_COLUMN_CONFIGS } from "../core/config.js";
 import { getRenderSignature } from "../core/entity-sync.js";
-import { state } from "../core/runtime.js";
+import { state } from "../core/state.js";
 import { refreshEnergyHistoryData } from "../features/storage-history.js";
 import { replaceOuterHtmlIfSignatureChanged } from "./heatpump.js";
 import { escapeHtml } from "../core/html.js";
-import { render } from "./shell.js";
+import { render } from "../core/render-scheduler.js";
 
   export function renderOverviewEnergyRow([label, key]) {
     const derived = getDerivedEfficiencyValue(key);
