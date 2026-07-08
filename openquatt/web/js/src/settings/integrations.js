@@ -538,7 +538,9 @@ import { escapeHtml } from "../core/html.js";
     const currentFlowSource = String(getEntityValue("flowSource") || "");
     const currentQFlowSource = String(getEntityValue("qFlowSource") || "");
     const heatingEnableSourceDisabled = String(getEntityValue("heatingEnableSource") || "").trim() === "Disabled";
-    const heatingEnableEffectiveSource = formattedEffectivePermissionSourceValue("heatingEnableEffectiveSource");
+    const heatingEnableSourceLabel = formattedSourceValue("heatingEnableSource", { optionLabels: { Disabled: "Niet gebruiken" } });
+    const coolingEnableSourceDisabled = String(getEntityValue("coolingEnableSource") || "").trim() === "Disabled";
+    const coolingEnableSourceLabel = formattedSourceValue("coolingEnableSource", { optionLabels: { Disabled: "Niet gebruiken / handmatig" } });
     const coolingEnableEffectiveSource = formattedEffectivePermissionSourceValue("coolingEnableEffectiveSource");
     const sourceCards = [
       renderSourceCard({
@@ -666,7 +668,7 @@ import { escapeHtml } from "../core/html.js";
         },
         activeRows: [
           renderSourceRow({ label: "Toestemming", value: heatingEnableSourceDisabled ? "Niet gebruikt" : sourceStateText("heatingEnableSelected", "Toegestaan", "Geblokkeerd") }),
-          heatingEnableEffectiveSource ? renderSourceRow({ label: "Via", value: heatingEnableEffectiveSource }) : "",
+          !heatingEnableSourceDisabled ? renderSourceRow({ label: "Bron", value: heatingEnableSourceLabel }) : "",
         ],
         measurementRows: [
           otAvailable ? renderSourceRow({ label: "OpenTherm", value: sourceStateText("otThermostatChEnable", "Toegestaan", "Geblokkeerd") }) : "",
@@ -697,7 +699,10 @@ import { escapeHtml } from "../core/html.js";
         },
         activeRows: [
           renderSourceRow({ label: "Toestemming", value: sourceStateText("coolingEnableSelected", "Toegestaan", "Geblokkeerd") }),
-          coolingEnableEffectiveSource ? renderSourceRow({ label: "Via", value: coolingEnableEffectiveSource }) : "",
+          !coolingEnableSourceDisabled ? renderSourceRow({ label: "Bron", value: coolingEnableSourceLabel }) : "",
+          coolingEnableEffectiveSource && coolingEnableEffectiveSource !== coolingEnableSourceLabel
+            ? renderSourceRow({ label: "Via", value: coolingEnableEffectiveSource })
+            : "",
         ],
         measurementRows: [
           renderSourceRow({ label: "Handmatig", value: sourceStateText("manualCoolingEnable", "Aan", "Uit") }),
