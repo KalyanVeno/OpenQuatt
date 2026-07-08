@@ -134,7 +134,7 @@ import { escapeHtml } from "../core/html.js";
         validKey: "mqttCoolingDewPointValid",
         staleCopy: "15 minuten",
         payloadInfoTitle: "Temperatuurpayload",
-        payloadInfo: 'Publiceer een temperatuur in °C. Voorbeelden: 16.2, 16,2, 16.2 °C of {"value":16.2}. Geldig bereik: -20..35 °C. Retained berichten worden genegeerd.',
+        payloadInfo: 'Publiceer live een temperatuur in °C. Voorbeelden: 16.2, 16,2, 16.2 °C of {"value":16.2}. Geldig bereik: -20..35 °C. Retained berichten worden niet gebruikt voor regeling.',
       },
       {
         topicKey: "outside_temperature",
@@ -144,7 +144,7 @@ import { escapeHtml } from "../core/html.js";
         validKey: "mqttOutsideTemperatureValid",
         staleCopy: "30 minuten",
         payloadInfoTitle: "Temperatuurpayload",
-        payloadInfo: 'Publiceer een temperatuur in °C. Voorbeelden: 15.0, 15,0, 15.0 °C of {"value":15.0}. Geldig bereik: -40..60 °C. Retained berichten worden genegeerd.',
+        payloadInfo: 'Publiceer live een temperatuur in °C. Voorbeelden: 15.0, 15,0, 15.0 °C of {"value":15.0}. Geldig bereik: -40..60 °C. Retained berichten worden niet gebruikt voor regeling.',
       },
       {
         topicKey: "room_temperature",
@@ -154,7 +154,7 @@ import { escapeHtml } from "../core/html.js";
         validKey: "mqttRoomTemperatureValid",
         staleCopy: "10 minuten",
         payloadInfoTitle: "Temperatuurpayload",
-        payloadInfo: 'Publiceer een temperatuur in °C. Voorbeelden: 21.1, 21,1, 21.1 °C of {"value":21.1}. Geldig bereik: 0..50 °C. Retained berichten worden genegeerd.',
+        payloadInfo: 'Publiceer live een temperatuur in °C. Voorbeelden: 21.1, 21,1, 21.1 °C of {"value":21.1}. Geldig bereik: 0..50 °C. Retained berichten worden niet gebruikt voor regeling.',
       },
       {
         topicKey: "room_setpoint",
@@ -162,9 +162,10 @@ import { escapeHtml } from "../core/html.js";
         valueKey: "mqttRoomSetpoint",
         ageKey: "mqttRoomSetpointAge",
         validKey: "mqttRoomSetpointValid",
-        staleCopy: "30 minuten",
+        staleCopy: "nieuw bericht",
+        stateful: true,
         payloadInfoTitle: "Temperatuurpayload",
-        payloadInfo: 'Publiceer een temperatuur in °C. Voorbeelden: 21.0, 21,0, 21.0 °C of {"value":21.0}. Geldig bereik: 5..35 °C. Retained berichten worden genegeerd.',
+        payloadInfo: 'Publiceer een setpoint in °C. Voorbeelden: 21.0, 21,0, 21.0 °C of {"value":21.0}. Geldig bereik: 5..35 °C. Retained berichten worden geaccepteerd; de waarde blijft gelden tot een nieuw setpoint, uitschakelen of herstart.',
       },
       {
         topicKey: "heating_enable",
@@ -172,10 +173,11 @@ import { escapeHtml } from "../core/html.js";
         valueKey: "mqttHeatingEnable",
         ageKey: "mqttHeatingEnableAge",
         validKey: "mqttHeatingEnableValid",
-        staleCopy: "10 minuten",
+        staleCopy: "nieuw bericht",
         kind: "binary",
+        stateful: true,
         payloadInfoTitle: "Booleanpayload",
-        payloadInfo: 'Publiceer toestemming als boolean. Geaccepteerd: true/false, 1/0, on/off, yes/no of {"value":true}. Zonder nieuwe publicatie wordt dit signaal na 10 minuten ongeldig. Retained berichten worden genegeerd.',
+        payloadInfo: 'Publiceer warmtetoestemming als boolean. Geaccepteerd: true/false, 1/0, on/off, yes/no of {"value":true}. Retained berichten worden geaccepteerd; de waarde blijft gelden tot een nieuwe payload, uitschakelen of herstart.',
       },
       {
         topicKey: "cooling_enable",
@@ -183,10 +185,11 @@ import { escapeHtml } from "../core/html.js";
         valueKey: "mqttCoolingEnable",
         ageKey: "mqttCoolingEnableAge",
         validKey: "mqttCoolingEnableValid",
-        staleCopy: "10 minuten",
+        staleCopy: "nieuw bericht",
         kind: "binary",
+        stateful: true,
         payloadInfoTitle: "Booleanpayload",
-        payloadInfo: 'Publiceer toestemming als boolean. Geaccepteerd: true/false, 1/0, on/off, yes/no of {"value":true}. Zonder nieuwe publicatie wordt dit signaal na 10 minuten ongeldig. Retained berichten worden genegeerd.',
+        payloadInfo: 'Publiceer koeltoestemming als boolean. Geaccepteerd: true/false, 1/0, on/off, yes/no of {"value":true}. Retained berichten worden geaccepteerd; de waarde blijft gelden tot een nieuwe payload, uitschakelen of herstart.',
       },
     ];
   }
@@ -336,7 +339,9 @@ import { escapeHtml } from "../core/html.js";
       const validityTitle = inputEnabled ? getMqttValidityLabel(sensor.validKey) : "Uitgeschakeld";
       const statusTitle = inputEnabled
         ? valid
-          ? `Laatste MQTT-publicatie ${age === "—" ? "onbekend" : `${age} geleden`}. Zonder nieuwe MQTT-publicatie wordt de waarde na ${sensor.staleCopy} ongeldig.`
+          ? sensor.stateful
+            ? `Laatste MQTT-publicatie ${age === "—" ? "onbekend" : `${age} geleden`}. De waarde blijft geldig tot een nieuwe payload, uitschakelen of herstart.`
+            : `Laatste MQTT-publicatie ${age === "—" ? "onbekend" : `${age} geleden`}. Zonder nieuwe MQTT-publicatie wordt de waarde na ${sensor.staleCopy} ongeldig.`
           : age === "—"
             ? "Nog geen geldige MQTT-publicatie ontvangen."
             : `Laatste MQTT-publicatie ${age} geleden; de waarde is niet meer geldig.`

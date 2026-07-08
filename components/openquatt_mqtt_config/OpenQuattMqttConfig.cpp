@@ -255,6 +255,10 @@ bool parse_binary_payload_(const char *payload, bool *value) {
   return parse_binary_scalar_(trimmed, value);
 }
 
+bool numeric_input_accepts_retained_(size_t input_index) {
+  return input_index == static_cast<size_t>(OpenQuattMqttConfig::NumericInputKind::ROOM_SETPOINT);
+}
+
 class MqttConfigHandler : public AsyncWebHandler {
  public:
   explicit MqttConfigHandler(OpenQuattMqttConfig *parent) : parent_(parent) {}
@@ -1022,8 +1026,8 @@ void OpenQuattMqttConfig::mqtt_event_handler_(void *handler_args, esp_event_base
         const int numeric_input_index = self->find_numeric_input_index_by_topic_(event->topic, event->topic_len);
         if (numeric_input_index >= 0) {
           const auto &input = self->numeric_inputs_[static_cast<size_t>(numeric_input_index)];
-          if (event->retain) {
-            ESP_LOGW(TAG, "Ignoring retained MQTT %s payload", input.log_name);
+          if (event->retain && !numeric_input_accepts_retained_(static_cast<size_t>(numeric_input_index))) {
+            ESP_LOGI(TAG, "Ignoring retained MQTT %s payload for control freshness", input.log_name);
             break;
           }
           self->queue_numeric_payload_(static_cast<size_t>(numeric_input_index), event->data, event->data_len);
@@ -1031,11 +1035,6 @@ void OpenQuattMqttConfig::mqtt_event_handler_(void *handler_args, esp_event_base
         }
         const int binary_input_index = self->find_binary_input_index_by_topic_(event->topic, event->topic_len);
         if (binary_input_index >= 0) {
-          const auto &input = self->binary_inputs_[static_cast<size_t>(binary_input_index)];
-          if (event->retain) {
-            ESP_LOGW(TAG, "Ignoring retained MQTT %s payload", input.log_name);
-            break;
-          }
           self->queue_binary_payload_(static_cast<size_t>(binary_input_index), event->data, event->data_len);
         }
       }
@@ -1221,7 +1220,7 @@ void OpenQuattMqttConfig::publish_runtime_state_(bool force) {
     const bool input_enabled = mqtt_enabled && this->is_numeric_input_enabled_(i);
     const bool has_sample = input.last_valid_ms != 0 && std::isfinite(input.last_valid_value);
     const uint32_t age_ms = has_sample ? (uint32_t)(now_ms - input.last_valid_ms) : 0U;
-    const bool valid = input_enabled && has_sample && age_ms <= input.stale_ms;
+    const bool valid = input_enabled && has_sample && (input.stale_ms == 0U || age_ms <= input.stale_ms);
 
     this->publish_binary_if_changed_(input.valid_binary_sensor, valid, force);
     this->publish_float_if_changed_(input.age_sensor,
@@ -1234,7 +1233,7 @@ void OpenQuattMqttConfig::publish_runtime_state_(bool force) {
     const bool input_enabled = mqtt_enabled && this->is_binary_input_enabled_(i);
     const bool has_sample = input.last_valid_ms != 0;
     const uint32_t age_ms = has_sample ? (uint32_t)(now_ms - input.last_valid_ms) : 0U;
-    const bool valid = input_enabled && has_sample && age_ms <= input.stale_ms;
+    const bool valid = input_enabled && has_sample && (input.stale_ms == 0U || age_ms <= input.stale_ms);
 
     this->publish_binary_if_changed_(input.valid_binary_sensor, valid, force);
     this->publish_float_if_changed_(input.age_sensor,
