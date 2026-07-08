@@ -5,6 +5,7 @@ import { getBasePath } from "../core/url-path.js";
 import { setWebServerLogControls } from "../core/webserver-log-controls.js";
 import { escapeHtml } from "../core/html.js";
 import { render } from "../core/render-scheduler.js";
+import { renderSettingsSystemRow } from "../settings/controls.js";
 
 export const WEB_SERVER_LOG_MAX_ENTRIES = 250;
 
@@ -987,13 +988,12 @@ export function renderWebServerLogHistoryControls() {
 
   return `
     <div class="oq-webserver-log-history-shell">
-      <div class="oq-settings-system-row oq-settings-system-row--with-action" data-oq-diagnostics-row="webserverLogHistory">
-        <div class="oq-settings-system-row-copy">
-          <p class="oq-settings-system-row-label">RAM log history</p>
-          <strong class="oq-settings-system-row-value">${escapeHtml(label)}</strong>
-          <p class="oq-settings-system-row-note">${escapeHtml(copy)}</p>
-        </div>
-        <button
+      ${renderSettingsSystemRow({
+        dataValue: "webserverLogHistory",
+        label: "RAM log history",
+        value: label,
+        note: copy,
+        action: `<button
           class="oq-helper-button oq-helper-button--ghost"
           type="button"
           data-oq-action="toggle-overview-control"
@@ -1003,8 +1003,8 @@ export function renderWebServerLogHistoryControls() {
           ${busy ? "disabled" : ""}
         >
           ${enabled ? "Uitschakelen" : "Inschakelen"}
-        </button>
-      </div>
+        </button>`,
+      })}
       ${loggerLevelControl}
     </div>
   `;
@@ -1021,19 +1021,18 @@ export function renderWebServerLoggerLevelControl() {
   const busy = state.loadingEntities || state.busyAction === "save-debugLevel";
 
   return `
-    <div class="oq-settings-system-row oq-settings-system-row--with-action" data-oq-diagnostics-row="debugLevel">
-      <div class="oq-settings-system-row-copy">
-        <p class="oq-settings-system-row-label">Logger level</p>
-        <strong class="oq-settings-system-row-value">${escapeHtml(value || "Onbekend")}</strong>
-        <p class="oq-settings-system-row-note">Past het runtime logniveau aan voor nieuwe firmwaremeldingen.</p>
-      </div>
-      <label class="oq-webserver-log-level-control" aria-label="Logger level">
+    ${renderSettingsSystemRow({
+      dataValue: "debugLevel",
+      label: "Logger level",
+      value: value || "Onbekend",
+      note: "Past het runtime logniveau aan voor nieuwe firmwaremeldingen.",
+      action: `<label class="oq-webserver-log-level-control" aria-label="Logger level">
         <select class="oq-helper-select" data-oq-field="debugLevel" ${busy ? "disabled" : ""}>
           ${options.map((option) => `<option value="${escapeHtml(option)}" ${option === value ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
         </select>
         <span class="oq-settings-select-caret" aria-hidden="true"></span>
-      </label>
-    </div>
+      </label>`,
+    })}
   `;
 }
 

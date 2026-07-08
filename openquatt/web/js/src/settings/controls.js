@@ -35,6 +35,23 @@ export function renderSettingsStaticField(fieldKey, title, copy, value, classNam
   return renderSettingsFieldCard(fieldKey, title, copy, `<div class="oq-settings-static-value">${escapeHtml(value)}</div>`, className);
 }
 
+export function renderSettingsSystemRow({
+  label,
+  value,
+  note = "",
+  action = "",
+  className = "",
+  dataAttribute = "data-oq-diagnostics-row",
+  dataValue = "",
+}) {
+  const classes = `oq-settings-system-row${action ? " oq-settings-system-row--with-action" : ""}${className ? ` ${escapeHtml(className)}` : ""}`;
+  const attribute = dataAttribute && dataValue ? ` ${dataAttribute}="${escapeHtml(dataValue)}"` : "";
+  if (!action && !note) {
+    return `<div class="${classes}"${attribute}><span class="oq-settings-system-row-label">${escapeHtml(label)}</span><strong class="oq-settings-system-row-value">${escapeHtml(value)}</strong></div>`;
+  }
+  return `<div class="${classes}"${attribute}><div class="oq-settings-system-row-copy"><p class="oq-settings-system-row-label">${escapeHtml(label)}</p><strong class="oq-settings-system-row-value">${escapeHtml(value)}</strong>${note ? `<p class="oq-settings-system-row-note">${escapeHtml(note)}</p>` : ""}</div>${action}</div>`;
+}
+
 export function getSettingsStatValue(key, options = {}) {
   const config = typeof options === "number"
     ? { decimals: options }

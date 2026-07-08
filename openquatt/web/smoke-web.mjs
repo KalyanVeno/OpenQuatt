@@ -2,7 +2,7 @@ import { access, readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
-import { build } from "esbuild";
+import { build, transform } from "esbuild";
 import { resolveCssSources } from "./css-source-list.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -15,15 +15,6 @@ const allowedBareImports = new Set(["virtual:embedded-assets"]);
 
 function toBundlePath(value) {
   return value.split(path.sep).join("/");
-}
-
-function minifyCss(source) {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/\s+/g, " ")
-    .replace(/\s*([{}:;,>~])\s*/g, "$1")
-    .replace(/;}/g, "}")
-    .trim();
 }
 
 async function fileExists(filePath) {
@@ -157,7 +148,8 @@ async function checkCssBundleFresh() {
     `/* Generated minified bundle: ${toBundlePath(path.relative(webDir, outputPath))}. */`,
     "/* Source files are in ./js/src and ./css/src. Rebuild with: node openquatt/web/build-assets.mjs */",
   ].join("\n");
-  const expected = `${header}\n${minifyCss(sourceParts.map((source) => source.trimEnd()).join("\n"))}\n`;
+  const minified = (await transform(sourceParts.map((source) => source.trimEnd()).join("\n"), { loader: "css", minify: true })).code.trim();
+  const expected = `${header}\n${minified}\n`;
   const actual = await readFile(outputPath, "utf8");
   if (actual !== expected) {
     throw new Error("CSS bundle is stale. Run: rtk npm run build:web");

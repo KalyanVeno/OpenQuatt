@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { build } from "esbuild";
+import { build, transform } from "esbuild";
 import { checkSettingsBackupConfig } from "./check-settings-backup.mjs";
 import { resolveCssSources } from "./css-source-list.mjs";
 
@@ -20,15 +20,6 @@ const bundles = [
     sources: resolveCssSources(__dirname),
   },
 ];
-
-function minifyCss(source) {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/\s+/g, " ")
-    .replace(/\s*([{}:;,>~])\s*/g, "$1")
-    .replace(/;}/g, "}")
-    .trim();
-}
 
 async function buildEmbeddedAssetModule() {
   const assets = [
@@ -85,7 +76,7 @@ async function buildBundle(bundle) {
   ].join("\n");
   const bodySegments = parts.map(({ content }) => content.trimEnd());
   const body = bodySegments.join("\n");
-  const minified = minifyCss(body);
+  const minified = (await transform(body, { loader: "css", minify: true })).code.trim();
   await mkdir(path.dirname(bundle.output), { recursive: true });
   await writeFile(bundle.output, `${header}\n${minified}\n`, "utf8");
   console.log(`${bundle.label} bundle rebuilt: ${path.relative(__dirname, bundle.output)}`);

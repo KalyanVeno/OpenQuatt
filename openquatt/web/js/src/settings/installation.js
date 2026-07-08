@@ -10,7 +10,7 @@ import { formatDiagnosticsDateTime, formatUptimeFromMeta, getDeviceIpAddress, ge
 import { getUpdateStatus } from "../features/firmware-update.js";
 import { getEspTemperatureLabel } from "../features/header-status.js";
 import { getWebServerLogStatusLabel } from "../features/webserver-logs.js";
-import { getSelectEntityOptions, renderNamedActionButton, renderSettingsChoiceOption, renderSettingsCompactSwitchControl, renderSettingsFieldCard, renderSettingsNumberField, renderSettingsSection, renderSettingsSliderField } from "./controls.js";
+import { getSelectEntityOptions, renderNamedActionButton, renderSettingsChoiceOption, renderSettingsCompactSwitchControl, renderSettingsFieldCard, renderSettingsNumberField, renderSettingsSection, renderSettingsSliderField, renderSettingsSystemRow } from "./controls.js";
 import { renderSettingsHeatPumpLimiterCard } from "./heating.js";
 import { escapeHtml } from "../core/html.js";
 
@@ -707,91 +707,74 @@ import { escapeHtml } from "../core/html.js";
       "Snelle statusinformatie voor support, controle en onderhoud.",
       `
         <div class="oq-settings-system-summary">
-          <div class="oq-settings-system-row" data-oq-diagnostics-row="uptime">
-            <span class="oq-settings-system-row-label">Uptime</span>
-            <strong class="oq-settings-system-row-value">${escapeHtml(formatUptimeFromMeta())}</strong>
-          </div>
-          <div class="oq-settings-system-row" data-oq-diagnostics-row="ip">
-            <span class="oq-settings-system-row-label">IP-adres</span>
-            <strong class="oq-settings-system-row-value">${escapeHtml(getDeviceIpAddress())}</strong>
-          </div>
-          <div class="oq-settings-system-row oq-settings-system-row--with-action" data-oq-diagnostics-row="updates">
-            <div class="oq-settings-system-row-copy">
-              <p class="oq-settings-system-row-label">Updates</p>
-              <strong class="oq-settings-system-row-value">${escapeHtml(updateStatus)}</strong>
-            </div>
-            <button
+          ${renderSettingsSystemRow({ dataValue: "uptime", label: "Uptime", value: formatUptimeFromMeta() })}
+          ${renderSettingsSystemRow({ dataValue: "ip", label: "IP-adres", value: getDeviceIpAddress() })}
+          ${renderSettingsSystemRow({
+            dataValue: "updates",
+            label: "Updates",
+            value: updateStatus,
+            action: `<button
               class="oq-helper-button oq-helper-button--ghost"
               type="button"
               data-oq-action="open-update-modal"
             >
               Openen
-            </button>
-          </div>
-          <div class="oq-settings-system-row oq-settings-system-row--with-action" data-oq-diagnostics-row="webserverLog">
-            <div class="oq-settings-system-row-copy">
-              <p class="oq-settings-system-row-label">Logboek</p>
-              <strong class="oq-settings-system-row-value">${escapeHtml(getWebServerLogStatusLabel())}</strong>
-            </div>
-            <button
+            </button>`,
+          })}
+          ${renderSettingsSystemRow({
+            dataValue: "webserverLog",
+            label: "Logboek",
+            value: getWebServerLogStatusLabel(),
+            action: `<button
               class="oq-helper-button oq-helper-button--ghost"
               type="button"
               data-oq-action="open-webserver-log-modal"
             >
               Openen
-            </button>
-          </div>
-          <div class="oq-settings-system-row oq-settings-system-row--with-action" data-oq-diagnostics-row="debugRecording">
-            <div class="oq-settings-system-row-copy">
-              <p class="oq-settings-system-row-label">Debugopname</p>
-              <strong class="oq-settings-system-row-value">${escapeHtml(getDebugRecordingStatusLabel())}</strong>
-              <p class="oq-settings-system-row-note">${escapeHtml(getDebugRecordingStatusCopy())}</p>
-            </div>
-            <button
+            </button>`,
+          })}
+          ${renderSettingsSystemRow({
+            dataValue: "debugRecording",
+            label: "Debugopname",
+            value: getDebugRecordingStatusLabel(),
+            note: getDebugRecordingStatusCopy(),
+            action: `<button
               class="oq-helper-button oq-helper-button--ghost"
               type="button"
               data-oq-action="open-debug-recording-modal"
             >
               Openen
-            </button>
-          </div>
-          <div class="oq-settings-system-row" data-oq-diagnostics-row="datetime">
-            <span class="oq-settings-system-row-label">Datum/tijd</span>
-            <strong class="oq-settings-system-row-value">${escapeHtml(dateTime)}</strong>
-          </div>
-          <div class="oq-settings-system-row" data-oq-diagnostics-row="espTemp">
-            <span class="oq-settings-system-row-label">ESP-temp</span>
-            <strong class="oq-settings-system-row-value">${escapeHtml(getEspTemperatureLabel())}</strong>
-          </div>
-          <div class="oq-settings-system-row oq-settings-system-row--with-action" data-oq-diagnostics-row="restart">
-            <div class="oq-settings-system-row-copy">
-              <p class="oq-settings-system-row-label">Herstart OpenQuatt</p>
-              <strong class="oq-settings-system-row-value">Opnieuw opstarten</strong>
-              <p class="oq-settings-system-row-note">Dit onderbreekt de webinterface kort.</p>
-            </div>
-            <button
+            </button>`,
+          })}
+          ${renderSettingsSystemRow({ dataValue: "datetime", label: "Datum/tijd", value: dateTime })}
+          ${renderSettingsSystemRow({ dataValue: "espTemp", label: "ESP-temp", value: getEspTemperatureLabel() })}
+          ${renderSettingsSystemRow({
+            dataValue: "restart",
+            label: "Herstart OpenQuatt",
+            value: "Opnieuw opstarten",
+            note: "Dit onderbreekt de webinterface kort.",
+            action: `<button
               class="oq-helper-button oq-helper-button--warning"
               type="button"
               data-oq-action="open-restart-confirm"
               ${busyRestart ? "disabled" : ""}
             >
               ${busyRestart ? "Herstarten..." : "Herstarten"}
-            </button>
-          </div>
+            </button>`,
+          })}
           ${hasEntity("statusLedsEnabled") ? `
-            <div class="oq-settings-system-row oq-settings-system-row--with-action" data-oq-diagnostics-row="statusLeds">
-              <div class="oq-settings-system-row-copy">
-                <p class="oq-settings-system-row-label">Status-LEDs</p>
-                <strong class="oq-settings-system-row-value">${escapeHtml(isEntityActive("statusLedsEnabled") ? "Aan" : "Uit")}</strong>
-                <p class="oq-settings-system-row-note">Schakelt de gele netwerk-LED en rode storings-LED op de Q-edition controller.</p>
-              </div>
-              ${renderSettingsCompactSwitchControl(
+            ${renderSettingsSystemRow({
+              dataValue: "statusLeds",
+              label: "Status-LEDs",
+              value: isEntityActive("statusLedsEnabled") ? "Aan" : "Uit",
+              note: "Schakelt de gele netwerk-LED en rode storings-LED op de Q-edition controller.",
+              action: renderSettingsCompactSwitchControl(
                 "statusLedsEnabled",
                 "Status-LEDs",
                 isEntityActive("statusLedsEnabled"),
                 state.loadingEntities || state.busyAction === "switch-statusLedsEnabled",
-              )}
-            </div>
+              ),
+            })}
           ` : ""}
         </div>
       `,

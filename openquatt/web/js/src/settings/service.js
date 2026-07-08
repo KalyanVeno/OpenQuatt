@@ -2,7 +2,7 @@ import { getEntityNumericValue, getEntityStateText, hasEntity, isEntityActive } 
 import { getEntityValue } from "../core/entity-store.js";
 import { formatFailures } from "../core/failure-format.js";
 import { state } from "../core/state.js";
-import { formatSettingsNumberValue, getCommissioningStatusValue, getSettingsStatValue, getSettingsTemperatureValue, getSettingsTextStatValue, getStatusTextValue, renderNamedActionButton, renderNamedToggleActionButton, renderSettingsCheckboxSwitchField, renderSettingsSection, renderSettingsSelectField, renderSettingsSliderField, renderSettingsStaticField } from "./controls.js";
+import { formatSettingsNumberValue, getCommissioningStatusValue, getSettingsStatValue, getSettingsTemperatureValue, getSettingsTextStatValue, getStatusTextValue, renderNamedActionButton, renderNamedToggleActionButton, renderSettingsCheckboxSwitchField, renderSettingsSection, renderSettingsSelectField, renderSettingsSliderField, renderSettingsStaticField, renderSettingsSystemRow } from "./controls.js";
 import { getHpWaterRawValue } from "./water.js";
 import { escapeHtml } from "../core/html.js";
 
@@ -851,14 +851,14 @@ import { escapeHtml } from "../core/html.js";
   }
 
   export function renderSettingsServiceTaskRow(task) {
-    return `
-      <div class="oq-settings-system-row oq-settings-system-row--with-action oq-settings-service-row" data-oq-service-task="${escapeHtml(task.key)}">
-        <div class="oq-settings-system-row-copy">
-          <p class="oq-settings-system-row-label">${escapeHtml(task.label)}</p>
-          <strong class="oq-settings-system-row-value">${escapeHtml(task.status)}</strong>
-          <p class="oq-settings-system-row-note">${escapeHtml(task.summary)}</p>
-        </div>
-        <button
+    return renderSettingsSystemRow({
+      dataAttribute: "data-oq-service-task",
+      dataValue: task.key,
+      className: "oq-settings-service-row",
+      label: task.label,
+      value: task.status,
+      note: task.summary,
+      action: `<button
           class="oq-helper-button oq-helper-button--ghost"
           type="button"
           data-oq-action="open-service-task-modal"
@@ -866,9 +866,8 @@ import { escapeHtml } from "../core/html.js";
           ${task.openDisabled ? "disabled" : ""}
         >
           ${task.openDisabled ? "Wachten op CM100" : "Openen"}
-        </button>
-      </div>
-    `;
+        </button>`,
+    });
   }
 
   export function renderSettingsServiceSection() {
