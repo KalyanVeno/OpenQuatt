@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import { checkSettingsBackupConfig } from "./check-settings-backup.mjs";
+import { resolveCssSources } from "./css-source-list.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,14 +17,7 @@ const bundles = [
   {
     label: "CSS",
     output: path.join(__dirname, "css", "openquatt-app.css"),
-    sources: [
-      path.join(__dirname, "css", "src", "00-base.css"),
-      path.join(__dirname, "css", "src", "10-settings.css"),
-      path.join(__dirname, "css", "src", "20-overview.css"),
-      path.join(__dirname, "css", "src", "30-energy.css"),
-      path.join(__dirname, "css", "src", "40-heatpump.css"),
-      path.join(__dirname, "css", "src", "90-responsive.css"),
-    ],
+    sources: resolveCssSources(__dirname),
   },
 ];
 

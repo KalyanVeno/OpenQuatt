@@ -3,19 +3,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import { build } from "esbuild";
+import { resolveCssSources } from "./css-source-list.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const webDir = path.dirname(__filename);
 const repoDir = path.resolve(webDir, "..", "..");
 const jsSourceDir = path.join(webDir, "js", "src");
-const cssSources = [
-  path.join(webDir, "css", "src", "00-base.css"),
-  path.join(webDir, "css", "src", "10-settings.css"),
-  path.join(webDir, "css", "src", "20-overview.css"),
-  path.join(webDir, "css", "src", "30-energy.css"),
-  path.join(webDir, "css", "src", "40-heatpump.css"),
-  path.join(webDir, "css", "src", "90-responsive.css"),
-];
+const cssSources = resolveCssSources(webDir);
 
 const allowedBareImports = new Set(["virtual:embedded-assets"]);
 
