@@ -1,7 +1,7 @@
 import { hasEntity } from "../core/app-shared.js";
 import { ENTITY_DEFS, ENTITY_REFRESH_CONCURRENCY, FIRMWARE_MODAL_KEYS, FIRMWARE_OTA_INSTALL_POLL_INTERVAL_MS, FIRMWARE_OTA_START_QUIET_MS } from "../core/config.js";
 import { buildEntityPath } from "../core/domain-helpers.js";
-import { setEntityBackupValue } from "../core/entity-actions.js";
+import { setEntityBackupValue } from "../core/entity-backup.js";
 import { getEntityValue } from "../core/entity-store.js";
 import { isLikelyDeviceConnectionError, refreshEntities } from "../core/entity-sync.js";
 import { state } from "../core/state.js";

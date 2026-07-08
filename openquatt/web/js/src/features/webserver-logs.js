@@ -2,6 +2,7 @@ import { copyTextToClipboard } from "../core/browser-utils.js";
 import { refreshEntities } from "../core/entity-sync.js";
 import { state } from "../core/state.js";
 import { getBasePath } from "../core/url-path.js";
+import { setWebServerLogControls } from "../core/webserver-log-controls.js";
 import { escapeHtml } from "../core/html.js";
 import { render } from "../core/render-scheduler.js";
 
@@ -722,6 +723,12 @@ export function handleWebServerLogOpen() {
   render();
   queueWebServerLogScrollRestore(scrollState);
 }
+
+setWebServerLogControls({
+  clearOutput: clearWebServerLogOutput,
+  closeStream: closeWebServerLogStream,
+  resetRecoveryState: resetWebServerLogRecoveryState,
+});
 
 export function handleWebServerLogPing() {
   if (!state.webServerLogSource || state.nativeOpen) {

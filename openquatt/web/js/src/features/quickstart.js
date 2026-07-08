@@ -5,7 +5,7 @@ import { formatValue, getEntityValue, toTimeInputValue } from "../core/entity-st
 import { state } from "../core/state.js";
 import { getDeviceMeta, getInstallationTopology } from "./device-context.js";
 import { isWebServerLogScrollerNearBottom } from "./webserver-logs.js";
-import { formatSettingsOptionLabel, renderSettingsFieldCard, renderSettingsInfoToggle } from "../settings/core.js";
+import { formatSettingsOptionLabel, renderSettingsFieldCard, renderSettingsInfoToggle } from "../settings/controls.js";
 import { renderCurveGraph, renderFlowSettingsFields, renderHeatingCurveProfileField, renderHeatingStrategyExplainCards, renderPowerHouseAdvancedField, renderPowerHouseBaseFields, renderSettingsCurveInputs, renderStrategySelectionFields } from "../settings/heating.js";
 import { renderBoilerCvFields, renderHpGenerationField } from "../settings/installation.js";
 import { renderSilentSettingsGrid } from "../settings/silent.js";

@@ -1,17 +1,17 @@
 import { getEntityNumericValue, getEntityStateText, hasEntity, isEntityActive } from "../core/app-shared.js";
 import { getOduRuntimeFrequencyControlKey, getOduRuntimeFrequencyValueKey, ODU_RUNTIME_FREQUENCY_HP_IDS, ODU_RUNTIME_FREQUENCY_LEVELS, ODU_RUNTIME_FREQUENCY_MODES } from "../core/config.js";
 import { HP_GENERATION_IMAGE_V1, HP_GENERATION_IMAGE_V2 } from "../core/embedded-assets.js";
-import { renderNumberInputControl } from "../core/entity-actions.js";
 import { getEntityValue, getInputDraftValue, getNumberMeta, parseLooseNumber } from "../core/entity-store.js";
+import { getInstallationMonitoringFailureText, getInstallationMonitoringModel, isInstallationMonitoringBinaryActive, isInstallationMonitoringFailureActive, isInstallationMonitoringIntegrationEnabled, syncInstallationMonitoringDetailsState } from "../core/installation-monitoring.js";
+import { renderNumberInputControl } from "../core/number-controls.js";
 import { state } from "../core/state.js";
 import { getDebugRecordingStatusCopy, getDebugRecordingStatusLabel } from "../features/debug-recording.js";
 import { formatDiagnosticsDateTime, formatUptimeFromMeta, getDeviceIpAddress, getInstallationLabel } from "../features/device-context.js";
 import { getUpdateStatus } from "../features/firmware-update.js";
 import { getEspTemperatureLabel } from "../features/header-status.js";
 import { getWebServerLogStatusLabel } from "../features/webserver-logs.js";
-import { formatWarningFailures, getSelectEntityOptions, renderNamedActionButton, renderSettingsChoiceOption, renderSettingsCompactSwitchControl, renderSettingsFieldCard, renderSettingsNumberField, renderSettingsSection, renderSettingsSliderField } from "./core.js";
+import { getSelectEntityOptions, renderNamedActionButton, renderSettingsChoiceOption, renderSettingsCompactSwitchControl, renderSettingsFieldCard, renderSettingsNumberField, renderSettingsSection, renderSettingsSliderField } from "./controls.js";
 import { renderSettingsHeatPumpLimiterCard } from "./heating.js";
-import { formatFailures } from "../views/heatpump.js";
 import { escapeHtml } from "../core/html.js";
 
   export function getOduRuntimeFrequencyHpIndexes() {
@@ -240,92 +240,6 @@ import { escapeHtml } from "../core/html.js";
     `;
   }
 
-  export function isInstallationMonitoringBinaryActive(key) {
-    return hasEntity(key) && isEntityActive(key);
-  }
-
-  export function isInstallationMonitoringIntegrationEnabled(key) {
-    return !hasEntity(key) || isEntityActive(key);
-  }
-
-  export function getInstallationMonitoringFailureText(key) {
-    if (!hasEntity(key)) {
-      return "";
-    }
-    return formatFailures(getEntityStateText(key, "None"));
-  }
-
-  export const NON_WARNING_FAILURE_NAMES = new Set([
-    "compressor oil return",
-  ]);
-
-  export function getInstallationMonitoringWarningFailureText(key) {
-    if (!hasEntity(key)) {
-      return "";
-    }
-    return formatWarningFailures(getEntityStateText(key, "None"));
-  }
-
-  export function isInstallationMonitoringFailureActive(key) {
-    const normalized = getInstallationMonitoringWarningFailureText(key).trim().toLowerCase();
-    return Boolean(normalized) && normalized !== "geen actieve storingen";
-  }
-
-  export function getInstallationMonitoringModel() {
-    const problems = [];
-    const cyclingActive = isInstallationMonitoringBinaryActive("compressorCyclingWarning2h")
-      || isInstallationMonitoringBinaryActive("compressorCyclingWarning72h")
-      || isInstallationMonitoringBinaryActive("alternatingCompressorStartsWarning");
-    const cyclingAlertLatched = isInstallationMonitoringBinaryActive("compressorCyclingAlertLatched");
-    const cicPollingEnabled = isInstallationMonitoringIntegrationEnabled("cicPollingEnabled");
-    const otEnabled = isInstallationMonitoringIntegrationEnabled("otEnabled");
-    const addBinaryProblem = (key, label) => {
-      if (isInstallationMonitoringBinaryActive(key)) {
-        problems.push({ key, label });
-      }
-    };
-    addBinaryProblem("compressorCyclingWarning2h", "Te veel compressorstarts in 2 uur");
-    addBinaryProblem("compressorCyclingWarning72h", "Te veel compressorstarts in 72 uur");
-    addBinaryProblem("alternatingCompressorStartsWarning", "Warmtepompen starten opvallend vaak om en om");
-    addBinaryProblem("lowflowFaultActive", "Te lage flow");
-    addBinaryProblem("flowMismatch", "Flowverschil tussen warmtepomp 1 en 2");
-    if (cicPollingEnabled) {
-      addBinaryProblem("cicDataStale", "CIC-data is verouderd");
-    }
-    if (otEnabled) {
-      addBinaryProblem("otLinkProblem", "OpenTherm-verbinding meldt een probleem");
-    }
-    if (isInstallationMonitoringFailureActive("hp1Failures")) {
-      problems.push({ key: "hp1Failures", label: `Warmtepomp 1: ${getInstallationMonitoringWarningFailureText("hp1Failures")}` });
-    }
-    if (isInstallationMonitoringFailureActive("hp2Failures")) {
-      problems.push({ key: "hp2Failures", label: `Warmtepomp 2: ${getInstallationMonitoringWarningFailureText("hp2Failures")}` });
-    }
-    const activeProblemCount = problems.length;
-    if (cyclingAlertLatched && !cyclingActive) {
-      problems.unshift({
-        key: "compressorCyclingAlertLatched",
-        label: "Pendelen eerder gedetecteerd; melding nog niet bevestigd",
-      });
-    }
-
-    return {
-      problems,
-      active: problems.length > 0,
-      cyclingAlertLatched,
-      cyclingAlertActive: cyclingActive,
-      cyclingAlertRecovered: cyclingAlertLatched && !cyclingActive,
-      title: activeProblemCount > 0
-        ? "Aandacht nodig"
-        : cyclingAlertLatched ? "Eerdere waarschuwing nog niet bevestigd" : "Geen bijzonderheden",
-      copy: activeProblemCount > 0
-        ? `${problems.length} aandachtspunt${problems.length === 1 ? "" : "en"} zichtbaar. Bekijk hieronder de details.`
-        : cyclingAlertLatched
-          ? "Het pendelen is hersteld. De melding blijft zichtbaar totdat je haar bevestigt."
-          : "OpenQuatt ziet op dit moment geen actieve aandachtspunten in de bewaakte signalen.",
-    };
-  }
-
   export function renderInstallationMonitoringBadge(active, activeLabel = "Aandacht", clearLabel = "OK") {
     return `<span class="oq-settings-monitoring-badge${active ? " is-warning" : " is-clear"}">${escapeHtml(active ? activeLabel : clearLabel)}</span>`;
   }
@@ -446,20 +360,6 @@ import { escapeHtml } from "../core/html.js";
         </dl>
       </div>
     `;
-  }
-
-  export function syncInstallationMonitoringDetailsState(monitoring) {
-    const problemSignature = monitoring.active
-      ? monitoring.problems.map((problem) => problem.key).sort().join("|")
-      : "";
-    if (!problemSignature) {
-      state.installationMonitoringProblemSignature = "";
-      return;
-    }
-    if (problemSignature !== state.installationMonitoringProblemSignature) {
-      state.installationMonitoringProblemSignature = problemSignature;
-      state.installationMonitoringDetailsOpen = true;
-    }
   }
 
   export function renderSettingsInstallationMonitoringSection() {

@@ -1,8 +1,10 @@
 import { copyTextToClipboard } from "../core/browser-utils.js";
-import { LOGIN_MODAL_AUTH_STATUS_REFRESH_INTERVAL_MS } from "../core/config.js";
-import { shouldRefreshSupplementaryStatus, triggerNamedButton } from "../core/entity-actions.js";
-import { isSystemSettingsGroupActive } from "../core/entity-sync.js";
+import { ENTITY_DEFS, LOGIN_MODAL_AUTH_STATUS_REFRESH_INTERVAL_MS } from "../core/config.js";
+import { beginDeviceReconnect } from "../core/device-reconnect.js";
+import { buildEntityPath } from "../core/domain-helpers.js";
 import { state } from "../core/state.js";
+import { shouldRefreshSupplementaryStatus } from "../core/supplementary-refresh.js";
+import { isSystemSettingsGroupActive } from "../core/surface-state.js";
 import { render } from "../core/render-scheduler.js";
 
   export function getAuthStatusSignature(status = state.authStatus || {}) {
@@ -166,11 +168,33 @@ import { render } from "../core/render-scheduler.js";
   }
 
   export async function restartForApiSecurityChange() {
-    await triggerNamedButton("restartAction", {
-      successNotice: "OpenQuatt wordt opnieuw opgestart om de API-beveiliging toe te passen.",
-      errorPrefix: "Herstart mislukt",
-      reconnectMode: "restart",
-    });
+    const entity = ENTITY_DEFS.restartAction;
+    if (!entity) {
+      return;
+    }
+
+    state.busyAction = "restartAction";
+    state.controlError = "";
+    state.controlNotice = "";
+    render();
+
+    try {
+      const response = await fetch(buildEntityPath(entity.domain, entity.name, "press"), {
+        method: "POST",
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      stopLoginAuthStatusPolling();
+      state.systemModal = "";
+      state.controlNotice = "OpenQuatt wordt opnieuw opgestart om de API-beveiliging toe te passen.";
+      beginDeviceReconnect("restart");
+    } catch (error) {
+      state.controlError = `Herstart mislukt. ${error.message}`;
+    } finally {
+      state.busyAction = "";
+      render();
+    }
   }
 
   export async function commitEnableApiSecurity() {

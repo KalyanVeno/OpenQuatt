@@ -1,10 +1,10 @@
 import { getEntityNumericValue, hasEntity } from "../core/app-shared.js";
 import { renderOqIcon, SENSOR_SELECTION_KEYS } from "../core/config.js";
 import { getEntityValue, getInputDraftValue } from "../core/entity-store.js";
+import { isInstallationMonitoringBinaryActive, isInstallationMonitoringIntegrationEnabled } from "../core/installation-monitoring.js";
 import { state } from "../core/state.js";
 import { formatMqttSensorValiditySummary, getMqttStatusDetail, getMqttStatusLabel, getMqttValidityLabel } from "../features/mqtt.js";
-import { formatSettingsOptionLabel, getSelectEntityOptions, getSettingsStatValue, getSettingsTextStatValue, renderSettingsInfoToggle, renderSettingsIntegrationSwitchCard, renderSettingsSection } from "./core.js";
-import { isInstallationMonitoringBinaryActive, isInstallationMonitoringIntegrationEnabled } from "./installation.js";
+import { formatSettingsOptionLabel, getSelectEntityOptions, getSettingsStatValue, getSettingsTextStatValue, renderSettingsInfoToggle, renderSettingsIntegrationSwitchCard, renderSettingsSection } from "./controls.js";
 import { escapeHtml } from "../core/html.js";
 
   export function renderSettingsOpenThermCicSection() {

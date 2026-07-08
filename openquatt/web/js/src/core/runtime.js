@@ -1,14 +1,14 @@
-import { isTrendHistoryEnabled } from "./app-shared.js";
-import { APP_VIEW_IDS, FAN_ROTATION_DEG_PER_SEC, FAST_POLL_INTERVAL_MS, FLOW_OFFSET_PX_PER_SEC, HIDDEN_POLL_INTERVAL_MS, OFFICIAL_ESPHOME_UI_URL, POLL_JITTER_MAX_MS, POLL_JITTER_MIN_MS, SETTINGS_GROUP_IDS, SETTINGS_GROUPS } from "./config.js";
-import { DEFAULT_TREND_WINDOW_HOURS, TREND_WINDOW_HOURS_OPTIONS, getPrefersReducedMotion, getReducedMotionMedia, getStoredHpLayoutMode, getStoredHpVisualMode, getStoredOverviewTheme, getStoredSurface, getStoredTrendWindowHours, state } from "./state.js";
+import { FAST_POLL_INTERVAL_MS, HIDDEN_POLL_INTERVAL_MS, OFFICIAL_ESPHOME_UI_URL, POLL_JITTER_MAX_MS, POLL_JITTER_MIN_MS, SETTINGS_GROUP_IDS, SETTINGS_GROUPS } from "./config.js";
+import { setEntityPollingControls } from "./entity-polling-controls.js";
+import { getPrefersReducedMotion, getReducedMotionMedia, getStoredHpLayoutMode, getStoredHpVisualMode, getStoredOverviewTheme, getStoredSurface, getStoredTrendWindowHours, state } from "./state.js";
 export { DEFAULT_TREND_WINDOW_HOURS, TREND_WINDOW_HOURS_OPTIONS, state } from "./state.js";
 import { handleChange, handleClick, handleFocusChange, handleInput, handleKeyDown, handlePointerDown, handlePointerMove, handlePointerUp, handleSettingsInteractionEnd, handleSettingsInteractionStart, handleWheel } from "./event-handlers.js";
+import { getDefaultAppView, getUrlAppView, getUrlSettingsGroup, setAppView, syncUrlAppView } from "./navigation.js";
 import { primeEntities, syncEntities } from "./entity-sync.js";
 import { refreshDebugRecordingDeviceStatus } from "../features/debug-recording.js";
-import { isFirmwareOtaQuietActive } from "../features/firmware-update.js";
+import { isFirmwareOtaQuietActive } from "./firmware-quiet.js";
+import { clearLegacyMotionVariables, startMotionLoop, stopMotionLoop } from "./motion.js";
 import { render } from "./render-scheduler.js";
-
-
 
   export function setOverviewTheme(theme) {
     state.overviewTheme = theme === "dark" ? "dark" : "light";
@@ -70,49 +70,6 @@ import { render } from "./render-scheduler.js";
     }
   }
 
-  export function isTrendHistoryFlashEnabled() {
-    const entity = state.entities?.trendHistoryFlashEnabled;
-    if (!entity) {
-      return false;
-    }
-    if (typeof entity.value === "boolean") {
-      return entity.value;
-    }
-    const raw = String(entity.state ?? entity.value ?? "").toLowerCase();
-    return raw === "on" || raw === "true" || raw === "1";
-  }
-
-  export function getAvailableTrendWindowHoursOptions() {
-    return isTrendHistoryFlashEnabled()
-      ? TREND_WINDOW_HOURS_OPTIONS
-      : TREND_WINDOW_HOURS_OPTIONS.filter((hours) => hours <= 168);
-  }
-
-  export function normalizeTrendWindowHours(hours) {
-    const options = getAvailableTrendWindowHoursOptions();
-    const numeric = Number(hours);
-    if (options.includes(numeric)) {
-      return numeric;
-    }
-    if (Number.isFinite(numeric) && numeric > options[options.length - 1]) {
-      return options[options.length - 1];
-    }
-    return options.includes(DEFAULT_TREND_WINDOW_HOURS) ? DEFAULT_TREND_WINDOW_HOURS : options[0];
-  }
-
-  export function setTrendWindowHours(hours) {
-    state.trendWindowHours = normalizeTrendWindowHours(hours);
-    try {
-      window.localStorage.setItem("oq-trend-window-hours", String(state.trendWindowHours));
-    } catch (_error) {
-      // Ignore storage failures in embedded browsers.
-    }
-  }
-
-  export function getDefaultAppView() {
-    return "overview";
-  }
-
   export function handleReducedMotionPreferenceChange(event) {
     state.reducedMotion = Boolean(event?.matches);
     if (state.reducedMotion) {
@@ -140,15 +97,6 @@ import { render } from "./render-scheduler.js";
 
   export function hasLoadedEntities() {
     return Object.keys(state.entities).length > 0;
-  }
-
-  export function stopMotionLoop() {
-    if (state.motionFrame) {
-      window.cancelAnimationFrame(state.motionFrame);
-      state.motionFrame = 0;
-    }
-    state.motionStartedAt = 0;
-    clearLegacyMotionVariables();
   }
 
   export function getEntityPollJitterMs() {
@@ -186,6 +134,8 @@ import { render } from "./render-scheduler.js";
     state.pollTimer = null;
   }
 
+  setEntityPollingControls({ start: startEntityPolling, stop: stopEntityPolling });
+
   export function handleVisibilityChange() {
     if (state.nativeOpen) {
       return;
@@ -219,94 +169,6 @@ import { render } from "./render-scheduler.js";
       return;
     }
     void syncEntities({ forceFast: true });
-  }
-
-  export function normalizeAppView(view) {
-    if (view === "trends") {
-      view = "diagnosis";
-    }
-    if (!APP_VIEW_IDS.has(view)) {
-      return "";
-    }
-    if (view === "diagnosis" && !isTrendHistoryEnabled()) {
-      return "";
-    }
-    return view;
-  }
-
-  export function normalizeUrlToken(value) {
-    return String(value || "").trim().toLowerCase();
-  }
-
-  export function getUrlAppView() {
-    try {
-      const url = new URL(window.location.href);
-      const rawQueryView = normalizeUrlToken(url.searchParams.get("view") || "");
-      const queryView = normalizeAppView(rawQueryView);
-      if (queryView) {
-        return queryView;
-      }
-
-      const rawHashView = normalizeUrlToken(url.hash.replace(/^#/, ""));
-      const hashView = normalizeAppView(rawHashView);
-      return hashView || "";
-    } catch (_error) {
-      return "";
-    }
-  }
-
-  export function getUrlSettingsGroup() {
-    try {
-      const url = new URL(window.location.href);
-      const section = normalizeUrlToken(url.searchParams.get("section") || "");
-      if (SETTINGS_GROUP_IDS.has(section)) {
-        return section;
-      }
-
-      const legacyGroup = normalizeUrlToken(url.searchParams.get("group") || "");
-      if (SETTINGS_GROUP_IDS.has(legacyGroup)) {
-        return legacyGroup;
-      }
-
-      return "";
-    } catch (_error) {
-      return "";
-    }
-  }
-
-  export function syncUrlAppView(mode = "replace") {
-    try {
-      const url = new URL(window.location.href);
-      const normalized = normalizeAppView(state.appView) || getDefaultAppView();
-      url.searchParams.set("view", normalized);
-      if (normalized === "settings") {
-        const group = SETTINGS_GROUP_IDS.has(state.settingsGroup) ? state.settingsGroup : SETTINGS_GROUPS[0].id;
-        url.searchParams.set("section", group);
-        url.searchParams.delete("group");
-      } else {
-        url.searchParams.delete("section");
-        url.searchParams.delete("group");
-      }
-      if (url.hash && normalizeAppView(url.hash.replace(/^#/, ""))) {
-        url.hash = "";
-      }
-
-      const method = mode === "push" ? "pushState" : "replaceState";
-      window.history[method]({ oqView: normalized, oqSettingsSection: normalized === "settings" ? state.settingsGroup : "" }, "", url.toString());
-    } catch (_error) {
-      // Ignore history failures in embedded browsers.
-    }
-  }
-
-  export function setAppView(view, options = {}) {
-    const normalized = normalizeAppView(view) || getDefaultAppView();
-    const mode = options.syncMode || "replace";
-    const changed = state.appView !== normalized;
-    state.appView = normalized;
-
-    if (changed || options.forceSync) {
-      syncUrlAppView(mode);
-    }
   }
 
   export function handlePopState() {
@@ -501,109 +363,4 @@ import { render } from "./render-scheduler.js";
       return;
     }
     controls.bind(state.root);
-  }
-
-  export function clearLegacyMotionVariables() {
-    if (!state.root) {
-      return;
-    }
-
-    state.root.style.removeProperty("--oq-flow-offset");
-    state.root.style.removeProperty("--oq-flow-offset-reverse");
-    state.root.style.removeProperty("--oq-fan-rotation");
-    if (!state.root.getAttribute("style")) {
-      state.root.removeAttribute("style");
-    }
-  }
-
-  export function refreshMotionTargets() {
-    state.motionTargets = {
-      pipeFlows: [],
-      fanBlades: [],
-    };
-
-    if (!state.root) {
-      return 0;
-    }
-
-    const runningBoards = state.root.querySelectorAll(".oq-hp-schematic-board.is-running");
-    runningBoards.forEach((board) => {
-      board.querySelectorAll(".oq-hp-tech-pipe-flow").forEach((node) => {
-        state.motionTargets.pipeFlows.push(node);
-      });
-    });
-
-    const waterFlowBoards = state.root.querySelectorAll(".oq-hp-schematic-board.is-water-flowing:not(.is-running)");
-    waterFlowBoards.forEach((board) => {
-      board.querySelectorAll('.oq-hp-tech-pipe-flow[data-oq-flow-variant="water"]').forEach((node) => {
-        state.motionTargets.pipeFlows.push(node);
-      });
-    });
-
-    const fanBoards = state.root.querySelectorAll(".oq-hp-schematic-board.is-fan-running");
-    fanBoards.forEach((board) => {
-      board.querySelectorAll(".oq-hp-tech-fan-blades").forEach((node) => {
-        state.motionTargets.fanBlades.push(node);
-      });
-    });
-
-    return state.motionTargets.pipeFlows.length + state.motionTargets.fanBlades.length;
-  }
-
-  export function hasMotionTargets() {
-    return state.motionTargets.pipeFlows.length > 0 || state.motionTargets.fanBlades.length > 0;
-  }
-
-  export function syncMotionVariables(now = performance.now()) {
-    if (!state.root || state.reducedMotion) {
-      return false;
-    }
-
-    if (!hasMotionTargets() && refreshMotionTargets() === 0) {
-      return false;
-    }
-
-    if (!state.motionStartedAt) {
-      state.motionStartedAt = now;
-    }
-
-    const elapsedSeconds = (now - state.motionStartedAt) / 1000;
-    const fanRotation = (elapsedSeconds * FAN_ROTATION_DEG_PER_SEC) % 360;
-
-    state.motionTargets.pipeFlows.forEach((node) => {
-      const speedMultiplier = node.dataset.oqFlowVariant === "water" ? 0.42 : 1;
-      const nodeOffset = -(elapsedSeconds * FLOW_OFFSET_PX_PER_SEC * speedMultiplier);
-      node.style.strokeDashoffset = `${nodeOffset.toFixed(3)}px`;
-    });
-    state.motionTargets.fanBlades.forEach((node) => {
-      node.style.transform = `rotate(${fanRotation.toFixed(3)}deg)`;
-    });
-    return true;
-  }
-
-  export function tickMotion(now) {
-    if (!syncMotionVariables(now)) {
-      state.motionFrame = 0;
-      state.motionStartedAt = 0;
-      return;
-    }
-    state.motionFrame = window.requestAnimationFrame(tickMotion);
-  }
-
-  export function startMotionLoop() {
-    if (state.motionFrame || state.reducedMotion) {
-      return;
-    }
-
-    if (refreshMotionTargets() === 0) {
-      return;
-    }
-
-    const now = performance.now();
-    state.motionStartedAt = now;
-    if (!syncMotionVariables(now)) {
-      state.motionStartedAt = 0;
-      return;
-    }
-    state.motionFrame = window.requestAnimationFrame(tickMotion);
   }

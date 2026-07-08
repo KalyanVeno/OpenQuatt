@@ -7,7 +7,6 @@ import { state } from "../core/state.js";
 import { getBasePath } from "../core/url-path.js";
 import { getFirmwareDeviceLabel, getInstallationLabel, getInstallationTopology } from "./device-context.js";
 import { getFirmwareCurrentVersion } from "./firmware-update.js";
-import { patchDebugRecordingHeaderStatus } from "./header-status.js";
 import { escapeHtml } from "../core/html.js";
 import { render } from "../core/render-scheduler.js";
 
@@ -223,6 +222,31 @@ export function renderDebugRecordingHeaderStatus() {
       <span>${escapeHtml(label)}</span>
     </button>
   `;
+}
+
+export function patchDebugRecordingHeaderStatus() {
+  if (!state.root) {
+    return;
+  }
+  if (state.interfacePanelOpen) {
+    render();
+    return;
+  }
+  const actions = state.root.querySelector(".oq-helper-hub--collapsed .oq-helper-hub-head-actions");
+  if (!actions) {
+    return;
+  }
+  const current = actions.querySelector(".oq-debug-recording-header-status");
+  const markup = renderDebugRecordingHeaderStatus();
+  if (!markup) {
+    current?.remove();
+    return;
+  }
+  if (current) {
+    current.outerHTML = markup;
+    return;
+  }
+  actions.insertAdjacentHTML("afterbegin", markup);
 }
 
 export function patchDebugRecordingSettingsStatus() {

@@ -1,9 +1,9 @@
 import { getEntityNumericValue, getEntityStateText, hasEntity, isEntityActive } from "../core/app-shared.js";
 import { getEntityValue } from "../core/entity-store.js";
+import { formatFailures } from "../core/failure-format.js";
 import { state } from "../core/state.js";
-import { formatSettingsNumberValue, getCommissioningStatusValue, getSettingsStatValue, getSettingsTemperatureValue, getSettingsTextStatValue, getStatusTextValue, renderNamedActionButton, renderNamedToggleActionButton, renderSettingsCheckboxSwitchField, renderSettingsSection, renderSettingsSelectField, renderSettingsSliderField, renderSettingsStaticField } from "./core.js";
+import { formatSettingsNumberValue, getCommissioningStatusValue, getSettingsStatValue, getSettingsTemperatureValue, getSettingsTextStatValue, getStatusTextValue, renderNamedActionButton, renderNamedToggleActionButton, renderSettingsCheckboxSwitchField, renderSettingsSection, renderSettingsSelectField, renderSettingsSliderField, renderSettingsStaticField } from "./controls.js";
 import { getHpWaterRawValue } from "./water.js";
-import { formatFailures } from "../views/heatpump.js";
 import { escapeHtml } from "../core/html.js";
 
   export function getManualHpActualValue(levelKey, frequencyKey) {

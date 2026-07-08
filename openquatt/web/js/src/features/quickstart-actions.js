@@ -1,7 +1,7 @@
 import { hasEntity, isEntityActive } from "../core/app-shared.js";
 import { CURVE_SETTING_KEYS, ENTITY_DEFS, FAST_VIEW_ENTITY_REFRESH_CONCURRENCY, FLOW_SETTING_KEYS, FLOW_TUNING_KEYS, HEADER_ENTITY_KEYS, POWER_HOUSE_KEYS, QUICK_START_FLOW_SOURCE_KEYS, QUICK_START_THERMOSTAT_SOURCE_KEYS, SILENT_SETTING_KEYS, TOPOLOGY_HINT_KEYS } from "../core/config.js";
 import { buildEntityPath } from "../core/domain-helpers.js";
-import { setEntityBackupValue } from "../core/entity-actions.js";
+import { setEntityBackupValue } from "../core/entity-backup.js";
 import { getEntityValue } from "../core/entity-store.js";
 import { refreshEntities } from "../core/entity-sync.js";
 import { state } from "../core/state.js";

@@ -5,7 +5,7 @@ import { state } from "../core/state.js";
 import { getInstallationLabel, getInstallationTopology } from "../features/device-context.js";
 import { getFirmwareCurrentVersion } from "../features/firmware-update.js";
 import { ENERGY_HISTORY_EXPORT_MODES, getSettingsBackupSelectionSummary, normalizeEnergyHistoryExportMode } from "../features/storage-history.js";
-import { formatSettingsOptionLabel, getSettingsStatValue, renderSettingsCompactSwitchControl, renderSettingsFieldCard, renderSettingsSection, renderSettingsSwitchCopy } from "./core.js";
+import { formatSettingsOptionLabel, getSettingsStatValue, renderSettingsCompactSwitchControl, renderSettingsFieldCard, renderSettingsSection, renderSettingsSwitchCopy } from "./controls.js";
 import { getEnergyHistoryMetadataFromRaw, parseEnergyHistoryDateKey } from "../views/energy.js";
 import { escapeHtml } from "../core/html.js";
 

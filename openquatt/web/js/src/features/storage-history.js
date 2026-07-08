@@ -2,15 +2,18 @@ import { getSetupCompleteState, hasEntity, isEntityActive, isTrendHistoryEnabled
 import { downloadBlobFile, downloadJsonFile } from "../core/browser-utils.js";
 import { ENTITY_DEFS, FAST_VIEW_ENTITY_REFRESH_CONCURRENCY, SETTINGS_BACKUP_KEY_SET, SETTINGS_BACKUP_KEYS, SETTINGS_BACKUP_SCHEMA_VERSION, SETTINGS_BACKUP_SECTIONS, TREND_HISTORY_REFRESH_INTERVAL_MS } from "../core/config.js";
 import { buildEntityPath } from "../core/domain-helpers.js";
-import { setEntityBackupValue } from "../core/entity-actions.js";
+import { getEnergyHistoryRequestQuery } from "../core/energy-history-query.js";
+import { setEntityBackupValue } from "../core/entity-backup.js";
 import { formatValue, getEntityValue, normalizeDateTimeValue, normalizeTimeValue, parseLooseNumber } from "../core/entity-store.js";
-import { isSystemSettingsGroupActive, refreshEntities, syncEntities } from "../core/entity-sync.js";
+import { refreshEntities, syncEntities } from "../core/entity-sync.js";
 import { DEFAULT_TREND_WINDOW_HOURS, state } from "../core/state.js";
-import { normalizeTrendWindowHours, setTrendWindowHours } from "../core/runtime.js";
+import { ENERGY_HISTORY_VIEW_KEYS, getSettingsStorageRefreshKeys, SETTINGS_STORAGE_KEYS, TREND_HISTORY_VIEW_KEYS } from "../core/storage-history-keys.js";
+import { setStorageHistoryControls } from "../core/storage-history-controls.js";
+import { isSystemSettingsGroupActive } from "../core/surface-state.js";
+import { normalizeTrendWindowHours, setTrendWindowHours } from "../core/trend-window.js";
 import { getBasePath } from "../core/url-path.js";
 import { getFirmwareDeviceLabel, getInstallationLabel, getInstallationTopology } from "./device-context.js";
 import { getFirmwareCurrentVersion } from "./firmware-update.js";
-import { getEnergyHistoryRequestQuery } from "../views/energy.js";
 import { render } from "../core/render-scheduler.js";
 
   export function energyHistoryImportRecordHasHour(row) {
@@ -45,31 +48,7 @@ import { render } from "../core/render-scheduler.js";
       (energyHistoryImportRowsHaveTimestamp(rows) && energyHistoryImportRowsHaveMultipleRowsPerDay(rows));
   }
 
-  export const SETTINGS_STORAGE_KEYS = [
-    "trendHistoryEnabled",
-    "trendHistoryFlashEnabled",
-    "trendHistoryFlush",
-    "lifetimeEnergyHistoryEnabled",
-    "lifetimeEnergyHourRetention",
-    "lifetimeEnergyHistoryCapture",
-    "lifetimeEnergyHistoryClear",
-  ];
-
-  export const TREND_HISTORY_VIEW_KEYS = [
-    "trendHistoryEnabled",
-    "trendHistoryFlashEnabled",
-  ];
-
-  export const ENERGY_HISTORY_VIEW_KEYS = [
-    "lifetimeEnergyHistoryEnabled",
-    "lifetimeEnergyHourRetention",
-    "lifetimeEnergyHistoryCapture",
-    "lifetimeEnergyHistoryClear",
-  ];
-
-  export function getSettingsStorageRefreshKeys() {
-    return [...new Set(SETTINGS_STORAGE_KEYS)];
-  }
+  export { ENERGY_HISTORY_VIEW_KEYS, getSettingsStorageRefreshKeys, SETTINGS_STORAGE_KEYS, TREND_HISTORY_VIEW_KEYS };
 
   export function getEmptyTrendHistoryMetadata() {
     return {
@@ -1579,3 +1558,11 @@ import { render } from "../core/render-scheduler.js";
       state.energyHistoryFetchPromise = null;
     }
   }
+
+  setStorageHistoryControls({
+    refreshEnergyHistoryData,
+    refreshSettingsStorageState,
+    refreshTrendHistoryData,
+    refreshTrendHistoryMetadata,
+    shouldRefreshSettingsStorageForCurrentSurface,
+  });

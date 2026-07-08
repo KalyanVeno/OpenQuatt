@@ -3,18 +3,20 @@ import { BULK_POLL_INTERVAL_MS, CIC_COMPATIBILITY_KEYS, CIC_POLLING_DIAGNOSTIC_K
 import { buildEntityPath, isCurveMode } from "./domain-helpers.js";
 import { getEntityValue, parseLooseNumber } from "./entity-store.js";
 import { state } from "./state.js";
-import { getDefaultAppView, getUrlAppView, setAppView } from "./runtime.js";
-import { beginDeviceReconnect, clearDeviceReconnect, isFirmwareOtaQuietActive, markDeviceReconnectRecovered } from "../features/firmware-update.js";
-import { getHeaderRenderSignature, patchHeaderDom } from "../features/header-status.js";
+import { getDefaultAppView, getUrlAppView, setAppView } from "./navigation.js";
+import { isFirmwareOtaQuietActive } from "./firmware-quiet.js";
+import { getInstallationMonitoringModel, syncInstallationMonitoringDetailsState } from "./installation-monitoring.js";
+import { beginDeviceReconnect, clearDeviceReconnect, markDeviceReconnectRecovered } from "./device-reconnect.js";
+import { getSettingsRenderSignature } from "./render-signatures.js";
+import { isSystemSettingsGroupActive } from "./surface-state.js";
+import { getHeaderRenderSignature, patchHeaderDom } from "./header-render-controls.js";
+import { patchSettingsDom } from "./settings-render-controls.js";
+import { ENERGY_HISTORY_VIEW_KEYS, getSettingsStorageRefreshKeys, SETTINGS_STORAGE_KEYS, TREND_HISTORY_VIEW_KEYS } from "./storage-history-keys.js";
+import { refreshEnergyHistoryData, refreshSettingsStorageState, refreshTrendHistoryData, refreshTrendHistoryMetadata, shouldRefreshSettingsStorageForCurrentSurface } from "./storage-history-controls.js";
+import { patchDiagnosisDom, patchEnergyDom, patchOverviewDom, patchResultsDom } from "./view-patch-controls.js";
+import { clearWebServerLogOutput, closeWebServerLogStream, resetWebServerLogRecoveryState } from "./webserver-log-controls.js";
 import { getMqttSensorsModalRenderSignature, refreshMqttStatus, shouldRefreshMqttStatusForCurrentSurface } from "../features/mqtt-actions.js";
 import { getApiSecurityStatusSignature, refreshApiSecurityStatus, refreshAuthStatus, shouldRefreshApiSecurityStatusForCurrentSurface, shouldRefreshAuthStatusForCurrentSurface } from "../features/security-actions.js";
-import { ENERGY_HISTORY_VIEW_KEYS, getSettingsStorageRefreshKeys, refreshEnergyHistoryData, refreshSettingsStorageState, refreshTrendHistoryData, refreshTrendHistoryMetadata, SETTINGS_STORAGE_KEYS, shouldRefreshSettingsStorageForCurrentSurface, TREND_HISTORY_VIEW_KEYS } from "../features/storage-history.js";
-import { clearWebServerLogOutput, closeWebServerLogStream, resetWebServerLogRecoveryState } from "../features/webserver-logs.js";
-import { patchSettingsDom } from "../settings/core.js";
-import { getInstallationMonitoringModel, syncInstallationMonitoringDetailsState } from "../settings/installation.js";
-import { patchEnergyDom, patchResultsDom } from "../views/energy.js";
-import { patchOverviewDom } from "../views/heatpump.js";
-import { patchDiagnosisDom } from "../views/overview.js";
 import { render } from "./render-scheduler.js";
 
   export function scheduleOverviewPrefetch() {
@@ -251,14 +253,6 @@ import { render } from "./render-scheduler.js";
 
   export function getSettingsRefreshKeys() {
     return [...new Set(["setupComplete", ...SETTINGS_KEYS])];
-  }
-
-  export function isSystemSettingsGroupActive() {
-    return state.appView === "settings" && state.settingsGroup === "system";
-  }
-
-  export function isIntegrationsSettingsGroupActive() {
-    return state.appView === "settings" && state.settingsGroup === "integrations";
   }
 
   export function getDevInitialLoadDelayMs() {
@@ -1217,64 +1211,4 @@ import { render } from "./render-scheduler.js";
         }, OVERVIEW_BULK_FOLLOWUP_DELAY_MS);
       }
     }
-  }
-
-  export function getEntitySignatureFragment(key) {
-    const entity = state.entities[key];
-    if (!entity) {
-      if (state.optionalMissingEntities?.[key]) {
-        return `${key}:__optional_missing__`;
-      }
-      return `${key}:__missing__`;
-    }
-
-    const value = entity.state ?? entity.value ?? "";
-    const options = Array.isArray(entity.option)
-      ? entity.option.join(",")
-      : Array.isArray(entity.options)
-        ? entity.options.join(",")
-        : "";
-    const meta = [
-      entity.min_value ?? "",
-      entity.max_value ?? "",
-      entity.step ?? "",
-      entity.uom ?? "",
-    ].join(",");
-    return `${key}:${value}::${options}::${meta}`;
-  }
-
-  export function getSettingsRenderSignature() {
-    return [
-      state.appView,
-      state.settingsGroup,
-      state.busyAction,
-      state.loadingEntities ? "loading" : "ready",
-      getApiSecurityStatusSignature(),
-      getEntitySignatureFragment("setupComplete"),
-      ...SETTINGS_KEYS.map((key) => getEntitySignatureFragment(key)),
-    ].join("|");
-  }
-
-  export function getRenderSignature(value) {
-    try {
-      return JSON.stringify(value);
-    } catch (error) {
-      return String(value ?? "");
-    }
-  }
-
-  export function getOverviewControlsRenderSignature() {
-    return [
-      state.appView,
-      state.busyAction,
-      getEntitySignatureFragment("openquattEnabled"),
-      getEntitySignatureFragment("openquattResumeAt"),
-      getEntitySignatureFragment("manualCoolingEnable"),
-      getEntitySignatureFragment("silentModeOverride"),
-      getEntitySignatureFragment("controlModeLabel"),
-      getEntitySignatureFragment("coolingPermitted"),
-      getEntitySignatureFragment("coolingRequestActive"),
-      getEntitySignatureFragment("coolingBlockReason"),
-      getEntitySignatureFragment("silentActive"),
-    ].join("|");
   }

@@ -1,6 +1,6 @@
 import { getEntityStateText, hasEntity, isEntityActive } from "../core/app-shared.js";
 import { formatValue } from "../core/entity-store.js";
-import { formatSettingsOptionLabel, renderSettingsFieldCard, renderSettingsNumberField, renderSettingsOptionCardsField, renderSettingsSection, renderSettingsSliderField, renderSettingsSwitchField } from "./core.js";
+import { formatSettingsOptionLabel, renderSettingsFieldCard, renderSettingsNumberField, renderSettingsOptionCardsField, renderSettingsSection, renderSettingsSliderField, renderSettingsSwitchField } from "./controls.js";
 import { escapeHtml } from "../core/html.js";
 
   export function renderSettingsCoolingFact(label, value) {

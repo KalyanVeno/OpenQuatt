@@ -1,7 +1,8 @@
 import { copyTextToClipboard } from "../core/browser-utils.js";
-import { shouldRefreshSupplementaryStatus } from "../core/entity-actions.js";
-import { getEntitySignatureFragment, isIntegrationsSettingsGroupActive } from "../core/entity-sync.js";
+import { getEntitySignatureFragment } from "../core/render-signatures.js";
 import { state } from "../core/state.js";
+import { shouldRefreshSupplementaryStatus } from "../core/supplementary-refresh.js";
+import { isIntegrationsSettingsGroupActive } from "../core/surface-state.js";
 import { getMqttInputTopic } from "./mqtt.js";
 import { render } from "../core/render-scheduler.js";
 

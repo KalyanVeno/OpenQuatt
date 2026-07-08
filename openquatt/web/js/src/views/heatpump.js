@@ -1,16 +1,18 @@
 import { getEntityDisplayUnit, getEntityNumericValue, getEntityStateText, hasEntity, isEntityActive } from "../core/app-shared.js";
 import { HP_PANEL_CONFIGS } from "../core/config.js";
 import { getEntityValue } from "../core/entity-store.js";
-import { getOverviewControlsRenderSignature, getRenderSignature } from "../core/entity-sync.js";
+import { formatFailures, formatWarningFailures } from "../core/failure-format.js";
+import { getOverviewControlsRenderSignature, getRenderSignature } from "../core/render-signatures.js";
 import { state } from "../core/state.js";
-import { refreshMotionTargets } from "../core/runtime.js";
+import { refreshMotionTargets } from "../core/motion.js";
+import { getInstallationMonitoringModel } from "../core/installation-monitoring.js";
+import { setViewPatchControls } from "../core/view-patch-controls.js";
 import { getInstallationTopology } from "../features/device-context.js";
-import { formatWarningFailures } from "../settings/core.js";
-import { getInstallationMonitoringModel } from "../settings/installation.js";
 import { formatNumericState } from "../core/formatting.js";
 import { getHeatPumpPanelStatusLabel, getOverviewStatusCards, getOverviewStrategyLabel, getOverviewStrategySectionModel, getOverviewTempsModel, getOverviewTempsRenderSignature, getOverviewTopCards, getOverviewTrendRenderSignature, patchHpPanelStatusRow, patchOverviewTrendCurrentValues, renderHpPanelStatusRow, renderOverviewControlPanels, renderOverviewInstallationMonitoringNotice, renderOverviewNarrativePanel, renderOverviewStatCards, renderOverviewStatusPanel, renderOverviewSummaryShell, renderOverviewTempsPanel, renderOverviewTrendsPanel, renderTempRow, syncOverviewTrendInteractions } from "./overview.js";
 import { escapeHtml } from "../core/html.js";
 import { render } from "../core/render-scheduler.js";
+import { replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfChanged } from "./view-utils.js";
 
   export function getHeatPumpRuntimeModel(title, keys, accent) {
     const mode = formatWorkingMode(getEntityStateText(keys.mode, "Unknown"));
@@ -35,10 +37,6 @@ import { render } from "../core/render-scheduler.js";
 
   export function renderHeatPumpPanelStatus(mode, running, warningActive, failureText) {
     return `<div class="oq-overview-hp-status">${renderHpPanelStatusRow(mode, running, warningActive, failureText)}</div>`;
-  }
-
-  export function isSystemInStandby() {
-    return getEntityStateText("controlModeLabel", "").toLowerCase().includes("standby");
   }
 
   export function formatHeatPumpSummaryMode(mode, defrostActive) {
@@ -96,14 +94,6 @@ import { render } from "../core/render-scheduler.js";
     }
     if (raw === "Cooling") {
       return "Koelen";
-    }
-    return raw;
-  }
-
-  export function formatFailures(value) {
-    const raw = String(value || "").trim();
-    if (!raw || raw === "None") {
-      return "Geen actieve storingen";
     }
     return raw;
   }
@@ -1146,23 +1136,6 @@ import { render } from "../core/render-scheduler.js";
     }
   }
 
-  export function setInnerHtmlIfChanged(node, markup) {
-    if (!node) {
-      return;
-    }
-    if (node.innerHTML !== markup) {
-      node.innerHTML = markup;
-    }
-  }
-
-  export function replaceOuterHtmlIfSignatureChanged(node, signature, markup) {
-    if (!node || node.dataset.renderSignature === signature) {
-      return false;
-    }
-    node.outerHTML = markup;
-    return true;
-  }
-
   export function syncAttribute(node, name, value) {
     if (node && node.getAttribute(name) !== value) {
       node.setAttribute(name, value);
@@ -1567,3 +1540,5 @@ import { render } from "../core/render-scheduler.js";
 
     return true;
   }
+
+  setViewPatchControls({ patchOverviewDom });

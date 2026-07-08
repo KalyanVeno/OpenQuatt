@@ -1,4 +1,4 @@
-import { renderSettingsSection, renderSettingsSliderField, renderSettingsTimeField } from "./core.js";
+import { renderSettingsSection, renderSettingsSliderField, renderSettingsTimeField } from "./controls.js";
 import { escapeHtml } from "../core/html.js";
 
   export function renderSilentSettingsGrid(className = "oq-settings-grid") {

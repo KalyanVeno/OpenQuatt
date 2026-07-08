@@ -1,11 +1,13 @@
 import { formatOverviewStatValue, getDerivedEfficiencyValue, getEntityNumericValue, getEntityStateText, hasEntity, isEfficiencyKey } from "../core/app-shared.js";
 import { OVERVIEW_ENERGY_COLUMN_CONFIGS } from "../core/config.js";
-import { getRenderSignature } from "../core/entity-sync.js";
+import { setEnergyHistoryRequestQueryProvider } from "../core/energy-history-query.js";
+import { getRenderSignature } from "../core/render-signatures.js";
 import { state } from "../core/state.js";
+import { setViewPatchControls } from "../core/view-patch-controls.js";
 import { refreshEnergyHistoryData } from "../features/storage-history.js";
-import { replaceOuterHtmlIfSignatureChanged } from "./heatpump.js";
 import { escapeHtml } from "../core/html.js";
 import { render } from "../core/render-scheduler.js";
+import { replaceOuterHtmlIfSignatureChanged } from "./view-utils.js";
 
   export function renderOverviewEnergyRow([label, key]) {
     const derived = getDerivedEfficiencyValue(key);
@@ -946,6 +948,8 @@ import { render } from "../core/render-scheduler.js";
     return query ? `?${query}` : "";
   }
 
+  setEnergyHistoryRequestQueryProvider(getEnergyHistoryRequestQuery);
+
   export function setEnergyHistoryPeriodValue(view, value) {
     const normalizedView = normalizeEnergyHistoryView(view);
     if (!isEnergyHistoryPeriodView(normalizedView)) {
@@ -1713,3 +1717,5 @@ import { render } from "../core/render-scheduler.js";
       );
     return historyChanged || periodControlFocused;
   }
+
+  setViewPatchControls({ patchEnergyDom, patchResultsDom });

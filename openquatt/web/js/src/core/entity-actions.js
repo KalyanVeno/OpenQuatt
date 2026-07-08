@@ -1,13 +1,16 @@
 import { hasEntity, isTrendHistoryEnabled } from "./app-shared.js";
-import { CURVE_POINTS, ENTITY_DEFS, FIRMWARE_ENTITY_KEYS, FLOW_SETTING_KEYS, getOduRuntimeFrequencyButtonHp, getOduRuntimeFrequencyHpKeys, HEADER_ENTITY_KEYS, INSTALLATION_MONITORING_STATE_KEYS, LIMIT_KEYS, ODU_RUNTIME_FREQUENCY_BUTTON_KEYS, OPENQUATT_RESUME_CLEAR_VALUE, OVERVIEW_KEYS, POWER_HOUSE_KEYS, QUICK_STEPS, SETTINGS_GROUPS, SUPPLEMENTARY_STATUS_REFRESH_INTERVAL_MS } from "./config.js";
+import { CURVE_POINTS, ENTITY_DEFS, FIRMWARE_ENTITY_KEYS, FLOW_SETTING_KEYS, getOduRuntimeFrequencyButtonHp, getOduRuntimeFrequencyHpKeys, HEADER_ENTITY_KEYS, INSTALLATION_MONITORING_STATE_KEYS, LIMIT_KEYS, ODU_RUNTIME_FREQUENCY_BUTTON_KEYS, OPENQUATT_RESUME_CLEAR_VALUE, OVERVIEW_KEYS, POWER_HOUSE_KEYS, QUICK_STEPS, SETTINGS_GROUPS } from "./config.js";
+import { beginDeviceReconnect } from "./device-reconnect.js";
 import { buildEntityPath, isCurveMode } from "./domain-helpers.js";
 import { formatOpenQuattResumeDateTime, formatValue, getCurveFallbackSuggestion, getEntityValue, getInputDraftValue, getNumberMeta, getOpenQuattPauseDraftValue, getOpenQuattPausePresetValue, normalizeDateTimeValue, normalizeNumber, normalizeTimeValue, parseLooseNumber, toDateTimeInputValue } from "./entity-store.js";
 import { getSettingsRefreshKeys, refreshEntities, syncEntities } from "./entity-sync.js";
+import { setAppView } from "./navigation.js";
 import { state } from "./state.js";
-import { ensureNativeFrontendLoaded, setAppView, setDevPanelOpen, setHpLayoutMode, setHpVisualMode, setInterfacePanelOpen, setOverviewTheme, setSettingsGroup, setStoredSurface, setTrendWindowHours, syncSurfaceRuntime } from "./runtime.js";
+import { ensureNativeFrontendLoaded, setDevPanelOpen, setHpLayoutMode, setHpVisualMode, setInterfacePanelOpen, setOverviewTheme, setSettingsGroup, setStoredSurface, syncSurfaceRuntime } from "./runtime.js";
+import { setTrendWindowHours } from "./trend-window.js";
 import { clearDebugRecordingDevicePollTimer, copyDebugRecordingBundle, downloadDebugRecordingBundle, freezeDebugRecording, refreshDebugRecordingDeviceStatus, scheduleDebugRecordingDeviceStatusPoll, setDebugRecordingSelectedMinutes, startDebugRecording, startRollingDebugRecording, stopDebugRecording } from "../features/debug-recording.js";
 import { hydrateFirmwareUpdateModal, installFirmwareConnectionSwitch, installFirmwareTestUpdate, installFirmwareTopologySwitch, installFirmwareUpdate, triggerFirmwareUpdateCheck, uploadFirmwareUpdate } from "../features/firmware-actions.js";
-import { beginDeviceReconnect, getFirmwareTestAssetUrls, getFirmwareTestPrNumber, getFirmwareTestTargetModel, pollFirmwareUpdateState, primeFirmwareUpdateState, resetFirmwareManualUploadSelection, resetFirmwareTestSelection } from "../features/firmware-update.js";
+import { getFirmwareTestAssetUrls, getFirmwareTestPrNumber, getFirmwareTestTargetModel, pollFirmwareUpdateState, primeFirmwareUpdateState, resetFirmwareManualUploadSelection, resetFirmwareTestSelection } from "../features/firmware-update.js";
 import { commitMqttConfig, commitMqttInputEnabled, copyMqttTopic, refreshMqttStatus, syncMqttDraftFromInput, syncMqttDraftsFromStatus } from "../features/mqtt-actions.js";
 import { isMqttInputEnabled } from "../features/mqtt.js";
 import { abortQuickStartFlowTest, applyQuickStartFlowSourceConfiguration, applyQuickStartThermostatSourceConfiguration, refreshQuickStartFlowSignal, refreshQuickStartStepHydration, startQuickStartFlowTest } from "../features/quickstart-actions.js";
@@ -19,93 +22,6 @@ import { handleOduRuntimeFrequencyInputKeyDown } from "../settings/installation.
 import { handleEnergyHistoryPointerMove, setEnergyHistoryPeriodToNow, setEnergyHistoryPeriodValue, setEnergyHistoryView, shiftEnergyHistoryPeriod } from "../views/energy.js";
 import { escapeHtml } from "./html.js";
 import { render } from "./render-scheduler.js";
-
-  export function shouldRefreshSupplementaryStatus(lastRefreshAt, options = {}, intervalMs = SUPPLEMENTARY_STATUS_REFRESH_INTERVAL_MS) {
-    if (options.force === true) {
-      return true;
-    }
-    const lastAt = Number(lastRefreshAt || 0);
-    return !lastAt || (Date.now() - lastAt) >= intervalMs;
-  }
-
-  export async function setEntityBackupValue(key, value) {
-    const entity = ENTITY_DEFS[key];
-    if (!entity) {
-      throw new Error(`Onbekend veld ${key}.`);
-    }
-
-    if (entity.domain === "select") {
-      const option = String(value || "").trim();
-      const response = await fetch(
-        `${buildEntityPath(entity.domain, entity.name, "set")}?option=${encodeURIComponent(option)}`,
-        { method: "POST" }
-      );
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return option;
-    }
-
-    if (entity.domain === "number") {
-      const normalized = normalizeNumber(key, value);
-      const response = await fetch(
-        `${buildEntityPath(entity.domain, entity.name, "set")}?value=${encodeURIComponent(normalized)}`,
-        { method: "POST" }
-      );
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return normalized;
-    }
-
-    if (entity.domain === "time") {
-      const normalized = normalizeTimeValue(value);
-      const response = await fetch(
-        `${buildEntityPath(entity.domain, entity.name, "set")}?value=${encodeURIComponent(normalized)}`,
-        { method: "POST" }
-      );
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return normalized;
-    }
-
-    if (entity.domain === "datetime") {
-      const normalized = normalizeDateTimeValue(value);
-      const response = await fetch(
-        `${buildEntityPath(entity.domain, entity.name, "set")}?value=${encodeURIComponent(normalized)}`,
-        { method: "POST" }
-      );
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return normalized;
-    }
-
-    if (entity.domain === "text") {
-      const normalized = String(value || "").trim();
-      const response = await fetch(
-        `${buildEntityPath(entity.domain, entity.name, "set")}?value=${encodeURIComponent(normalized)}`,
-        { method: "POST" }
-      );
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return normalized;
-    }
-
-    if (entity.domain === "switch" || entity.domain === "binary_sensor") {
-      const enabled = Boolean(value);
-      const action = enabled ? "turn_on" : "turn_off";
-      const response = await fetch(buildEntityPath(entity.domain, entity.name, action), { method: "POST" });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return enabled;
-    }
-
-    throw new Error(`${entity.name} kan niet worden hersteld.`);
-  }
 
   export function handleFocusChange() {
     window.setTimeout(() => {
@@ -2012,38 +1928,4 @@ import { render } from "./render-scheduler.js";
       state.drafts[state.draggingCurveKey] = normalized;
       render();
     }
-  }
-
-  export function renderNumberInputControl({ key, value, meta, controlClass, inputClass = "oq-helper-input", inputAttributes = "", unitMarkup = "" }) {
-    return `
-      <label class="${controlClass}">
-        <input
-          class="${inputClass}"
-          type="number"
-          data-oq-field="${escapeHtml(key)}"
-          min="${meta.min}"
-          max="${meta.max}"
-          step="${meta.step}"
-          value="${escapeHtml(value)}"
-          ${inputAttributes}
-          ${state.loadingEntities ? "disabled" : ""}
-        >
-        ${unitMarkup}
-      </label>
-    `;
-  }
-
-  export function renderNumberInputField(key, title, copy, options = {}) {
-    const meta = getNumberMeta(key);
-    const value = getInputDraftValue(key);
-    return `
-      <article class="oq-helper-control-card">
-        <div class="oq-helper-control-copy">
-          <h3>${escapeHtml(title)}</h3>
-          <p>${escapeHtml(copy)}</p>
-        </div>
-        ${renderNumberInputControl({ key, value, meta, controlClass: "oq-helper-control oq-helper-control--split", unitMarkup: `<span class="oq-helper-unit">${escapeHtml(meta.uom || "")}</span>` })}
-        ${options.footerMarkup || ""}
-      </article>
-    `;
   }

@@ -1,7 +1,7 @@
 import { getEntityNumericValue, hasEntity } from "../core/app-shared.js";
-import { renderNumberInputControl } from "../core/entity-actions.js";
 import { getInputDraftValue, getNumberMeta, parseLooseNumber } from "../core/entity-store.js";
-import { formatSettingsNumberValue, getSettingsTemperatureValue, renderSettingsNumberField, renderSettingsSection } from "./core.js";
+import { renderNumberInputControl } from "../core/number-controls.js";
+import { formatSettingsNumberValue, getSettingsTemperatureValue, renderSettingsNumberField, renderSettingsSection } from "./controls.js";
 import { escapeHtml } from "../core/html.js";
 
   export function getHpWaterRawValue(rawKey, finalKey, offsetKey) {

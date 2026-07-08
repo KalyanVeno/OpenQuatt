@@ -1,5 +1,5 @@
 import { getApiSecurityStatusDetail, getApiSecurityStatusLabel, getWebAuthStatusDetail, getWebAuthStatusLabel } from "../features/security-access.js";
-import { renderSettingsSection } from "./core.js";
+import { renderSettingsSection } from "./controls.js";
 import { escapeHtml } from "../core/html.js";
 
 export { getApiSecurityStatusDetail, getApiSecurityStatusLabel } from "../features/security-access.js";

@@ -1,10 +1,10 @@
 import { getEntityNumericValue, hasEntity } from "../core/app-shared.js";
 import { CURVE_POINTS, STRATEGY_OPTION_CURVE, STRATEGY_OPTION_POWER_HOUSE } from "../core/config.js";
 import { isCurveMode, isManualFlowMode } from "../core/domain-helpers.js";
-import { renderNumberInputField } from "../core/entity-actions.js";
 import { getCurveFallbackSuggestion, getEntityValue, normalizeNumber } from "../core/entity-store.js";
+import { renderNumberInputField } from "../core/number-controls.js";
 import { state } from "../core/state.js";
-import { renderSettingsChoiceOption, renderSettingsFieldCard, renderSettingsMiniNumberField, renderSettingsNumberField, renderSettingsSection, renderSettingsSelectField } from "./core.js";
+import { renderSettingsChoiceOption, renderSettingsFieldCard, renderSettingsMiniNumberField, renderSettingsNumberField, renderSettingsSection, renderSettingsSelectField } from "./controls.js";
 import { formatNumericState } from "../core/formatting.js";
 import { escapeHtml } from "../core/html.js";
 

@@ -1,11 +1,13 @@
 import { getEntityNumericValue, getEntityStateText, hasEntity, isEntityActive } from "../core/app-shared.js";
 import { renderOqIcon } from "../core/config.js";
 import { formatOpenQuattResumeDateTime, getEntityValue, getOpenQuattPauseDraftValue, hasOpenQuattResumeSchedule } from "../core/entity-store.js";
-import { getEntitySignatureFragment } from "../core/entity-sync.js";
+import { isDeviceReconnectRecovering } from "../core/device-reconnect.js";
+import { setHeaderRenderControls } from "../core/header-render-controls.js";
+import { getEntitySignatureFragment } from "../core/render-signatures.js";
 import { state } from "../core/state.js";
 import { getDebugRecordingHubStatusLabel, renderDebugRecordingHeaderStatus, renderDebugRecordingModal } from "./debug-recording.js";
 import { formatDeviceClock, formatUptimeFromMeta, getDeviceIpAddress, getInstallationLabel } from "./device-context.js";
-import { getFirmwareUpdateEntity, getUpdateStatus, isDeviceReconnectRecovering, isFirmwareUpdateAvailable } from "./firmware-update.js";
+import { getFirmwareUpdateEntity, getUpdateStatus, isFirmwareUpdateAvailable } from "./firmware-update.js";
 import { renderMqttModal, renderMqttSensorsModal } from "./mqtt.js";
 import { renderApiSecurityModal, renderLoginModal } from "./security-access.js";
 import { getWebServerLogStatusLabel, renderWebServerLogsModal } from "./webserver-logs.js";
@@ -340,32 +342,6 @@ import { render } from "../core/render-scheduler.js";
     `;
   }
 
-  export function patchDebugRecordingHeaderStatus() {
-    if (!state.root) {
-      return;
-    }
-    if (state.interfacePanelOpen) {
-      state.root.querySelector(".oq-debug-recording-header-status")?.remove();
-      patchHeaderDom();
-      return;
-    }
-    const actions = state.root.querySelector(".oq-helper-hub--collapsed .oq-helper-hub-head-actions");
-    if (!actions) {
-      return;
-    }
-    const current = actions.querySelector(".oq-debug-recording-header-status");
-    const markup = renderDebugRecordingHeaderStatus();
-    if (!markup) {
-      current?.remove();
-      return;
-    }
-    if (current) {
-      current.outerHTML = markup;
-      return;
-    }
-    actions.insertAdjacentHTML("afterbegin", markup);
-  }
-
   export function renderNativeSurfaceShell() {
     const surface = state.nativeOpen ? "native" : "app";
     const statusCopy = state.nativeFrontendLoading
@@ -397,6 +373,11 @@ import { render } from "../core/render-scheduler.js";
       </div>
     `;
   }
+
+  setHeaderRenderControls({
+    getSignature: getHeaderRenderSignature,
+    patch: patchHeaderDom,
+  });
 
   export function renderSystemModal() {
     if (state.systemModal === "login") {
