@@ -657,9 +657,9 @@ import { escapeHtml } from "../core/html.js";
         activeRows: [
           renderSourceRow({ label: "Waarde", value: sourceStateText("heatingEnableSelected", "Toegestaan", "Geblokkeerd") }),
           renderSourceRow({ label: "Bron", value: formattedTextSourceValue("heatingEnableEffectiveSource") }),
+          renderSourceRow({ label: "Bronstatus", value: sourceStateText("heatingEnableValid", "Geldig", "Ongeldig") }),
         ],
         measurementRows: [
-          renderSourceRow({ label: "Bronselectie", value: sourceStateText("heatingEnableValid", "Geldig", "Ongeldig") }),
           otAvailable ? renderSourceRow({ label: "OpenTherm", value: sourceStateText("otThermostatChEnable", "Toegestaan", "Geblokkeerd") }) : "",
           cicAvailable ? renderSourceRow({ label: "CIC", value: sourceStateText("cicChEnabled", "Toegestaan", "Geblokkeerd") }) : "",
           ...renderHaSourceRows({
@@ -689,10 +689,10 @@ import { escapeHtml } from "../core/html.js";
         activeRows: [
           renderSourceRow({ label: "Waarde", value: sourceStateText("coolingEnableSelected", "Toegestaan", "Geblokkeerd") }),
           renderSourceRow({ label: "Bron", value: formattedTextSourceValue("coolingEnableEffectiveSource") }),
+          renderSourceRow({ label: "Bronstatus", value: sourceStateText("coolingEnableValid", "Geldig", "Ongeldig") }),
+          renderSourceRow({ label: "Handmatige override", value: sourceStateText("manualCoolingEnable", "Aan", "Uit") }),
         ],
         measurementRows: [
-          renderSourceRow({ label: "Bronselectie", value: sourceStateText("coolingEnableValid", "Geldig", "Ongeldig") }),
-          renderSourceRow({ label: "Handmatige override", value: sourceStateText("manualCoolingEnable", "Aan", "Uit") }),
           otAvailable ? renderSourceRow({ label: "OpenTherm", value: sourceStateText("otThermostatCoolingEnable", "Toegestaan", "Geblokkeerd") }) : "",
           ...renderHaSourceRows({
             valueKey: "coolingEnableHa",
