@@ -681,16 +681,19 @@ import { escapeHtml } from "../core/html.js";
         select: {
           key: "coolingEnableSource",
           label: "Bron",
+          optionLabels: { Disabled: "Niet gebruiken / handmatig" },
           haKeys: ["coolingEnableHa", "coolingEnableHaValid"],
           mqttTopicKey: "cooling_enable",
+          keepUnavailableCurrent: true,
         },
         activeRows: [
           renderSourceRow({ label: "Waarde", value: sourceStateText("coolingEnableSelected", "Toegestaan", "Geblokkeerd") }),
           renderSourceRow({ label: "Bron", value: formattedTextSourceValue("coolingEnableEffectiveSource") }),
         ],
         measurementRows: [
-          renderSourceRow({ label: "Handmatig", value: sourceStateText("manualCoolingEnable", "Aan", "Uit") }),
-          cicAvailable ? renderSourceRow({ label: "CIC", value: sourceStateText("cicCoolingEnabled", "Toegestaan", "Geblokkeerd") }) : "",
+          renderSourceRow({ label: "Bronselectie", value: sourceStateText("coolingEnableValid", "Geldig", "Ongeldig") }),
+          renderSourceRow({ label: "Handmatige override", value: sourceStateText("manualCoolingEnable", "Aan", "Uit") }),
+          otAvailable ? renderSourceRow({ label: "OpenTherm", value: sourceStateText("otThermostatCoolingEnable", "Toegestaan", "Geblokkeerd") }) : "",
           ...renderHaSourceRows({
             valueKey: "coolingEnableHa",
             validKey: "coolingEnableHaValid",

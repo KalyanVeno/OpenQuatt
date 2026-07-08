@@ -1361,9 +1361,9 @@
       option: ["CIC", "OT thermostat", "HA input", "MQTT"],
     });
     setEntity("select", "Cooling Enable Source", {
-      value: "HA input",
-      state: "HA input",
-      option: ["CIC", "HA input", "MQTT", "CIC or HA input"],
+      value: "Disabled",
+      state: "Disabled",
+      option: ["Disabled", "OT thermostat", "HA input", "MQTT"],
     });
     setEntity("select", "Heating Enable Source", {
       value: "Disabled",
@@ -1782,25 +1782,29 @@
       || (heatingEnableValid && heatingEnableSource === "CIC" && Boolean(getEntity("binary_sensor", "CIC - CH enabled")?.value))
       || (heatingEnableValid && heatingEnableSource === "HA input" && Boolean(getEntity("binary_sensor", "HA - Heating Enable")?.value))
       || (heatingEnableValid && heatingEnableSource === "MQTT" && Boolean(getEntity("binary_sensor", "MQTT Heating Enable")?.value));
-    const coolingEnableSource = String(getEntity("select", "Cooling Enable Source")?.value || "HA input");
+    const coolingEnableSource = String(getEntity("select", "Cooling Enable Source")?.value || "Disabled");
     const manualCoolingEnabled = isSwitchEnabled("Manual Cooling Enable");
-    const cicCoolingEnabled = Boolean(getEntity("binary_sensor", "CIC - Cooling enabled")?.value);
-    const haCoolingEnabled = Boolean(getEntity("binary_sensor", "HA - Cooling Enable Valid")?.value)
-      && Boolean(getEntity("binary_sensor", "HA - Cooling Enable")?.value);
-    const mqttCoolingEnabled = Boolean(getEntity("binary_sensor", "MQTT Cooling Enable Valid")?.value)
-      && Boolean(getEntity("binary_sensor", "MQTT Cooling Enable")?.value);
+    const coolingEnableValid = coolingEnableSource === "Disabled"
+      || (coolingEnableSource === "OT thermostat" && Boolean(getEntity("binary_sensor", "OT - Thermostat Status Valid")?.value))
+      || (coolingEnableSource === "HA input" && Boolean(getEntity("binary_sensor", "HA - Cooling Enable Valid")?.value))
+      || (coolingEnableSource === "MQTT" && Boolean(getEntity("binary_sensor", "MQTT Cooling Enable Valid")?.value));
+    const sourceCoolingEnabled = coolingEnableValid && (
+      (coolingEnableSource === "OT thermostat" && Boolean(getEntity("binary_sensor", "OT - Thermostat Cooling Enable")?.value))
+      || (coolingEnableSource === "HA input" && Boolean(getEntity("binary_sensor", "HA - Cooling Enable")?.value))
+      || (coolingEnableSource === "MQTT" && Boolean(getEntity("binary_sensor", "MQTT Cooling Enable")?.value))
+    );
     const coolingEnableSelected = manualCoolingEnabled
-      || (coolingEnableSource === "CIC" && cicCoolingEnabled)
-      || (coolingEnableSource === "HA input" && haCoolingEnabled)
-      || (coolingEnableSource === "MQTT" && mqttCoolingEnabled)
-      || (coolingEnableSource === "CIC or HA input" && (cicCoolingEnabled || haCoolingEnabled));
-    const coolingEnableEffectiveSource = manualCoolingEnabled
-      ? "Manual"
-      : coolingEnableSource === "MQTT" && !mqttCoolingEnabled
-        ? "None"
-        : coolingEnableSource;
+      || sourceCoolingEnabled;
+    const coolingEnableEffectiveSource = sourceCoolingEnabled && manualCoolingEnabled
+      ? `${coolingEnableSource} + Manual`
+      : sourceCoolingEnabled
+        ? coolingEnableSource
+        : manualCoolingEnabled
+          ? "Manual"
+          : "None";
     setBinary("Heating Enable Valid", heatingEnableValid);
     setBinary("Heating Enable (Selected)", heatingEnableSelected);
+    setBinary("Cooling Enable Valid", coolingEnableValid);
     setBinary("Cooling Enable (Selected)", coolingEnableSelected);
     setBinary("Heating blocked by thermostat", state.scenario !== "idle" && !heatingEnableSelected);
     setText("text_sensor", "Room Temperature Effective Source", String(getEntity("select", "Room Temperature Source")?.value || "Unknown"));
