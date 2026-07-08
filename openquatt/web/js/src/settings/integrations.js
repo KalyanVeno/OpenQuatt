@@ -258,6 +258,13 @@ import { escapeHtml } from "../core/html.js";
       const value = getSettingsTextStatValue(key, "");
       return value ? formatSettingsOptionLabel(value) : "";
     };
+    const formattedEffectivePermissionSourceValue = (key) => {
+      const value = String(getSettingsTextStatValue(key, "") || "").trim();
+      if (!value || value === "None") {
+        return "";
+      }
+      return formatSettingsOptionLabel(value);
+    };
     const firstAvailableSourceLabel = (...values) => values.find((value) => String(value || "").trim()) || "";
     const getWaterSupplyUsedSource = () => {
       const source = formattedSourceValue("waterSupplySource");
@@ -530,6 +537,9 @@ import { escapeHtml } from "../core/html.js";
     const currentWaterSupplySource = String(getEntityValue("waterSupplySource") || "");
     const currentFlowSource = String(getEntityValue("flowSource") || "");
     const currentQFlowSource = String(getEntityValue("qFlowSource") || "");
+    const heatingEnableSourceDisabled = String(getEntityValue("heatingEnableSource") || "").trim() === "Disabled";
+    const heatingEnableEffectiveSource = formattedEffectivePermissionSourceValue("heatingEnableEffectiveSource");
+    const coolingEnableEffectiveSource = formattedEffectivePermissionSourceValue("coolingEnableEffectiveSource");
     const sourceCards = [
       renderSourceCard({
         key: "room-temperature",
@@ -655,9 +665,8 @@ import { escapeHtml } from "../core/html.js";
           keepUnavailableCurrent: true,
         },
         activeRows: [
-          renderSourceRow({ label: "Waarde", value: sourceStateText("heatingEnableSelected", "Toegestaan", "Geblokkeerd") }),
-          renderSourceRow({ label: "Bron", value: formattedTextSourceValue("heatingEnableEffectiveSource") }),
-          renderSourceRow({ label: "Bronstatus", value: sourceStateText("heatingEnableValid", "Geldig", "Ongeldig") }),
+          renderSourceRow({ label: "Toestemming", value: heatingEnableSourceDisabled ? "Niet gebruikt" : sourceStateText("heatingEnableSelected", "Toegestaan", "Geblokkeerd") }),
+          heatingEnableEffectiveSource ? renderSourceRow({ label: "Via", value: heatingEnableEffectiveSource }) : "",
         ],
         measurementRows: [
           otAvailable ? renderSourceRow({ label: "OpenTherm", value: sourceStateText("otThermostatChEnable", "Toegestaan", "Geblokkeerd") }) : "",
@@ -687,12 +696,11 @@ import { escapeHtml } from "../core/html.js";
           keepUnavailableCurrent: true,
         },
         activeRows: [
-          renderSourceRow({ label: "Waarde", value: sourceStateText("coolingEnableSelected", "Toegestaan", "Geblokkeerd") }),
-          renderSourceRow({ label: "Bron", value: formattedTextSourceValue("coolingEnableEffectiveSource") }),
-          renderSourceRow({ label: "Bronstatus", value: sourceStateText("coolingEnableValid", "Geldig", "Ongeldig") }),
-          renderSourceRow({ label: "Handmatige override", value: sourceStateText("manualCoolingEnable", "Aan", "Uit") }),
+          renderSourceRow({ label: "Toestemming", value: sourceStateText("coolingEnableSelected", "Toegestaan", "Geblokkeerd") }),
+          coolingEnableEffectiveSource ? renderSourceRow({ label: "Via", value: coolingEnableEffectiveSource }) : "",
         ],
         measurementRows: [
+          renderSourceRow({ label: "Handmatig", value: sourceStateText("manualCoolingEnable", "Aan", "Uit") }),
           otAvailable ? renderSourceRow({ label: "OpenTherm", value: sourceStateText("otThermostatCoolingEnable", "Toegestaan", "Geblokkeerd") }) : "",
           ...renderHaSourceRows({
             valueKey: "coolingEnableHa",
