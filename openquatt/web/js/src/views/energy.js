@@ -1,4 +1,13 @@
-  function renderOverviewEnergyRow([label, key]) {
+import { formatOverviewStatValue, getDerivedEfficiencyValue, getEntityNumericValue, getEntityStateText, hasEntity, isEfficiencyKey } from "../core/app-shared.js";
+import { OVERVIEW_ENERGY_COLUMN_CONFIGS } from "../core/config.js";
+import { getRenderSignature } from "../core/entity-sync.js";
+import { state } from "../core/runtime.js";
+import { refreshEnergyHistoryData } from "../features/storage-history.js";
+import { replaceOuterHtmlIfSignatureChanged } from "./heatpump.js";
+import { escapeHtml } from "../core/html.js";
+import { render } from "./shell.js";
+
+  export function renderOverviewEnergyRow([label, key]) {
     const derived = getDerivedEfficiencyValue(key);
     if (!hasEntity(key) && Number.isNaN(derived)) {
       return "";
@@ -12,7 +21,7 @@
     `;
   }
 
-  function renderOverviewEnergyGroup(group) {
+  export function renderOverviewEnergyGroup(group) {
     const filledRows = group.rows.map(renderOverviewEnergyRow).filter(Boolean).join("");
     if (!filledRows) {
       return "";
@@ -27,7 +36,7 @@
     `;
   }
 
-  function renderOverviewEnergyCategory(category) {
+  export function renderOverviewEnergyCategory(category) {
     const filledGroups = category.groups.map(renderOverviewEnergyGroup).filter(Boolean).join("");
     if (!filledGroups) {
       return "";
@@ -44,7 +53,7 @@
     `;
   }
 
-  function renderOverviewEnergyColumn(column) {
+  export function renderOverviewEnergyColumn(column) {
     const filledGroups = column.categories.map(renderOverviewEnergyCategory).filter(Boolean).join("");
     if (!filledGroups) {
       return "";
@@ -61,7 +70,7 @@
     `;
   }
 
-  function getEnergySectionModel() {
+  export function getEnergySectionModel() {
     const renderedColumns = OVERVIEW_ENERGY_COLUMN_CONFIGS.map(renderOverviewEnergyColumn).filter(Boolean);
     const gridClassName = [
       "oq-overview-energy-grid",
@@ -72,11 +81,11 @@
     return { renderedColumns, gridClassName };
   }
 
-  function getEnergySectionRenderSignature(model = getEnergySectionModel()) {
+  export function getEnergySectionRenderSignature(model = getEnergySectionModel()) {
     return getRenderSignature(model);
   }
 
-  function renderEnergySection(model = getEnergySectionModel()) {
+  export function renderEnergySection(model = getEnergySectionModel()) {
     return `
       <section class="oq-overview-energy oq-overview-energy--solo" data-render-signature="${escapeHtml(getEnergySectionRenderSignature(model))}">
         <div class="${escapeHtml(model.gridClassName)}">
@@ -86,7 +95,7 @@
     `;
   }
 
-  const ENERGY_HISTORY_VALUE_KEYS = [
+  export const ENERGY_HISTORY_VALUE_KEYS = [
     "electricalInputWh",
     "heatingInputWh",
     "coolingInputWh",
@@ -96,7 +105,7 @@
     "systemHeatOutputWh",
   ];
 
-  const ENERGY_HISTORY_VIEW_OPTIONS = [
+  export const ENERGY_HISTORY_VIEW_OPTIONS = [
     { id: "day", label: "Dag" },
     { id: "week", label: "Week" },
     { id: "month", label: "Maand" },
@@ -104,16 +113,16 @@
     { id: "all", label: "Alles" },
   ];
 
-  const ENERGY_HISTORY_PERIOD_VIEW_IDS = new Set(["day", "week", "month", "year"]);
+  export const ENERGY_HISTORY_PERIOD_VIEW_IDS = new Set(["day", "week", "month", "year"]);
 
-  const ENERGY_HISTORY_WEEKDAY_LABELS = ["Zo", "Ma", "Di", "Wo", "Do", "Vr", "Za"];
+  export const ENERGY_HISTORY_WEEKDAY_LABELS = ["Zo", "Ma", "Di", "Wo", "Do", "Vr", "Za"];
 
-  function normalizeEnergyHistoryView(view) {
+  export function normalizeEnergyHistoryView(view) {
     const value = String(view || "").trim();
     return ENERGY_HISTORY_VIEW_OPTIONS.some((option) => option.id === value) ? value : "day";
   }
 
-  function setEnergyHistoryView(view) {
+  export function setEnergyHistoryView(view) {
     const nextView = normalizeEnergyHistoryView(view);
     if (state.energyHistoryView === nextView) {
       return;
@@ -124,7 +133,7 @@
     requestEnergyHistoryDataRefresh();
   }
 
-  function requestEnergyHistoryDataRefresh() {
+  export function requestEnergyHistoryDataRefresh() {
     if (typeof refreshEnergyHistoryData !== "function") {
       return;
     }
@@ -135,16 +144,16 @@
     });
   }
 
-  function isEnergyHistoryPeriodView(view) {
+  export function isEnergyHistoryPeriodView(view) {
     return ENERGY_HISTORY_PERIOD_VIEW_IDS.has(normalizeEnergyHistoryView(view));
   }
 
-  function getEnergyHistoryTodayKey() {
+  export function getEnergyHistoryTodayKey() {
     const now = new Date();
     return (now.getFullYear() * 10000) + ((now.getMonth() + 1) * 100) + now.getDate();
   }
 
-  function getEnergyHistoryMetadataFromRaw() {
+  export function getEnergyHistoryMetadataFromRaw() {
     const raw = String(state.energyHistoryRaw || "");
     const metadata = {
       storedDayCount: 0,
@@ -195,7 +204,7 @@
     return metadata;
   }
 
-  function getEnergyHistoryCurrentDateKeyFromRaw() {
+  export function getEnergyHistoryCurrentDateKeyFromRaw() {
     const raw = String(state.energyHistoryRaw || "");
     let currentKey = null;
     raw.split(/\r?\n/).forEach((line) => {
@@ -207,7 +216,7 @@
     return currentKey;
   }
 
-  function getEnergyHistoryReferenceDateKey(records = [], includeHours = true) {
+  export function getEnergyHistoryReferenceDateKey(records = [], includeHours = true) {
     const currentKey = getEnergyHistoryCurrentDateKeyFromRaw();
     const metadata = getEnergyHistoryMetadataFromRaw();
     const dateKeys = (Array.isArray(records) ? records : [])
@@ -234,23 +243,23 @@
     return dateKeys.length ? Math.max(...dateKeys) : getEnergyHistoryTodayKey();
   }
 
-  function getEnergyHistoryDateKeyFromDate(date) {
+  export function getEnergyHistoryDateKeyFromDate(date) {
     return (date.getFullYear() * 10000) + ((date.getMonth() + 1) * 100) + date.getDate();
   }
 
-  function getEnergyHistoryDateFromParts(year, month, day) {
+  export function getEnergyHistoryDateFromParts(year, month, day) {
     return new Date(year, month - 1, day, 12, 0, 0);
   }
 
-  function getEnergyHistoryDaysInMonth(year, month) {
+  export function getEnergyHistoryDaysInMonth(year, month) {
     return new Date(year, month, 0).getDate();
   }
 
-  function padEnergyHistoryDatePart(value) {
+  export function padEnergyHistoryDatePart(value) {
     return String(value).padStart(2, "0");
   }
 
-  function getEnergyHistoryDateInputValue(dateKey) {
+  export function getEnergyHistoryDateInputValue(dateKey) {
     const parsed = parseEnergyHistoryDateKey(dateKey);
     if (!parsed) {
       return "";
@@ -258,7 +267,7 @@
     return `${parsed.year}-${padEnergyHistoryDatePart(parsed.month)}-${padEnergyHistoryDatePart(parsed.day)}`;
   }
 
-  function parseEnergyHistoryDateInputValue(value) {
+  export function parseEnergyHistoryDateInputValue(value) {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || "").trim());
     if (!match) {
       return null;
@@ -277,15 +286,15 @@
     return parseEnergyHistoryDateKey(getEnergyHistoryDateKeyFromDate(date));
   }
 
-  function getEnergyHistoryMonthKey(year, month) {
+  export function getEnergyHistoryMonthKey(year, month) {
     return (Number(year) * 100) + Number(month);
   }
 
-  function getEnergyHistoryMonthKeyFromDate(date) {
+  export function getEnergyHistoryMonthKeyFromDate(date) {
     return getEnergyHistoryMonthKey(date.getFullYear(), date.getMonth() + 1);
   }
 
-  function parseEnergyHistoryMonthKey(monthKey) {
+  export function parseEnergyHistoryMonthKey(monthKey) {
     const key = Number(monthKey);
     if (!Number.isFinite(key) || key <= 0) {
       return null;
@@ -298,7 +307,7 @@
     return { key, year, month, date: new Date(year, month - 1, 1, 12, 0, 0) };
   }
 
-  function parseEnergyHistoryMonthInputValue(value) {
+  export function parseEnergyHistoryMonthInputValue(value) {
     const raw = String(value || "").trim();
     const match = /^(\d{4})-(\d{2})$/.exec(raw);
     if (match) {
@@ -307,7 +316,7 @@
     return parseEnergyHistoryMonthKey(raw);
   }
 
-  function addEnergyHistoryMonths(monthKey, offset) {
+  export function addEnergyHistoryMonths(monthKey, offset) {
     const parsed = parseEnergyHistoryMonthKey(monthKey);
     if (!parsed) {
       return "";
@@ -316,7 +325,7 @@
     return String(getEnergyHistoryMonthKeyFromDate(date));
   }
 
-  function getEnergyHistoryWeekStart(date) {
+  export function getEnergyHistoryWeekStart(date) {
     const start = new Date(date.getTime());
     const weekday = start.getDay();
     const diff = weekday === 0 ? -6 : 1 - weekday;
@@ -325,18 +334,18 @@
     return start;
   }
 
-  function addEnergyHistoryDays(date, days) {
+  export function addEnergyHistoryDays(date, days) {
     const next = new Date(date.getTime());
     next.setDate(next.getDate() + days);
     next.setHours(12, 0, 0, 0);
     return next;
   }
 
-  function formatEnergyHistoryDayMonth(date) {
+  export function formatEnergyHistoryDayMonth(date) {
     return date.toLocaleDateString("nl-NL", { day: "numeric", month: "short" }).replace(/\./g, "");
   }
 
-  function getEnergyHistoryIsoWeekInfo(date) {
+  export function getEnergyHistoryIsoWeekInfo(date) {
     const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
     const dayNumber = (target.getUTCDay() + 6) % 7;
     target.setUTCDate(target.getUTCDate() - dayNumber + 3);
@@ -348,11 +357,11 @@
     return { week, year: weekYear };
   }
 
-  function getEnergyHistoryWeekStartKeyFromDate(date) {
+  export function getEnergyHistoryWeekStartKeyFromDate(date) {
     return getEnergyHistoryDateKeyFromDate(getEnergyHistoryWeekStart(date));
   }
 
-  function parseEnergyHistoryWeekValue(value) {
+  export function parseEnergyHistoryWeekValue(value) {
     const dateInput = parseEnergyHistoryDateInputValue(value);
     const parsed = dateInput || parseEnergyHistoryDateKey(value);
     if (!parsed) {
@@ -362,7 +371,7 @@
     return parseEnergyHistoryDateKey(getEnergyHistoryDateKeyFromDate(start));
   }
 
-  function formatEnergyHistoryWeekLabel(weekStartKey) {
+  export function formatEnergyHistoryWeekLabel(weekStartKey) {
     const parsed = parseEnergyHistoryDateKey(weekStartKey);
     if (!parsed) {
       return "Week";
@@ -373,7 +382,7 @@
     return `Week ${week} (${formatEnergyHistoryDayMonth(start)} - ${formatEnergyHistoryDayMonth(end)})`;
   }
 
-  function parseEnergyHistoryDateKey(dateKey) {
+  export function parseEnergyHistoryDateKey(dateKey) {
     const key = Number(dateKey);
     if (!Number.isFinite(key) || key <= 0) {
       return null;
@@ -387,7 +396,7 @@
     return { key, year, month, day, date: new Date(year, month - 1, day, 12, 0, 0) };
   }
 
-  function formatEnergyHistoryDateLabel(dateKey, mode = "day") {
+  export function formatEnergyHistoryDateLabel(dateKey, mode = "day") {
     const parsed = parseEnergyHistoryDateKey(dateKey);
     if (!parsed) {
       return "—";
@@ -404,7 +413,7 @@
     return parsed.date.toLocaleDateString("nl-NL", { day: "2-digit", month: "short" });
   }
 
-  function getEntityKwhAsWh(key) {
+  export function getEntityKwhAsWh(key) {
     const value = getEntityNumericValue(key);
     if (!Number.isFinite(value) || value < 0) {
       return null;
@@ -412,12 +421,12 @@
     return Math.round(value * 1000);
   }
 
-  function normalizeEnergyHistoryWh(rawValue) {
+  export function normalizeEnergyHistoryWh(rawValue) {
     const value = Number(rawValue);
     return Number.isFinite(value) && value >= 0 ? value : null;
   }
 
-  function getEnergyHistoryRecordValuesFromParts(parts, offset = 0) {
+  export function getEnergyHistoryRecordValuesFromParts(parts, offset = 0) {
     const values = {};
     ENERGY_HISTORY_VALUE_KEYS.forEach((key, index) => {
       values[key] = normalizeEnergyHistoryWh(parts[offset + index]);
@@ -425,7 +434,7 @@
     return values;
   }
 
-  function parseEnergyHistoryLine(line) {
+  export function parseEnergyHistoryLine(line) {
     const value = String(line || "").trim();
     if (!value || value.startsWith("@")) {
       return null;
@@ -453,7 +462,7 @@
     };
   }
 
-  function parseEnergyHistoryCurrentLine(line) {
+  export function parseEnergyHistoryCurrentLine(line) {
     const value = String(line || "").trim();
     if (!value.startsWith("@current|")) {
       return null;
@@ -479,7 +488,7 @@
     };
   }
 
-  function parseEnergyHistoryHourLine(line) {
+  export function parseEnergyHistoryHourLine(line) {
     const value = String(line || "").trim();
     if (!value.startsWith("@hour|")) {
       return null;
@@ -511,7 +520,7 @@
     };
   }
 
-  function getEnergyHistoryTodayRecord() {
+  export function getEnergyHistoryTodayRecord() {
     const dateKey = getEnergyHistoryCurrentDateKeyFromRaw() || getEnergyHistoryTodayKey();
     const parsed = parseEnergyHistoryDateKey(dateKey);
     if (!parsed) {
@@ -536,12 +545,12 @@
     return ENERGY_HISTORY_VALUE_KEYS.some((key) => Number.isFinite(record[key])) ? record : null;
   }
 
-  function getEnergyHistoryRecordWh(record, key) {
+  export function getEnergyHistoryRecordWh(record, key) {
     const value = Number(record?.[key]);
     return Number.isFinite(value) && value >= 0 ? value : 0;
   }
 
-  function getEnergyHistoryRecords() {
+  export function getEnergyHistoryRecords() {
     const byDate = new Map();
     const raw = String(state.energyHistoryRaw || "");
     raw.split(/\r?\n/).forEach((line) => {
@@ -593,7 +602,7 @@
     return [...byDate.values()].sort((a, b) => a.dateKey - b.dateKey);
   }
 
-  function getEnergyHistoryHourRecords() {
+  export function getEnergyHistoryHourRecords() {
     const byHour = new Map();
     const raw = String(state.energyHistoryRaw || "");
     raw.split(/\r?\n/).forEach((line) => {
@@ -610,27 +619,27 @@
     return [...byHour.values()].sort((a, b) => a.sortKey - b.sortKey);
   }
 
-  function getEnergyHistoryHourRecordsForDate(dateKey) {
+  export function getEnergyHistoryHourRecordsForDate(dateKey) {
     return getEnergyHistoryHourRecords().filter((record) => record.dateKey === Number(dateKey));
   }
 
-  function sumEnergyHistoryWh(records, key) {
+  export function sumEnergyHistoryWh(records, key) {
     return records.reduce((sum, record) => {
       return sum + getEnergyHistoryRecordWh(record, key);
     }, 0);
   }
 
-  function getEnergyHistoryOutputWh(record) {
+  export function getEnergyHistoryOutputWh(record) {
     return ["heatpumpHeatOutputWh", "heatpumpCoolingOutputWh", "boilerHeatOutputWh"].reduce((sum, key) => {
       return sum + getEnergyHistoryRecordWh(record, key);
     }, 0);
   }
 
-  function getEnergyHistoryStackWh(record) {
+  export function getEnergyHistoryStackWh(record) {
     return getEnergyHistoryRecordWh(record, "electricalInputWh") + getEnergyHistoryOutputWh(record);
   }
 
-  function formatEnergyRatio(numeratorWh, denominatorWh) {
+  export function formatEnergyRatio(numeratorWh, denominatorWh) {
     const numerator = Number(numeratorWh);
     const denominator = Number(denominatorWh);
     if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0) {
@@ -639,7 +648,7 @@
     return (numerator / denominator).toFixed(2);
   }
 
-  function formatEnergyAdaptiveWh(wh, decimals = 1) {
+  export function formatEnergyAdaptiveWh(wh, decimals = 1) {
     const value = Number(wh);
     if (!Number.isFinite(value)) {
       return "—";
@@ -653,7 +662,7 @@
     return `${(value / 1000).toFixed(decimals)} kWh`;
   }
 
-  function createEnergyHistoryBucket({ dateKey, year, month, day, hour = null, label, tooltipLabel = "", sortKey, source = "bucket" }) {
+  export function createEnergyHistoryBucket({ dateKey, year, month, day, hour = null, label, tooltipLabel = "", sortKey, source = "bucket" }) {
     return {
       sequence: 0,
       dateKey,
@@ -676,7 +685,7 @@
     };
   }
 
-  function mergeEnergyHistoryRecordIntoBucket(bucket, record) {
+  export function mergeEnergyHistoryRecordIntoBucket(bucket, record) {
     ENERGY_HISTORY_VALUE_KEYS.forEach((key) => {
       bucket[key] += getEnergyHistoryRecordWh(record, key);
     });
@@ -685,7 +694,7 @@
     return bucket;
   }
 
-  function copyEnergyHistoryRecordToBucket(record, label, sortKey = record?.dateKey) {
+  export function copyEnergyHistoryRecordToBucket(record, label, sortKey = record?.dateKey) {
     const parsed = parseEnergyHistoryDateKey(record?.dateKey);
     if (!parsed) {
       return null;
@@ -702,7 +711,7 @@
     }), record);
   }
 
-  function getEnergyHistoryRecordsByDate(records) {
+  export function getEnergyHistoryRecordsByDate(records) {
     const byDate = new Map();
     records.forEach((record) => {
       byDate.set(record.dateKey, record);
@@ -710,12 +719,12 @@
     return byDate;
   }
 
-  function getEnergyHistoryLatestParsed(records) {
+  export function getEnergyHistoryLatestParsed(records) {
     const latest = records[records.length - 1];
     return latest ? parseEnergyHistoryDateKey(latest.dateKey) : null;
   }
 
-  function normalizeEnergyHistoryPeriodValue(view, value) {
+  export function normalizeEnergyHistoryPeriodValue(view, value) {
     const normalizedView = normalizeEnergyHistoryView(view);
     if (normalizedView === "day") {
       const parsed = parseEnergyHistoryDateInputValue(value) || parseEnergyHistoryDateKey(value);
@@ -736,7 +745,7 @@
     return "";
   }
 
-  function getEnergyHistoryPeriodBounds(records, view) {
+  export function getEnergyHistoryPeriodBounds(records, view) {
     const normalizedView = normalizeEnergyHistoryView(view);
     const reference = parseEnergyHistoryDateKey(getEnergyHistoryReferenceDateKey(records, true));
     const metadata = getEnergyHistoryMetadataFromRaw();
@@ -778,7 +787,7 @@
     return { min: String(min), max: String(max) };
   }
 
-  function clampEnergyHistoryPeriodValue(value, bounds) {
+  export function clampEnergyHistoryPeriodValue(value, bounds) {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) {
       return String(bounds.max);
@@ -792,14 +801,14 @@
     return String(value);
   }
 
-  function getEnergyHistorySelectedPeriodValue(records, view, bounds = getEnergyHistoryPeriodBounds(records, view)) {
+  export function getEnergyHistorySelectedPeriodValue(records, view, bounds = getEnergyHistoryPeriodBounds(records, view)) {
     const normalizedView = normalizeEnergyHistoryView(view);
     const stored = state.energyHistoryPeriodSelection?.[normalizedView];
     const normalizedStored = normalizeEnergyHistoryPeriodValue(normalizedView, stored);
     return clampEnergyHistoryPeriodValue(normalizedStored || bounds.max, bounds);
   }
 
-  function getEnergyHistoryPeriodOptions(view, bounds) {
+  export function getEnergyHistoryPeriodOptions(view, bounds) {
     const normalizedView = normalizeEnergyHistoryView(view);
     const options = [];
     let guard = 0;
@@ -846,7 +855,7 @@
     return options;
   }
 
-  function getEnergyHistoryPeriodControlModel(records, view) {
+  export function getEnergyHistoryPeriodControlModel(records, view) {
     const normalizedView = normalizeEnergyHistoryView(view);
     if (!isEnergyHistoryPeriodView(normalizedView)) {
       return {
@@ -875,7 +884,7 @@
     };
   }
 
-  function getEnergyHistoryRequestRange(records, view) {
+  export function getEnergyHistoryRequestRange(records, view) {
     const normalizedView = normalizeEnergyHistoryView(view);
     if (!isEnergyHistoryPeriodView(normalizedView)) {
       return { from: "", to: "", hours: "0" };
@@ -919,7 +928,7 @@
     return { from: "", to: "", hours: "0" };
   }
 
-  function getEnergyHistoryRequestQuery() {
+  export function getEnergyHistoryRequestQuery() {
     if (!String(state.energyHistoryRaw || "").trim()) {
       return "?meta=1";
     }
@@ -937,7 +946,7 @@
     return query ? `?${query}` : "";
   }
 
-  function setEnergyHistoryPeriodValue(view, value) {
+  export function setEnergyHistoryPeriodValue(view, value) {
     const normalizedView = normalizeEnergyHistoryView(view);
     if (!isEnergyHistoryPeriodView(normalizedView)) {
       return;
@@ -955,7 +964,7 @@
     requestEnergyHistoryDataRefresh();
   }
 
-  function shiftEnergyHistoryPeriod(view, direction) {
+  export function shiftEnergyHistoryPeriod(view, direction) {
     const normalizedView = normalizeEnergyHistoryView(view);
     if (!isEnergyHistoryPeriodView(normalizedView)) {
       return;
@@ -980,7 +989,7 @@
     setEnergyHistoryPeriodValue(normalizedView, nextValue);
   }
 
-  function setEnergyHistoryPeriodToNow(view) {
+  export function setEnergyHistoryPeriodToNow(view) {
     const normalizedView = normalizeEnergyHistoryView(view);
     if (!isEnergyHistoryPeriodView(normalizedView)) {
       return;
@@ -990,7 +999,7 @@
     setEnergyHistoryPeriodValue(normalizedView, bounds.max);
   }
 
-  function getEnergyHistoryCalendarBuckets(records, view, periodModel = getEnergyHistoryPeriodControlModel(records, view)) {
+  export function getEnergyHistoryCalendarBuckets(records, view, periodModel = getEnergyHistoryPeriodControlModel(records, view)) {
     const normalizedView = normalizeEnergyHistoryView(view);
     const byDate = getEnergyHistoryRecordsByDate(records);
     if (!records.length && normalizedView === "all") {
@@ -1169,7 +1178,7 @@
     };
   }
 
-  function getEnergyHistorySummary(records) {
+  export function getEnergyHistorySummary(records) {
     const heatOutputWh = sumEnergyHistoryWh(records, "heatpumpHeatOutputWh");
     const coolingOutputWh = sumEnergyHistoryWh(records, "heatpumpCoolingOutputWh");
     const boilerOutputWh = sumEnergyHistoryWh(records, "boilerHeatOutputWh");
@@ -1184,7 +1193,7 @@
     };
   }
 
-  function getEnergyHistoryHeatpumpShare(summary) {
+  export function getEnergyHistoryHeatpumpShare(summary) {
     const heatpumpWh = Number(summary.heatOutputWh || 0) + Number(summary.coolingOutputWh || 0);
     const boilerWh = Number(summary.boilerOutputWh || 0);
     const total = heatpumpWh + boilerWh;
@@ -1194,7 +1203,7 @@
     return (heatpumpWh / total) * 100;
   }
 
-  function renderEnergyHistoryStat(label, value, note = "") {
+  export function renderEnergyHistoryStat(label, value, note = "") {
     return `
       <div class="oq-energy-history-stat">
         <span>${escapeHtml(label)}</span>
@@ -1204,7 +1213,7 @@
     `;
   }
 
-  function renderEnergyHistoryPeriodSelect(periodModel, label, options) {
+  export function renderEnergyHistoryPeriodSelect(periodModel, label, options) {
     const groupedOptions = [];
     options.forEach((option) => {
       const groupLabel = String(option.group || "");
@@ -1249,7 +1258,7 @@
     `;
   }
 
-  function renderEnergyHistoryPeriodInput(periodModel) {
+  export function renderEnergyHistoryPeriodInput(periodModel) {
     if (periodModel.view === "day") {
       return `
         <label class="oq-energy-history-period-field">
@@ -1282,7 +1291,7 @@
     `;
   }
 
-  function renderEnergyHistoryPeriodControl(periodModel) {
+  export function renderEnergyHistoryPeriodControl(periodModel) {
     if (!isEnergyHistoryPeriodView(periodModel.view)) {
       return `
         <div class="oq-energy-history-period oq-energy-history-period--${escapeHtml(periodModel.view)}">
@@ -1320,12 +1329,12 @@
     `;
   }
 
-  function isEnergyHistoryPeriodControlFocused() {
+  export function isEnergyHistoryPeriodControlFocused() {
     const active = document.activeElement;
     return Boolean(active && active.closest && active.closest(".oq-energy-history-period"));
   }
 
-  function renderEnergyHistoryViewButtons(activeView) {
+  export function renderEnergyHistoryViewButtons(activeView) {
     return `
       <div class="oq-energy-history-view-tabs" role="tablist" aria-label="Energiehistorie weergave">
         ${ENERGY_HISTORY_VIEW_OPTIONS.map((option) => {
@@ -1344,7 +1353,7 @@
     `;
   }
 
-  function renderEnergyHistoryBalance(summary) {
+  export function renderEnergyHistoryBalance(summary) {
     const inputWh = Number(summary.electricalInputWh || 0);
     const heatWh = Number(summary.heatOutputWh || 0);
     const coolingWh = Number(summary.coolingOutputWh || 0);
@@ -1372,7 +1381,7 @@
     `;
   }
 
-  function getEnergyHistoryNiceAxisMax(maxWh) {
+  export function getEnergyHistoryNiceAxisMax(maxWh) {
     const maxKwh = Math.max(1, Number(maxWh || 0) / 1000);
     const magnitude = Math.pow(10, Math.floor(Math.log10(maxKwh)));
     const normalized = maxKwh / magnitude;
@@ -1380,7 +1389,7 @@
     return nice * magnitude * 1000;
   }
 
-  function formatEnergyHistoryAxisValue(wh) {
+  export function formatEnergyHistoryAxisValue(wh) {
     const value = Number(wh);
     if (!Number.isFinite(value)) {
       return "";
@@ -1391,11 +1400,11 @@
     return `${Number((value / 1000).toFixed(1))}`;
   }
 
-  function getEnergyHistoryAxisUnit(axisMaxWh) {
+  export function getEnergyHistoryAxisUnit(axisMaxWh) {
     return axisMaxWh >= 999500 ? "MWh" : "kWh";
   }
 
-  function getEnergyHistoryChartModel(records) {
+  export function getEnergyHistoryChartModel(records) {
     const width = 1280;
     const height = 260;
     const left = 44;
@@ -1413,7 +1422,7 @@
     return { width, height, left, right, top, bottom, plotWidth, plotHeight, axisMax, barSlot, barWidth, yOf };
   }
 
-  function getEnergyHistoryBucketTooltip(record) {
+  export function getEnergyHistoryBucketTooltip(record) {
     const heatCop = formatEnergyRatio(record.heatpumpHeatOutputWh, record.heatingInputWh);
     const coolingEer = formatEnergyRatio(record.heatpumpCoolingOutputWh, record.coolingInputWh);
     const overall = formatEnergyRatio(getEnergyHistoryOutputWh(record), record.electricalInputWh);
@@ -1429,7 +1438,7 @@
     ].join("\n");
   }
 
-  function renderEnergyHistoryChart(records, activeView = "") {
+  export function renderEnergyHistoryChart(records, activeView = "") {
     if (!records.length) {
       return `
         <div class="oq-energy-history-empty">
@@ -1507,7 +1516,7 @@
     `;
   }
 
-  function renderEnergyHistoryLegend(summary = null) {
+  export function renderEnergyHistoryLegend(summary = null) {
     const boilerTone = Number(summary?.boilerOutputWh || 0) > 0 ? "boiler" : "boiler-zero";
     const items = [
       ["input", "Elektrisch"],
@@ -1524,7 +1533,7 @@
     `;
   }
 
-  function getEnergyHistoryPanelModel() {
+  export function getEnergyHistoryPanelModel() {
     const records = getEnergyHistoryRecords();
     const activeView = normalizeEnergyHistoryView(state.energyHistoryView);
     const periodControl = getEnergyHistoryPeriodControlModel(records, activeView);
@@ -1533,7 +1542,7 @@
     return { records, buckets: viewModel.buckets, viewModel, periodControl, summary, activeView };
   }
 
-  function getEnergyHistoryRenderSignature(model = getEnergyHistoryPanelModel()) {
+  export function getEnergyHistoryRenderSignature(model = getEnergyHistoryPanelModel()) {
     return getRenderSignature({
       energyHistorySignature: state.energyHistorySignature || "",
       energyHistoryError: state.energyHistoryError || "",
@@ -1549,7 +1558,7 @@
     });
   }
 
-  function renderEnergyHistoryPanel(model = getEnergyHistoryPanelModel()) {
+  export function renderEnergyHistoryPanel(model = getEnergyHistoryPanelModel()) {
     const summary = model.summary;
     const oldest = model.buckets[0]?.dateKey ? formatEnergyHistoryDateLabel(model.buckets[0].dateKey) : "—";
     const newest = model.buckets[model.buckets.length - 1]?.dateKey ? formatEnergyHistoryDateLabel(model.buckets[model.buckets.length - 1].dateKey) : "—";
@@ -1587,7 +1596,7 @@
     `;
   }
 
-  function handleEnergyHistoryPointerMove(event) {
+  export function handleEnergyHistoryPointerMove(event) {
     if (state.appView !== "results" || !state.root) {
       return;
     }
@@ -1618,7 +1627,7 @@
     tooltip.style.transform = `translate(${left.toFixed(0)}px, ${top.toFixed(0)}px)`;
   }
 
-  function renderEnergyView() {
+  export function renderEnergyView() {
     return `
       <section class="oq-helper-panel oq-helper-panel--flush">
         <div class="oq-overview-board oq-overview-board--${escapeHtml(state.overviewTheme)}">
@@ -1635,7 +1644,7 @@
     `;
   }
 
-  function renderResultsView() {
+  export function renderResultsView() {
     return `
       <section class="oq-helper-panel oq-helper-panel--flush">
         <div class="oq-overview-board oq-overview-board--${escapeHtml(state.overviewTheme)}">
@@ -1652,7 +1661,7 @@
     `;
   }
 
-  function patchEnergyDom() {
+  export function patchEnergyDom() {
     if (!state.root || state.appView !== "energy") {
       return false;
     }
@@ -1677,7 +1686,7 @@
     return energyChanged;
   }
 
-  function patchResultsDom() {
+  export function patchResultsDom() {
     if (!state.root || state.appView !== "results") {
       return false;
     }

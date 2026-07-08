@@ -1,4 +1,17 @@
-  function getHeatPumpRuntimeModel(title, keys, accent) {
+import { getEntityDisplayUnit, getEntityNumericValue, getEntityStateText, hasEntity, isEntityActive } from "../core/app-shared.js";
+import { HP_PANEL_CONFIGS } from "../core/config.js";
+import { getEntityValue } from "../core/entity-store.js";
+import { getOverviewControlsRenderSignature, getRenderSignature } from "../core/entity-sync.js";
+import { refreshMotionTargets, state } from "../core/runtime.js";
+import { getInstallationTopology } from "../features/device-context.js";
+import { formatWarningFailures } from "../settings/core.js";
+import { getInstallationMonitoringModel } from "../settings/installation.js";
+import { formatNumericState } from "../core/formatting.js";
+import { getHeatPumpPanelStatusLabel, getOverviewStatusCards, getOverviewStrategyLabel, getOverviewStrategySectionModel, getOverviewTempsModel, getOverviewTempsRenderSignature, getOverviewTopCards, getOverviewTrendRenderSignature, patchHpPanelStatusRow, patchOverviewTrendCurrentValues, renderHpPanelStatusRow, renderOverviewControlPanels, renderOverviewInstallationMonitoringNotice, renderOverviewNarrativePanel, renderOverviewStatCards, renderOverviewStatusPanel, renderOverviewSummaryShell, renderOverviewTempsPanel, renderOverviewTrendsPanel, renderTempRow, syncOverviewTrendInteractions } from "./overview.js";
+import { escapeHtml } from "../core/html.js";
+import { render } from "./shell.js";
+
+  export function getHeatPumpRuntimeModel(title, keys, accent) {
     const mode = formatWorkingMode(getEntityStateText(keys.mode, "Unknown"));
     const defrostActive = isEntityActive(keys.defrost);
     const failures = formatFailures(getEntityStateText(keys.failures, "None"));
@@ -15,19 +28,19 @@
     };
   }
 
-  function renderHeatPumpPanelTitle(title, layoutAction = null) {
+  export function renderHeatPumpPanelTitle(title, layoutAction = null) {
     return `<h3>${escapeHtml(title)}</h3>${layoutAction ? `<button class="oq-overview-hp-card-action" type="button" data-oq-action="select-hp-layout" data-hp-layout="${escapeHtml(layoutAction.layout)}">${renderMagnifyActionIcon(layoutAction.layout === "equal" ? "minus" : "plus")}<span>${escapeHtml(layoutAction.label)}</span></button>` : ""}`;
   }
 
-  function renderHeatPumpPanelStatus(mode, running, warningActive, failureText) {
+  export function renderHeatPumpPanelStatus(mode, running, warningActive, failureText) {
     return `<div class="oq-overview-hp-status">${renderHpPanelStatusRow(mode, running, warningActive, failureText)}</div>`;
   }
 
-  function isSystemInStandby() {
+  export function isSystemInStandby() {
     return getEntityStateText("controlModeLabel", "").toLowerCase().includes("standby");
   }
 
-  function formatHeatPumpSummaryMode(mode, defrostActive) {
+  export function formatHeatPumpSummaryMode(mode, defrostActive) {
     if (defrostActive) {
       return "ontdooit";
     }
@@ -43,14 +56,14 @@
     return "onbekend";
   }
 
-  function renderHeatPumpSummary(heatPumpPanels) {
+  export function renderHeatPumpSummary(heatPumpPanels) {
     if (!Array.isArray(heatPumpPanels) || heatPumpPanels.length === 0) {
       return "";
     }
     return `<p class="oq-overview-hp-summary">${escapeHtml(heatPumpPanels.map((panel) => `${panel.title} ${formatHeatPumpSummaryMode(formatWorkingMode(getEntityStateText(panel.keys.mode, "Unknown")), isEntityActive(panel.keys.defrost))}`).join(", "))}</p>`;
   }
 
-  function formatComponentPositionLabel(key) {
+  export function formatComponentPositionLabel(key) {
     const entity = state.entities[key];
     if (!entity) {
       return "Positie: â€”";
@@ -62,14 +75,14 @@
     return `Positie: ${getEntityStateText(key)}`;
   }
 
-  function formatFourWayPositionLabel(key) {
+  export function formatFourWayPositionLabel(key) {
     if (!hasEntity(key)) {
       return "Positie: â€”";
     }
     return `Positie: ${isEntityActive(key) ? "Koelen/Defrost" : "Verwarmen"}`;
   }
 
-  function formatWorkingMode(value) {
+  export function formatWorkingMode(value) {
     const raw = String(value || "").trim();
     if (!raw || raw === "Unknown") {
       return "Onbekend";
@@ -86,7 +99,7 @@
     return raw;
   }
 
-  function formatFailures(value) {
+  export function formatFailures(value) {
     const raw = String(value || "").trim();
     if (!raw || raw === "None") {
       return "Geen actieve storingen";
@@ -94,7 +107,7 @@
     return raw;
   }
 
-  function renderTechPipeLayer(id, tone, d, animated = true, flowVariant = "default") {
+  export function renderTechPipeLayer(id, tone, d, animated = true, flowVariant = "default") {
     return `
       <g class="oq-hp-tech-pipe oq-hp-tech-pipe--${escapeHtml(tone)}" data-oq-pipe="${escapeHtml(id)}">
         <path class="oq-hp-tech-pipe-base" d="${escapeHtml(d)}" />
@@ -104,7 +117,7 @@
     `;
   }
 
-  function renderTechTooltipIcon(icon, centerX, centerY) {
+  export function renderTechTooltipIcon(icon, centerX, centerY) {
     if (icon === "temperature") {
       return `
         <svg
@@ -231,7 +244,7 @@
     `;
   }
 
-  function renderTechTooltip({ bind, modifier, x, y, width, kicker, detail, detailBind = "", icon = "heater", direction = "down" }) {
+  export function renderTechTooltip({ bind, modifier, x, y, width, kicker, detail, detailBind = "", icon = "heater", direction = "down" }) {
     const height = 44;
     const badgeCx = x + 26;
     const badgeCy = y + 22;
@@ -266,7 +279,7 @@
     `;
   }
 
-  function renderTechWaterReading({ bind, x, y, width, value, label, ariaLabel = "", align = "start" }) {
+  export function renderTechWaterReading({ bind, x, y, width, value, label, ariaLabel = "", align = "start" }) {
     const resolvedAriaLabel = ariaLabel || `${label} temperatuur ${value}`;
     const isEndAligned = align === "end";
     const isCenterAligned = align === "center";
@@ -286,11 +299,11 @@
     `;
   }
 
-  function renderTechReadingWithTooltip({ tooltip, ...reading }) {
+  export function renderTechReadingWithTooltip({ tooltip, ...reading }) {
     return `${renderTechWaterReading(reading)}${renderTechTooltip({ bind: reading.bind, ...tooltip })}`;
   }
 
-  function renderTechHotspotWithTooltip({ bind, ariaLabel, x, y, width, height, rx, tooltip }) {
+  export function renderTechHotspotWithTooltip({ bind, ariaLabel, x, y, width, height, rx, tooltip }) {
     return `
       <g class="oq-hp-tech-hotspot" data-oq-bind="${escapeHtml(bind)}-trigger" data-oq-tooltip-target="${escapeHtml(bind)}" tabindex="0" aria-label="${escapeHtml(ariaLabel)}">
         <rect class="oq-hp-tech-hotspot-hit" x="${x}" y="${y}" width="${width}" height="${height}" rx="${rx}" />
@@ -299,7 +312,7 @@
     `;
   }
 
-  function renderTechTooltipTriggerGroup({ bind, className, active, ariaLabel, attrs = "", activeClass = "is-active", content, tooltip }) {
+  export function renderTechTooltipTriggerGroup({ bind, className, active, ariaLabel, attrs = "", activeClass = "is-active", content, tooltip }) {
     const resolvedClassName = [className, active && activeClass ? activeClass : ""].filter(Boolean).join(" ");
     return `
       <g class="${resolvedClassName}" data-oq-bind="${escapeHtml(bind)}" data-oq-tooltip-target="${escapeHtml(bind)}" tabindex="${active ? "0" : "-1"}" aria-label="${escapeHtml(ariaLabel)}" ${attrs}>
@@ -309,7 +322,7 @@
     `;
   }
 
-  function renderHeatPumpFooterItem({ label, value, bind, ariaLabel = "", valueBind = "", labelBind = "", labelMarkup = "" }) {
+  export function renderHeatPumpFooterItem({ label, value, bind, ariaLabel = "", valueBind = "", labelBind = "", labelMarkup = "" }) {
     return `
       <div class="oq-hp-tech-footer-item">
         <span${ariaLabel ? ` aria-label="${escapeHtml(ariaLabel)}"` : ""}${labelBind ? ` data-oq-bind="${escapeHtml(labelBind)}"` : ""}>${labelMarkup || escapeHtml(label)}</span>
@@ -318,7 +331,7 @@
     `;
   }
 
-  function formatHeatPumpReading(key, decimals, fallbackUnit = "") {
+  export function formatHeatPumpReading(key, decimals, fallbackUnit = "") {
     const numeric = getEntityNumericValue(key);
     if (Number.isNaN(numeric)) {
       return getEntityStateText(key);
@@ -326,7 +339,7 @@
     return formatNumericState(numeric, decimals, getEntityDisplayUnit(key, fallbackUnit));
   }
 
-  function getHeatPumpFlowKeys(flowKey) {
+  export function getHeatPumpFlowKeys(flowKey) {
     const hpGeneration = String(getEntityValue("hpGeneration") || "").trim();
     const keys = hpGeneration === "V1" && flowKey === "hp1Flow"
       ? ["flowSelected", "controllerFlow", "flowLocal", flowKey]
@@ -334,7 +347,7 @@
     return keys.filter((key, index) => key && keys.indexOf(key) === index);
   }
 
-  function getHeatPumpFlowReading(flowKey) {
+  export function getHeatPumpFlowReading(flowKey) {
     const flowKeys = getHeatPumpFlowKeys(flowKey);
     const fallbackKey = flowKeys.find((key) => hasEntity(key)) || flowKey;
 
@@ -360,7 +373,7 @@
     };
   }
 
-  function buildHeatPumpSchematicModel(title, keys, accent, mode, defrostActive, failures, running) {
+  export function buildHeatPumpSchematicModel(title, keys, accent, mode, defrostActive, failures, running) {
     const freqValue = getEntityNumericValue(keys.freq);
     const freqText = Number.isNaN(freqValue) ? "—" : String(Math.round(freqValue));
     const powerValue = getEntityNumericValue(keys.power);
@@ -509,7 +522,7 @@
     };
   }
 
-  function renderHeatPumpSchematic(model) {
+  export function renderHeatPumpSchematic(model) {
     const svgIdBase = String(model.title || "hp").toLowerCase().replace(/[^a-z0-9]+/g, "-");
     const condWaterHeatGradientId = `${svgIdBase}-cond-water-heat`;
     const condWaterCoolGradientId = `${svgIdBase}-cond-water-cool`;
@@ -708,7 +721,7 @@
     `;
   }
 
-  function renderHeatPumpPanel(title, keys, accent, emphasis = "normal", layoutAction = null) {
+  export function renderHeatPumpPanel(title, keys, accent, emphasis = "normal", layoutAction = null) {
     if (!hasEntity(keys.power)) {
       return "";
     }
@@ -781,11 +794,11 @@
     `;
   }
 
-  function shouldRenderBoilerPanel() {
+  export function shouldRenderBoilerPanel() {
     return isEntityActive("boilerCvAssistEnabled") && hasEntity("boilerHeatPower");
   }
 
-  function getBoilerReturnTemperatureKey() {
+  export function getBoilerReturnTemperatureKey() {
     const installationTopology = typeof getInstallationTopology === "function" ? getInstallationTopology() : "";
     if (installationTopology !== "single" && hasEntity("hp2WaterOut")) {
       return "hp2WaterOut";
@@ -793,7 +806,7 @@
     return "hp1WaterOut";
   }
 
-  function getBoilerFlowKey() {
+  export function getBoilerFlowKey() {
     const installationTopology = typeof getInstallationTopology === "function" ? getInstallationTopology() : "";
     if (installationTopology !== "single" && hasEntity("hp2Flow")) {
       return "hp2Flow";
@@ -801,7 +814,7 @@
     return "hp1Flow";
   }
 
-  function getBoilerPanelModel() {
+  export function getBoilerPanelModel() {
     const heatValue = getEntityNumericValue("boilerHeatPower");
     const flowValue = getEntityNumericValue(getBoilerFlowKey());
     const active = hasEntity("boilerActive")
@@ -835,7 +848,7 @@
     };
   }
 
-  function getBoilerPanelRenderSignature(model = getBoilerPanelModel()) {
+  export function getBoilerPanelRenderSignature(model = getBoilerPanelModel()) {
     return getRenderSignature({
       version: "boiler-visual-mode-v1",
       visualMode: state.hpVisualMode,
@@ -843,7 +856,7 @@
     });
   }
 
-  function patchBoilerPanelRuntime(panel, model = getBoilerPanelModel()) {
+  export function patchBoilerPanelRuntime(panel, model = getBoilerPanelModel()) {
     const card = panel.querySelector(".oq-boiler-card");
     if (card) {
       card.className = [
@@ -891,7 +904,7 @@
     }
   }
 
-  function renderBoilerCompactPanel(model) {
+  export function renderBoilerCompactPanel(model) {
     return `
       <section class="oq-overview-hp oq-overview-boiler oq-overview-boiler--compact" data-oq-boiler-panel data-render-signature="${escapeHtml(getBoilerPanelRenderSignature(model))}">
         <div class="oq-overview-hp-head">
@@ -921,7 +934,7 @@
     `;
   }
 
-  function renderBoilerPanel() {
+  export function renderBoilerPanel() {
     if (!shouldRenderBoilerPanel()) {
       return "";
     }
@@ -990,7 +1003,7 @@
     `;
   }
 
-  function getHeatPumpPanels() {
+  export function getHeatPumpPanels() {
     const installationTopology = typeof getInstallationTopology === "function" ? getInstallationTopology() : "";
     return HP_PANEL_CONFIGS.filter((panel) => {
       if (installationTopology === "single" && panel.title === "HP2") {
@@ -1000,14 +1013,14 @@
     });
   }
 
-  function getEffectiveHpLayoutMode(heatPumpPanels) {
+  export function getEffectiveHpLayoutMode(heatPumpPanels) {
     if (!Array.isArray(heatPumpPanels) || heatPumpPanels.length < 2 || state.hpVisualMode !== "schematic") {
       return "equal";
     }
     return state.hpLayoutMode === "focus-hp1" || state.hpLayoutMode === "focus-hp2" ? state.hpLayoutMode : "equal";
   }
 
-  function getHeatPumpPanelEmphasis(index, heatPumpPanels, layoutMode) {
+  export function getHeatPumpPanelEmphasis(index, heatPumpPanels, layoutMode) {
     if (!Array.isArray(heatPumpPanels) || heatPumpPanels.length < 2) {
       return "normal";
     }
@@ -1020,7 +1033,7 @@
     return "normal";
   }
 
-  function getHeatPumpPanelLayoutAction(index, heatPumpPanels, layoutMode) {
+  export function getHeatPumpPanelLayoutAction(index, heatPumpPanels, layoutMode) {
     if (!Array.isArray(heatPumpPanels) || heatPumpPanels.length < 2 || state.hpVisualMode !== "schematic") {
       return null;
     }
@@ -1036,14 +1049,14 @@
     };
   }
 
-  function getHeatPumpGridLayoutVariant(heatPumpPanels) {
+  export function getHeatPumpGridLayoutVariant(heatPumpPanels) {
     if (!Array.isArray(heatPumpPanels) || heatPumpPanels.length !== 1) {
       return getEffectiveHpLayoutMode(heatPumpPanels);
     }
     return shouldRenderBoilerPanel() ? "equal" : "single";
   }
 
-  function renderMagnifyActionIcon(kind = "plus") {
+  export function renderMagnifyActionIcon(kind = "plus") {
     const path = kind === "minus"
       ? 'M15.5,14H14.71L14.43,13.73C15.41,12.59 16,11.11 16,9.5A6.5,6.5 0 0,0 9.5,3A6.5,6.5 0 0,0 3,9.5A6.5,6.5 0 0,0 9.5,16C11.11,16 12.59,15.41 13.73,14.43L14,14.71V15.5L19,20.5L20.5,19L15.5,14M9.5,14C7,14 5,12 5,9.5C5,7 7,5 9.5,5C12,5 14,7 14,9.5C14,12 12,14 9.5,14M7,9H12V10H7V9Z'
       : 'M15.5,14L20.5,19L19,20.5L14,15.5V14.71L13.73,14.43C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.43,13.73L14.71,14H15.5M9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14M12,10H10V12H9V10H7V9H9V7H10V9H12V10Z';
@@ -1054,7 +1067,7 @@
     `;
   }
 
-  function renderHeatPumpControlsInner(heatPumpPanels) {
+  export function renderHeatPumpControlsInner(heatPumpPanels) {
     if (!Array.isArray(heatPumpPanels) || heatPumpPanels.length === 0) {
       return "";
     }
@@ -1073,7 +1086,7 @@
     `;
   }
 
-  function patchHeatPumpControls(hpTools, heatPumpPanels) {
+  export function patchHeatPumpControls(hpTools, heatPumpPanels) {
     if (!hpTools) {
       return false;
     }
@@ -1096,7 +1109,7 @@
     return true;
   }
 
-  function renderOverviewView() {
+  export function renderOverviewView() {
     const strategyLabel = getOverviewStrategyLabel();
     const heatPumpPanels = getHeatPumpPanels();
     const hpLayoutMode = getEffectiveHpLayoutMode(heatPumpPanels);
@@ -1122,7 +1135,7 @@
     `;
   }
 
-  function setTextContent(root, selector, value) {
+  export function setTextContent(root, selector, value) {
     if (!root) {
       return;
     }
@@ -1132,7 +1145,7 @@
     }
   }
 
-  function setInnerHtmlIfChanged(node, markup) {
+  export function setInnerHtmlIfChanged(node, markup) {
     if (!node) {
       return;
     }
@@ -1141,7 +1154,7 @@
     }
   }
 
-  function replaceOuterHtmlIfSignatureChanged(node, signature, markup) {
+  export function replaceOuterHtmlIfSignatureChanged(node, signature, markup) {
     if (!node || node.dataset.renderSignature === signature) {
       return false;
     }
@@ -1149,25 +1162,25 @@
     return true;
   }
 
-  function syncAttribute(node, name, value) {
+  export function syncAttribute(node, name, value) {
     if (node && node.getAttribute(name) !== value) {
       node.setAttribute(name, value);
     }
   }
 
-  function syncBoundText(root, bindings) {
+  export function syncBoundText(root, bindings) {
     bindings.forEach(([bind, value]) => {
       setTextContent(root, `[data-oq-bind="${bind}"]`, value);
     });
   }
 
-  function syncBoundAria(root, bindings) {
+  export function syncBoundAria(root, bindings) {
     bindings.forEach(([bind, label]) => {
       syncAttribute(root.querySelector(`[data-oq-bind="${bind}"]`), "aria-label", label);
     });
   }
 
-  function syncBoundToggle(root, bind, active, tooltipBind = "") {
+  export function syncBoundToggle(root, bind, active, tooltipBind = "") {
     const node = root.querySelector(`[data-oq-bind="${bind}"]`);
     if (!node) {
       return;
@@ -1179,11 +1192,11 @@
     }
   }
 
-  function syncBoundFill(root, bind, value) {
+  export function syncBoundFill(root, bind, value) {
     syncAttribute(root.querySelector(`[data-oq-bind="${bind}"]`), "fill", value);
   }
 
-  function setVariantClass(node, prefix, value, variants) {
+  export function setVariantClass(node, prefix, value, variants) {
     if (!node) {
       return;
     }
@@ -1200,7 +1213,7 @@
     node.classList.add(target);
   }
 
-  function updatePipeGroup(root, id, tone, d) {
+  export function updatePipeGroup(root, id, tone, d) {
     const group = root.querySelector(`[data-oq-pipe="${id}"]`);
     if (!group) {
       return;
@@ -1213,7 +1226,7 @@
     });
   }
 
-  function hideTechTooltip(tooltip) {
+  export function hideTechTooltip(tooltip) {
     if (!tooltip) {
       return;
     }
@@ -1221,7 +1234,7 @@
     tooltip.setAttribute("aria-hidden", "true");
   }
 
-  function showTechTooltip(board, layer, tooltip) {
+  export function showTechTooltip(board, layer, tooltip) {
     if (!board || !layer || !tooltip) {
       return;
     }
@@ -1236,7 +1249,7 @@
     tooltip.setAttribute("aria-hidden", "false");
   }
 
-  function wireTechTooltipTrigger(board, layer, trigger, tooltip) {
+  export function wireTechTooltipTrigger(board, layer, trigger, tooltip) {
     if (!board || !layer || !trigger || !tooltip || trigger.dataset.oqTooltipWired === "true") {
       return;
     }
@@ -1255,7 +1268,7 @@
     trigger.addEventListener("blur", hideIfIdle);
   }
 
-  function ensureTechTooltipLayering(board) {
+  export function ensureTechTooltipLayering(board) {
     if (!board) {
       return;
     }
@@ -1286,7 +1299,7 @@
     });
   }
 
-  function syncTechTooltipLayers(root = state.root) {
+  export function syncTechTooltipLayers(root = state.root) {
     if (!root) {
       return;
     }
@@ -1296,7 +1309,7 @@
     });
   }
 
-  function patchHeatPumpPanel(panel, title, keys, accent, layoutAction = null, runtime = null) {
+  export function patchHeatPumpPanel(panel, title, keys, accent, layoutAction = null, runtime = null) {
     if (!panel) {
       return;
     }
@@ -1404,7 +1417,7 @@
     refreshMotionTargets();
   }
 
-  function patchOverviewDom() {
+  export function patchOverviewDom() {
     if (!state.root || state.appView !== "overview") {
       return false;
     }

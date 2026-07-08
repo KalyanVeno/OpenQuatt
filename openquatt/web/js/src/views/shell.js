@@ -1,4 +1,19 @@
-function renderSettingsView() {
+import { renderAppNav, syncDocumentTheme, syncDocumentTitle } from "../core/app-shared.js";
+import { LOGO_MARKUP } from "../core/config.js";
+import { getSettingsRenderSignature } from "../core/entity-sync.js";
+import { escapeHtml } from "../core/html.js";
+import { bindHeaderDevControls, clearLegacyMotionVariables, startMotionLoop, state, stopMotionLoop, syncNativeVisibility } from "../core/runtime.js";
+import { renderDeviceReconnectModal, renderUpdateModal } from "../features/firmware-update.js";
+import { getDeviceVersionLabel, getHeaderRenderSignature, renderDevPanel, renderHeaderStatus, renderNativeSurfaceShell, renderSystemModal } from "../features/header-status.js";
+import { getMqttSensorsModalRenderSignature } from "../features/mqtt-actions.js";
+import { captureQuickStartScrollState, queueQuickStartScrollRestore, renderQuickStartModal } from "../features/quickstart.js";
+import { captureCm100CommissioningScrollState, captureHistoryStorageModalScrollState, captureServiceTaskModalScrollState, captureWebServerLogScrollState, queueCm100CommissioningScrollRestore, queueHistoryStorageModalScrollRestore, queueServiceTaskModalScrollRestore, queueWebServerLogScrollRestore, syncWebServerLogStream } from "../features/webserver-logs.js";
+import { renderSettingsGroupContent, renderSettingsGroupNav } from "../settings/core.js";
+import { renderEnergyView, renderResultsView } from "./energy.js";
+import { renderOverviewView, syncTechTooltipLayers } from "./heatpump.js";
+import { renderDiagnosisView, syncOverviewTrendInteractions } from "./overview.js";
+
+export function renderSettingsView() {
     return `
       <section class="oq-helper-panel">
         <p class="oq-helper-label">Instellingen</p>
@@ -10,7 +25,7 @@ function renderSettingsView() {
     `;
   }
 
-  function renderInitialLoadingView() {
+  export function renderInitialLoadingView() {
     return `
       <div class="oq-helper-modal-backdrop${state.overviewTheme === "dark" ? " oq-helper-modal-backdrop--dark" : ""} oq-helper-modal-backdrop--loading" data-oq-modal="initial-load">
         <section class="oq-helper-modal oq-helper-modal--reconnect oq-helper-modal--loading" role="status" aria-live="polite" aria-labelledby="oq-loading-modal-title">
@@ -33,7 +48,7 @@ function renderSettingsView() {
     `;
   }
 
-  function renderCurrentAppView() {
+  export function renderCurrentAppView() {
     return state.appView === "overview"
       ? renderOverviewView()
       : state.appView === "energy"
@@ -45,7 +60,7 @@ function renderSettingsView() {
       : renderSettingsView();
   }
 
-  function renderPoweredByFooter() {
+  export function renderPoweredByFooter() {
     const version = getDeviceVersionLabel();
     const versionMarkup = version && version !== "—"
       ? `<span class="oq-helper-footer-version">OpenQuatt ${escapeHtml(version)}</span>`
@@ -65,7 +80,7 @@ function renderSettingsView() {
     `;
   }
 
-  function getActiveDevControlSelect() {
+  export function getActiveDevControlSelect() {
     const active = typeof document !== "undefined" ? document.activeElement : null;
     if (!active || typeof active.matches !== "function") {
       return null;
@@ -73,7 +88,7 @@ function renderSettingsView() {
     return active.matches('select[data-oq-dev-control]') ? active : null;
   }
 
-  function deferRenderUntilDevControlSelectSettles(select) {
+  export function deferRenderUntilDevControlSelectSettles(select) {
     if (!select || state.deferDevControlSelectRender) {
       return;
     }
@@ -89,7 +104,7 @@ function renderSettingsView() {
     select.addEventListener("change", flush, { once: true });
   }
 
-  function captureSettingsPageScrollState() {
+  export function captureSettingsPageScrollState() {
     if (
       state.nativeOpen ||
       state.appView !== "settings" ||
@@ -112,7 +127,7 @@ function renderSettingsView() {
     };
   }
 
-  function queueSettingsPageScrollRestore(scrollState) {
+  export function queueSettingsPageScrollRestore(scrollState) {
     if (!scrollState) {
       return;
     }
@@ -146,7 +161,7 @@ function renderSettingsView() {
     });
   }
 
-  function render() {
+  export function render() {
     if (!state.root) {
       return;
     }
@@ -252,14 +267,3 @@ function renderSettingsView() {
     queueQuickStartScrollRestore(quickStartScrollState);
     queueSettingsPageScrollRestore(settingsPageScrollState);
   }
-
-  function escapeHtml(value) {
-    return String(value)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll("\"", "&quot;")
-      .replaceAll("'", "&#39;");
-  }
-
-boot();

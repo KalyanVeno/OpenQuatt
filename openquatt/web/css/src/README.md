@@ -12,4 +12,4 @@ The deployed/runtime file remains:
 - `openquatt/web/css/openquatt-app.css`
 
 Rebuild the bundle with:
-- `node openquatt/web/build-assets.mjs`
+- `rtk npm run build:web`

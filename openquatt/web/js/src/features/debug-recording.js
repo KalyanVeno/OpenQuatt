@@ -1,19 +1,32 @@
-function getDebugRecordingSampleCount() {
+import { hasEntity, isEntityActive } from "../core/app-shared.js";
+import { copyTextToClipboard, downloadTextFile } from "../core/browser-utils.js";
+import { DEBUG_RECORDING_BUSY_RETRY_MS, DEBUG_RECORDING_DURATION_OPTIONS, DEBUG_RECORDING_EVENT_LIMIT, DEBUG_RECORDING_KEYS, DEBUG_RECORDING_LOG_LIMIT, DEBUG_RECORDING_SAMPLE_INTERVAL_MS, ENTITY_DEFS, FAST_VIEW_ENTITY_REFRESH_CONCURRENCY } from "../core/config.js";
+import { getEntityValue, parseLooseNumber } from "../core/entity-store.js";
+import { buildBulkEntityChunks, refreshEntities } from "../core/entity-sync.js";
+import { state } from "../core/runtime.js";
+import { getBasePath } from "../core/url-path.js";
+import { getFirmwareDeviceLabel, getInstallationLabel, getInstallationTopology } from "./device-context.js";
+import { getFirmwareCurrentVersion } from "./firmware-update.js";
+import { patchDebugRecordingHeaderStatus } from "./header-status.js";
+import { escapeHtml } from "../core/html.js";
+import { render } from "../views/shell.js";
+
+export function getDebugRecordingSampleCount() {
   if (state.debugRecordingDeviceStatus) {
     return Math.max(0, Number(state.debugRecordingDeviceStatus.sample_count || 0));
   }
   return Array.isArray(state.debugRecordingSamples) ? state.debugRecordingSamples.length : 0;
 }
 
-function isDebugRecordingRolling(status = state.debugRecordingDeviceStatus) {
+export function isDebugRecordingRolling(status = state.debugRecordingDeviceStatus) {
   return status?.rolling === true || String(status?.mode || "").toLowerCase() === "rolling";
 }
 
-function isDebugRecordingFrozen(status = state.debugRecordingDeviceStatus) {
+export function isDebugRecordingFrozen(status = state.debugRecordingDeviceStatus) {
   return isDebugRecordingRolling(status) && status?.frozen === true && !status?.active;
 }
 
-function formatDebugRecordingDuration(valueMs) {
+export function formatDebugRecordingDuration(valueMs) {
   const totalSeconds = Math.max(0, Math.round(Number(valueMs || 0) / 1000));
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -27,14 +40,14 @@ function formatDebugRecordingDuration(valueMs) {
   return `${seconds}s`;
 }
 
-function getDebugRecordingRetainedDurationMs() {
+export function getDebugRecordingRetainedDurationMs() {
   if (state.debugRecordingDeviceStatus) {
     return Math.max(0, Number(state.debugRecordingDeviceStatus.retained_duration_s || 0) * 1000);
   }
   return getDebugRecordingDurationMs();
 }
 
-function getDebugRecordingDurationMs() {
+export function getDebugRecordingDurationMs() {
   if (state.debugRecordingDeviceStatus) {
     return Math.max(0, Number(state.debugRecordingDeviceStatus.elapsed_s || 0) * 1000);
   }
@@ -45,7 +58,7 @@ function getDebugRecordingDurationMs() {
   return Math.max(0, endAt - Number(state.debugRecordingStartedAt || endAt));
 }
 
-function getDebugRecordingStatusLabel() {
+export function getDebugRecordingStatusLabel() {
   if (state.debugRecordingDeviceStatus && state.debugRecordingDeviceStatus.available === false) {
     return "Niet beschikbaar";
   }
@@ -65,7 +78,7 @@ function getDebugRecordingStatusLabel() {
   return "Niet gestart";
 }
 
-function getDebugRecordingStatusCopy() {
+export function getDebugRecordingStatusCopy() {
   if (isDebugRecordingFrozen()) {
     return "Rolling debug is gestopt. De recente samples blijven bewaard tot je downloadt, kopieert, hervat of een nieuwe opname start.";
   }
@@ -84,7 +97,7 @@ function getDebugRecordingStatusCopy() {
   return "Neem tijdelijk supportgegevens op voor analyse. De opname wordt lokaal in het apparaatgeheugen opgeslagen. Er wordt niets automatisch verzonden.";
 }
 
-function getDebugRecordingHubStatusLabel() {
+export function getDebugRecordingHubStatusLabel() {
   if (isDebugRecordingFrozen()) {
     return "Gestopt";
   }
@@ -100,13 +113,13 @@ function getDebugRecordingHubStatusLabel() {
   return getDebugRecordingStatusLabel();
 }
 
-function getDebugRecordingSelectedMinutes() {
+export function getDebugRecordingSelectedMinutes() {
   const selected = Number(state.debugRecordingSelectedMinutes || 15);
   const allowed = DEBUG_RECORDING_DURATION_OPTIONS.map((option) => Number(option.minutes));
   return allowed.includes(selected) ? selected : Number(DEBUG_RECORDING_DURATION_OPTIONS[0]?.minutes || 15);
 }
 
-function setDebugRecordingSelectedMinutes(minutes) {
+export function setDebugRecordingSelectedMinutes(minutes) {
   if (state.debugRecordingActive) {
     return;
   }
@@ -116,7 +129,7 @@ function setDebugRecordingSelectedMinutes(minutes) {
   render();
 }
 
-function getDebugRecordingRemainingMs() {
+export function getDebugRecordingRemainingMs() {
   if (isDebugRecordingRolling()) {
     return 0;
   }
@@ -129,7 +142,7 @@ function getDebugRecordingRemainingMs() {
   return Math.max(0, Number(state.debugRecordingEndsAt || 0) - Date.now());
 }
 
-function getDebugRecordingProgressPercent() {
+export function getDebugRecordingProgressPercent() {
   if (state.debugRecordingDeviceStatus) {
     if (isDebugRecordingRolling()) {
       const sampleCapacity = Math.max(1, Number(state.debugRecordingDeviceStatus.sample_capacity || 0));
@@ -150,11 +163,11 @@ function getDebugRecordingProgressPercent() {
   return Math.max(0, Math.min(100, (elapsedMs / totalMs) * 100));
 }
 
-function getDebugRecordingId(source = state.debugRecordingDeviceStatus) {
+export function getDebugRecordingId(source = state.debugRecordingDeviceStatus) {
   return String(source?.recording_id ?? source?.recording?.recording_id ?? "").trim();
 }
 
-function getStoredDebugRecordingAcknowledgedId() {
+export function getStoredDebugRecordingAcknowledgedId() {
   try {
     return String(window.localStorage.getItem("oq-debug-recording-acknowledged-id") || "");
   } catch (_error) {
@@ -162,7 +175,7 @@ function getStoredDebugRecordingAcknowledgedId() {
   }
 }
 
-function acknowledgeDebugRecording(bundle) {
+export function acknowledgeDebugRecording(bundle) {
   if (bundle?.recording?.active) {
     return;
   }
@@ -178,7 +191,7 @@ function acknowledgeDebugRecording(bundle) {
   }
 }
 
-function renderDebugRecordingHeaderStatus() {
+export function renderDebugRecordingHeaderStatus() {
   const status = state.debugRecordingDeviceStatus;
   const sampleCount = Math.max(0, Number(status?.sample_count || 0));
   if (!status || status.available === false || (!status.active && sampleCount === 0)) {
@@ -212,7 +225,7 @@ function renderDebugRecordingHeaderStatus() {
   `;
 }
 
-function patchDebugRecordingSettingsStatus() {
+export function patchDebugRecordingSettingsStatus() {
   if (!state.root) {
     return;
   }
@@ -230,7 +243,7 @@ function patchDebugRecordingSettingsStatus() {
   }
 }
 
-function renderDebugRecordingSvgIcon(name) {
+export function renderDebugRecordingSvgIcon(name) {
   const icons = {
     activity: '<svg viewBox="0 0 24 24" focusable="false"><path d="M3 12h4l2-7 4 14 2-7h6"/></svg>',
     status: '<svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="4"/></svg>',
@@ -249,19 +262,19 @@ function renderDebugRecordingSvgIcon(name) {
   return icons[name] || icons.status;
 }
 
-function renderDebugRecordingIcon(name) {
+export function renderDebugRecordingIcon(name) {
   return `<span class="oq-debug-recording-icon" aria-hidden="true">${renderDebugRecordingSvgIcon(name)}</span>`;
 }
 
-function renderDebugRecordingButtonIcon(name) {
+export function renderDebugRecordingButtonIcon(name) {
   return `<span class="oq-debug-recording-button-icon" aria-hidden="true">${renderDebugRecordingSvgIcon(name)}</span>`;
 }
 
-function getDebugRecordingColumnSchema() {
+export function getDebugRecordingColumnSchema() {
   return [...DEBUG_RECORDING_KEYS];
 }
 
-function getDebugRecordingUnits() {
+export function getDebugRecordingUnits() {
   const units = [];
   DEBUG_RECORDING_KEYS.forEach((key, index) => {
     const payload = state.entities?.[key] || {};
@@ -273,7 +286,7 @@ function getDebugRecordingUnits() {
   return units;
 }
 
-function encodeDebugRecordingInitialValues(values) {
+export function encodeDebugRecordingInitialValues(values) {
   if (!Array.isArray(values)) {
     return [];
   }
@@ -282,12 +295,12 @@ function encodeDebugRecordingInitialValues(values) {
     .filter(Boolean);
 }
 
-function isDebugRecordingMissingValue(rawValue) {
+export function isDebugRecordingMissingValue(rawValue) {
   const value = String(rawValue ?? "").trim().toLowerCase();
   return !value || value === "unknown" || value === "unavailable" || value === "nan" || value === "invalid";
 }
 
-function roundDebugRecordingNumber(value, unit) {
+export function roundDebugRecordingNumber(value, unit) {
   const normalizedUnit = String(unit || "").trim().toLowerCase();
   let decimals = 3;
   if (normalizedUnit === "w" || normalizedUnit === "l/h" || normalizedUnit === "s") {
@@ -300,7 +313,7 @@ function roundDebugRecordingNumber(value, unit) {
   return Number(Number(value).toFixed(decimals));
 }
 
-function normalizeDebugRecordingValue(key) {
+export function normalizeDebugRecordingValue(key) {
   const entity = ENTITY_DEFS[key];
   const payload = state.entities?.[key] || null;
   if (!entity || !payload) {
@@ -327,16 +340,16 @@ function normalizeDebugRecordingValue(key) {
   return String(rawValue).trim();
 }
 
-function areDebugRecordingValuesEqual(left, right) {
+export function areDebugRecordingValuesEqual(left, right) {
   return Object.is(left, right);
 }
 
-function isDebugRecordingEventValue(key, value) {
+export function isDebugRecordingEventValue(key, value) {
   const domain = ENTITY_DEFS[key]?.domain || "";
   return domain === "switch" || domain === "binary_sensor" || domain === "select" || domain === "text_sensor" || typeof value === "string";
 }
 
-function addDebugRecordingEvents(elapsedSeconds, changes, previousValues, nextValues) {
+export function addDebugRecordingEvents(elapsedSeconds, changes, previousValues, nextValues) {
   const events = Array.isArray(state.debugRecordingEvents) ? [...state.debugRecordingEvents] : [];
   changes.forEach(([index]) => {
     const key = DEBUG_RECORDING_KEYS[index];
@@ -349,7 +362,7 @@ function addDebugRecordingEvents(elapsedSeconds, changes, previousValues, nextVa
   state.debugRecordingEvents = events.slice(-DEBUG_RECORDING_EVENT_LIMIT);
 }
 
-function buildDebugRecordingSample() {
+export function buildDebugRecordingSample() {
   const now = Date.now();
   const elapsedMs = state.debugRecordingStartedAt ? Math.max(0, now - Number(state.debugRecordingStartedAt)) : 0;
   const elapsedSeconds = Math.round(elapsedMs / 1000);
@@ -383,25 +396,25 @@ function buildDebugRecordingSample() {
   };
 }
 
-function clearDebugRecordingTimer() {
+export function clearDebugRecordingTimer() {
   if (state.debugRecordingTimer) {
     window.clearTimeout(state.debugRecordingTimer);
     state.debugRecordingTimer = null;
   }
 }
 
-function clearDebugRecordingDevicePollTimer() {
+export function clearDebugRecordingDevicePollTimer() {
   if (state.debugRecordingDevicePollTimer) {
     window.clearTimeout(state.debugRecordingDevicePollTimer);
     state.debugRecordingDevicePollTimer = null;
   }
 }
 
-function getDebugRecordingEndpoint(path) {
+export function getDebugRecordingEndpoint(path) {
   return `${getBasePath()}/openquatt/debug-recording/${path}`;
 }
 
-function applyDebugRecordingDeviceStatus(payload) {
+export function applyDebugRecordingDeviceStatus(payload) {
   const status = payload && typeof payload === "object" ? payload : {};
   state.debugRecordingDeviceStatus = status;
   state.debugRecordingActive = Boolean(status.active);
@@ -414,7 +427,7 @@ function applyDebugRecordingDeviceStatus(payload) {
   state.debugRecordingLastSampleAt = Number(status.sample_count || 0) > 0 ? Date.now() : 0;
 }
 
-function applyDebugRecordingDeviceUnavailableStatus() {
+export function applyDebugRecordingDeviceUnavailableStatus() {
   applyDebugRecordingDeviceStatus({
     ok: false,
     available: false,
@@ -434,7 +447,7 @@ function applyDebugRecordingDeviceUnavailableStatus() {
   });
 }
 
-async function fetchDebugRecordingDeviceStatus() {
+export async function fetchDebugRecordingDeviceStatus() {
   const response = await window.fetch(getDebugRecordingEndpoint("status"), {
     cache: "no-store",
     headers: { "Cache-Control": "no-store" },
@@ -447,7 +460,7 @@ async function fetchDebugRecordingDeviceStatus() {
   return payload;
 }
 
-function scheduleDebugRecordingDeviceStatusPoll(delayMs = 2000) {
+export function scheduleDebugRecordingDeviceStatusPoll(delayMs = 2000) {
   clearDebugRecordingDevicePollTimer();
   if (!state.debugRecordingActive) {
     return;
@@ -457,7 +470,7 @@ function scheduleDebugRecordingDeviceStatusPoll(delayMs = 2000) {
   }, Math.max(0, Number(state.systemModal === "debug-recording" ? delayMs : 5000) || 0));
 }
 
-async function refreshDebugRecordingDeviceStatus(options = {}) {
+export async function refreshDebugRecordingDeviceStatus(options = {}) {
   if (!options.silent) {
     state.debugRecordingBusy = true;
     state.debugRecordingError = "";
@@ -485,7 +498,7 @@ async function refreshDebugRecordingDeviceStatus(options = {}) {
   }
 }
 
-function scheduleDebugRecordingSample(delayMs = DEBUG_RECORDING_SAMPLE_INTERVAL_MS) {
+export function scheduleDebugRecordingSample(delayMs = DEBUG_RECORDING_SAMPLE_INTERVAL_MS) {
   clearDebugRecordingTimer();
   if (!state.debugRecordingActive) {
     return;
@@ -495,7 +508,7 @@ function scheduleDebugRecordingSample(delayMs = DEBUG_RECORDING_SAMPLE_INTERVAL_
   }, Math.max(0, Number(delayMs) || 0));
 }
 
-async function captureDebugRecordingSample() {
+export async function captureDebugRecordingSample() {
   if (!state.debugRecordingActive) {
     return;
   }
@@ -528,7 +541,7 @@ async function captureDebugRecordingSample() {
   }
 }
 
-async function configureDebugRecordingDevice() {
+export async function configureDebugRecordingDevice() {
   const chunks = buildBulkEntityChunks(DEBUG_RECORDING_KEYS, "state");
   let status = null;
   for (let index = 0; index < chunks.length; index += 1) {
@@ -556,7 +569,7 @@ async function configureDebugRecordingDevice() {
   return status;
 }
 
-async function startDebugRecording(durationMinutes) {
+export async function startDebugRecording(durationMinutes) {
   const minutes = Math.max(1, Number(durationMinutes) || 15);
   clearDebugRecordingTimer();
   clearDebugRecordingDevicePollTimer();
@@ -593,7 +606,7 @@ async function startDebugRecording(durationMinutes) {
   }
 }
 
-async function startRollingDebugRecording() {
+export async function startRollingDebugRecording() {
   clearDebugRecordingTimer();
   clearDebugRecordingDevicePollTimer();
   state.debugRecordingBusy = true;
@@ -629,7 +642,7 @@ async function startRollingDebugRecording() {
   }
 }
 
-async function requestDebugRecordingFreeze() {
+export async function requestDebugRecordingFreeze() {
   const response = await window.fetch(getDebugRecordingEndpoint("freeze"), {
     method: "POST",
     cache: "no-store",
@@ -644,7 +657,7 @@ async function requestDebugRecordingFreeze() {
   return payload;
 }
 
-async function freezeDebugRecording() {
+export async function freezeDebugRecording() {
   clearDebugRecordingTimer();
   state.debugRecordingBusy = true;
   state.debugRecordingError = "";
@@ -660,7 +673,7 @@ async function freezeDebugRecording() {
   }
 }
 
-async function stopDebugRecording(options = {}) {
+export async function stopDebugRecording(options = {}) {
   clearDebugRecordingTimer();
   clearDebugRecordingDevicePollTimer();
   state.debugRecordingBusy = true;
@@ -686,7 +699,7 @@ async function stopDebugRecording(options = {}) {
   }
 }
 
-function trimDebugRecordingLogs(payload) {
+export function trimDebugRecordingLogs(payload) {
   const entries = Array.isArray(payload?.entries) ? payload.entries : [];
   const enabled = typeof payload?.enabled === "boolean" ? payload.enabled : null;
   return {
@@ -699,7 +712,7 @@ function trimDebugRecordingLogs(payload) {
   };
 }
 
-async function fetchDebugRecordingLogs() {
+export async function fetchDebugRecordingLogs() {
   if (typeof window.fetch !== "function") {
     return { available: false, entries: [], error: "fetch unavailable" };
   }
@@ -739,7 +752,7 @@ async function fetchDebugRecordingLogs() {
   }
 }
 
-function buildDebugRecordingCorePayload(extra = {}) {
+export function buildDebugRecordingCorePayload(extra = {}) {
   const endedAt = state.debugRecordingActive ? Date.now() : Number(state.debugRecordingLastSampleAt || Date.now());
   return {
     format: "openquatt-debug-v2",
@@ -767,7 +780,7 @@ function buildDebugRecordingCorePayload(extra = {}) {
   };
 }
 
-async function buildDebugRecordingBundle() {
+export async function buildDebugRecordingBundle() {
   if (state.debugRecordingDeviceBundle) {
     return state.debugRecordingDeviceBundle;
   }
@@ -777,11 +790,11 @@ async function buildDebugRecordingBundle() {
   return buildDebugRecordingCorePayload({ source, logs });
 }
 
-function getDebugRecordingCompactJson(payload) {
+export function getDebugRecordingCompactJson(payload) {
   return JSON.stringify(payload);
 }
 
-function getDebugRecordingEstimatedBytes() {
+export function getDebugRecordingEstimatedBytes() {
   const estimated = Number(state.debugRecordingDeviceStatus?.estimated_size || 0);
   if (estimated > 0) {
     return estimated;
@@ -793,7 +806,7 @@ function getDebugRecordingEstimatedBytes() {
   }
 }
 
-function getDebugRecordingSourceMeta() {
+export function getDebugRecordingSourceMeta() {
   const releaseChannel = String(getEntityValue("releaseChannelText") || "").trim();
   const updateChannel = String(getEntityValue("firmwareUpdateChannel") || "").trim();
   return {
@@ -806,7 +819,7 @@ function getDebugRecordingSourceMeta() {
   };
 }
 
-function formatDebugRecordingBytes(bytes) {
+export function formatDebugRecordingBytes(bytes) {
   const value = Math.max(0, Number(bytes) || 0);
   if (value >= 1024 * 1024) {
     return `${(value / 1024 / 1024).toFixed(1)} MB`;
@@ -817,20 +830,7 @@ function formatDebugRecordingBytes(bytes) {
   return `${Math.round(value)} B`;
 }
 
-function downloadDebugRecordingTextFile(filename, text) {
-  const blob = new Blob([text], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.rel = "noreferrer";
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 0);
-}
-
-function getDebugRecordingFilename(bundle) {
+export function getDebugRecordingFilename(bundle) {
   const exportedAt = bundle?.exported_at || (bundle?.exported_at_ms ? new Date(Number(bundle.exported_at_ms)).toISOString() : new Date().toISOString());
   const stamp = String(exportedAt)
     .replace(/[:.]/g, "-")
@@ -840,7 +840,7 @@ function getDebugRecordingFilename(bundle) {
   return `${installation}-debug-recording-${stamp}.oqdebug.json`;
 }
 
-async function downloadDebugRecordingBundle() {
+export async function downloadDebugRecordingBundle() {
   if (getDebugRecordingSampleCount() === 0) {
     state.debugRecordingError = "Er is nog geen debugopname om te downloaden.";
     render();
@@ -860,7 +860,7 @@ async function downloadDebugRecordingBundle() {
     }
     const bundle = await response.json();
     state.debugRecordingDeviceBundle = bundle;
-    downloadDebugRecordingTextFile(getDebugRecordingFilename(bundle), getDebugRecordingCompactJson(bundle));
+    downloadTextFile(getDebugRecordingFilename(bundle), getDebugRecordingCompactJson(bundle), "application/json");
     acknowledgeDebugRecording(bundle);
     state.debugRecordingNotice = rollingActive ? "Momentopname gedownload. Rolling debug loopt door." : "Supportbestand gedownload.";
   } catch (error) {
@@ -871,7 +871,7 @@ async function downloadDebugRecordingBundle() {
   }
 }
 
-async function copyDebugRecordingBundle() {
+export async function copyDebugRecordingBundle() {
   if (getDebugRecordingSampleCount() === 0) {
     state.debugRecordingError = "Er is nog geen debugopname om te kopiëren.";
     render();
@@ -905,7 +905,7 @@ async function copyDebugRecordingBundle() {
   }
 }
 
-function renderDebugRecordingModal() {
+export function renderDebugRecordingModal() {
   const active = state.debugRecordingActive;
   const rolling = isDebugRecordingRolling();
   const frozen = isDebugRecordingFrozen();

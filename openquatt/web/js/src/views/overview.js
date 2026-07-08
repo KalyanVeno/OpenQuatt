@@ -1,4 +1,16 @@
-  function renderOverviewStatCardMarkup({ label, value, tone, note, status = false }) {
+import { formatOverviewStatValue, getEntityNumericValue, getEntityStateText, hasEntity, isEntityActive, isTrendHistoryEnabled } from "../core/app-shared.js";
+import { isCurveMode } from "../core/domain-helpers.js";
+import { formatOpenQuattResumeDateTime, getEntityValue, hasOpenQuattResumeSchedule } from "../core/entity-store.js";
+import { getOverviewControlsRenderSignature, getRenderSignature } from "../core/entity-sync.js";
+import { formatNumericState } from "../core/formatting.js";
+import { escapeHtml } from "../core/html.js";
+import { DEFAULT_TREND_WINDOW_HOURS, isTrendHistoryFlashEnabled, normalizeTrendWindowHours, setTrendWindowHours, state, TREND_WINDOW_HOURS_OPTIONS } from "../core/runtime.js";
+import { formatCoolingBlockReason } from "../settings/cooling.js";
+import { getInstallationMonitoringModel } from "../settings/installation.js";
+import { isSystemInStandby, replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfChanged } from "./heatpump.js";
+import { render } from "./shell.js";
+
+  export function renderOverviewStatCardMarkup({ label, value, tone, note, status = false }) {
     return `
       <article class="oq-overview-stat oq-overview-stat--${escapeHtml(tone)}${status ? " oq-overview-stat--status" : ""}">
         <p>${escapeHtml(label)}</p>
@@ -8,7 +20,7 @@
     `;
   }
 
-  function renderOverviewStatCards(cards, status = false) {
+  export function renderOverviewStatCards(cards, status = false) {
     return cards.map((card) => renderOverviewStatCardMarkup({
       ...card,
       value: Object.prototype.hasOwnProperty.call(card, "key") ? formatOverviewStatValue(card.key) : card.value,
@@ -16,7 +28,7 @@
     })).join("");
   }
 
-  function renderOverviewSectionHead(title) {
+  export function renderOverviewSectionHead(title) {
     return `
       <div class="oq-overview-sectionhead">
         <h3>${escapeHtml(title)}</h3>
@@ -24,7 +36,7 @@
     `;
   }
 
-  function renderOverviewInstallationMonitoringNotice() {
+  export function renderOverviewInstallationMonitoringNotice() {
     const monitoring = getInstallationMonitoringModel();
     return `
       <aside class="oq-overview-monitoring-notice${monitoring.active ? " is-warning" : " is-hidden"}" data-oq-monitoring-notice data-render-signature="${escapeHtml(getRenderSignature(monitoring))}">
@@ -38,7 +50,7 @@
     `;
   }
 
-  function renderOverviewShell({ className, title, copy, body, signature = "" }) {
+  export function renderOverviewShell({ className, title, copy, body, signature = "" }) {
     const signatureAttr = signature ? ` data-render-signature="${escapeHtml(signature)}"` : "";
     return `
       <section class="${escapeHtml(className)}"${signatureAttr}>
@@ -48,7 +60,7 @@
     `;
   }
 
-  function getHeatPumpPanelStatusLabel(mode, running) {
+  export function getHeatPumpPanelStatusLabel(mode, running) {
     if (running) {
       return "Actief";
     }
@@ -61,13 +73,13 @@
     return "Niet actief";
   }
 
-  function renderHpPanelStatusChip(mode, running) {
+  export function renderHpPanelStatusChip(mode, running) {
     const tone = running ? "active" : "neutral";
     const label = getHeatPumpPanelStatusLabel(mode, running);
     return `<span class="oq-overview-chip oq-overview-chip--${escapeHtml(tone)}" data-oq-bind="panel-status">${escapeHtml(label)}</span>`;
   }
 
-  function renderHpPanelWarningChip(failureText) {
+  export function renderHpPanelWarningChip(failureText) {
     return `
       <span
         class="oq-overview-chip oq-overview-chip--warning"
@@ -86,11 +98,11 @@
     `;
   }
 
-  function renderHpPanelStatusRow(mode, running, warningActive, failureText) {
+  export function renderHpPanelStatusRow(mode, running, warningActive, failureText) {
     return `${warningActive ? renderHpPanelWarningChip(failureText) : ""}${renderHpPanelStatusChip(mode, running)}`;
   }
 
-  function patchHpPanelStatusRow(headStatus, mode, running, warningActive, failureText) {
+  export function patchHpPanelStatusRow(headStatus, mode, running, warningActive, failureText) {
     if (!headStatus) {
       return;
     }
@@ -101,7 +113,7 @@
     }
   }
 
-  function renderTempRow(label, key, explicitValue = "") {
+  export function renderTempRow(label, key, explicitValue = "") {
     return `
       <div class="oq-overview-row">
         <span>${escapeHtml(label)}</span>
@@ -110,7 +122,7 @@
     `;
   }
 
-  function renderOverviewMetricCard(label, value, tone = "blue", note = "") {
+  export function renderOverviewMetricCard(label, value, tone = "blue", note = "") {
     return `
       <article class="oq-overview-metric oq-overview-metric--${escapeHtml(tone)}">
         <span>${escapeHtml(label)}</span>
@@ -120,22 +132,14 @@
     `;
   }
 
-  function formatSignedTemperature(value) {
+  export function formatSignedTemperature(value) {
     if (Number.isNaN(value)) {
       return "—";
     }
     return `${value > 0 ? "+" : ""}${value.toFixed(1)} °C`;
   }
 
-  function formatNumericState(value, decimals, unit = "") {
-    const numeric = Number(value);
-    if (Number.isNaN(numeric)) {
-      return "—";
-    }
-    return `${numeric.toFixed(decimals)}${unit ? ` ${unit}` : ""}`;
-  }
-
-  function formatOverviewTrendDurationLabel(totalMinutes) {
+  export function formatOverviewTrendDurationLabel(totalMinutes) {
     if (!Number.isFinite(totalMinutes) || totalMinutes < 0) {
       return "—";
     }
@@ -152,7 +156,7 @@
     return `${minutes}m`;
   }
 
-  function parseOverviewClockMinutes(rawValue) {
+  export function parseOverviewClockMinutes(rawValue) {
     const value = String(rawValue || "").trim();
     const match = value.match(/^(\d{1,2}):(\d{2})$/);
     if (!match) {
@@ -166,7 +170,7 @@
     return (hours * 60) + minutes;
   }
 
-  function formatOverviewTrendClockLabel(totalMinutes) {
+  export function formatOverviewTrendClockLabel(totalMinutes) {
     const clockMinutes = parseOverviewClockMinutes(getEntityStateText("timeNowHhmm", ""));
     if (!Number.isFinite(clockMinutes)) {
       return "";
@@ -178,7 +182,7 @@
     return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
   }
 
-  function formatOverviewTrendPointTime(sampleTimestamp, endTime) {
+  export function formatOverviewTrendPointTime(sampleTimestamp, endTime) {
     const ageMinutes = Math.max(0, (Number(endTime) - Number(sampleTimestamp)) / 60000);
     const ageLabel = formatOverviewTrendDurationLabel(ageMinutes);
     const clockLabel = hasEntity("timeValid") && isEntityActive("timeValid") ? formatOverviewTrendClockLabel(ageMinutes) : "";
@@ -194,7 +198,7 @@
     };
   }
 
-  function formatSignedPower(value) {
+  export function formatSignedPower(value) {
     const numeric = Number(value);
     if (Number.isNaN(numeric)) {
       return "—";
@@ -203,24 +207,24 @@
     return `${prefix}${Math.abs(numeric).toFixed(0)} W`;
   }
 
-  function getOverviewOutsideTempKey() {
+  export function getOverviewOutsideTempKey() {
     return ["outsideTempSelected", "hp1OutsideTemp", "hp2OutsideTemp"].find((key) => hasEntity(key)) || "";
   }
 
-  function getOverviewReturnTempKey() {
+  export function getOverviewReturnTempKey() {
     return ["hp1WaterIn", "hp2WaterIn"].find((key) => hasEntity(key)) || "";
   }
 
-  function isCoolingControlMode(modeLabel = getEntityStateText("controlModeLabel", "")) {
+  export function isCoolingControlMode(modeLabel = getEntityStateText("controlModeLabel", "")) {
     const normalized = String(modeLabel || "").toLowerCase();
     return normalized.includes("cm5") || normalized.includes("cooling") || normalized.includes("koeling");
   }
 
-  function isCoolingOverviewActive() {
+  export function isCoolingOverviewActive() {
     return isCoolingControlMode();
   }
 
-  function isCoolingWaitingForRoomRequest(reason, requestActive) {
+  export function isCoolingWaitingForRoomRequest(reason, requestActive) {
     const normalized = String(reason || "").trim().toLowerCase();
     if (
       normalized === "waiting for room request" ||
@@ -236,11 +240,11 @@
     return normalized === "flow too low" || normalized === "flow te laag" || normalized === "flow unavailable";
   }
 
-  function getOverviewStrategyLabel() {
+  export function getOverviewStrategyLabel() {
     return isCoolingOverviewActive() ? "Koeling" : isCurveMode() ? "Stooklijn" : "Power House";
   }
 
-  function getPowerHouseRequestedPower() {
+  export function getPowerHouseRequestedPower() {
     const keys = ["phouseReq", "strategyRequestedPower"];
     for (const key of keys) {
       const numeric = getEntityNumericValue(key);
@@ -251,7 +255,7 @@
     return Number.NaN;
   }
 
-  function getPowerHouseOverviewModel() {
+  export function getPowerHouseOverviewModel() {
     const requested = getPowerHouseRequestedPower();
     const house = getEntityNumericValue("phouseHouse");
     const delivered = getEntityNumericValue("totalHeat");
@@ -285,7 +289,7 @@
     };
   }
 
-  function getCurveOverviewModel() {
+  export function getCurveOverviewModel() {
     const target = getEntityNumericValue("curveSupplyTarget");
     const supply = getEntityNumericValue("supplyTemp");
     const outsideKey = getOverviewOutsideTempKey();
@@ -320,7 +324,7 @@
     };
   }
 
-  function getCoolingOverviewModel() {
+  export function getCoolingOverviewModel() {
     const supply = getEntityNumericValue("supplyTemp");
     const guardMode = getEntityStateText("coolingGuardMode", "");
     const fallbackNightMin = getEntityStateText("coolingFallbackNightMinOutdoorTemp", "—");
@@ -374,7 +378,7 @@
     };
   }
 
-  function getOverviewStrategySectionModel() {
+  export function getOverviewStrategySectionModel() {
     if (isCoolingOverviewActive()) {
       const model = getCoolingOverviewModel();
       const guardMode = model.guardMode.toLowerCase();
@@ -434,7 +438,7 @@
     };
   }
 
-  function renderOverviewNarrativePanel(model) {
+  export function renderOverviewNarrativePanel(model) {
     return renderOverviewShell({
       className: "oq-overview-system",
       title: model.title,
@@ -455,7 +459,7 @@
     });
   }
 
-  function getOverviewPrimarySignal() {
+  export function getOverviewPrimarySignal() {
     if (!isEntityActive("openquattEnabled")) {
       return {
         label: "Regeling nu",
@@ -501,7 +505,7 @@
     };
   }
 
-  function getOverviewSystemSignal() {
+  export function getOverviewSystemSignal() {
     if (!isEntityActive("openquattEnabled")) {
       return {
         label: "Systeem",
@@ -551,7 +555,7 @@
     };
   }
 
-  function getOverviewStatusCards(strategyLabel, controlModeLabel) {
+  export function getOverviewStatusCards(strategyLabel, controlModeLabel) {
     const primary = getOverviewPrimarySignal();
     const system = getOverviewSystemSignal();
     return [
@@ -562,7 +566,7 @@
     ];
   }
 
-  function renderOverviewStatusPanel(strategyLabel, controlModeLabel) {
+  export function renderOverviewStatusPanel(strategyLabel, controlModeLabel) {
     const cards = getOverviewStatusCards(strategyLabel, controlModeLabel);
     return `
       <section class="oq-overview-statuspanel" aria-label="Systeemstatus" data-render-signature="${escapeHtml(getRenderSignature(cards))}">
@@ -574,7 +578,7 @@
     `;
   }
 
-  function getOverviewTopCards() {
+  export function getOverviewTopCards() {
     const coolingActive = isCoolingOverviewActive();
     return [
       { key: "totalPower", label: "Elektrisch vermogen", tone: "blue", note: "hele systeem" },
@@ -584,7 +588,7 @@
     ];
   }
 
-  function getOverviewControlCards() {
+  export function getOverviewControlCards() {
     const openquattEnabled = isEntityActive("openquattEnabled");
     const openquattResumeAt = getEntityValue("openquattResumeAt");
     const openquattResumeScheduled = hasOpenQuattResumeSchedule(openquattResumeAt);
@@ -640,7 +644,7 @@
     ].filter((card) => hasEntity(card.key));
   }
 
-  function renderOverviewControlMeta(meta = []) {
+  export function renderOverviewControlMeta(meta = []) {
     return !meta.length ? "" : `
       <div class="oq-overview-controlpanel-meta">
         ${meta.map((item) => `
@@ -658,7 +662,7 @@
     `;
   }
 
-  function renderOverviewControlButton({ className, action, label, busy = false, loading = false, attrs = "" }) {
+  export function renderOverviewControlButton({ className, action, label, busy = false, loading = false, attrs = "" }) {
     return `
       <button
         class="${className}${busy ? " is-busy" : ""}"
@@ -675,7 +679,7 @@
     `;
   }
 
-  function renderOverviewControlActions(card) {
+  export function renderOverviewControlActions(card) {
     if (card.kind === "openquatt-control") {
       const busy = state.busyAction === "openquatt-regulation";
       const resumeLoading = (state.loadingEntities || state.entitySyncInFlight) && !hasEntity("openquattResumeAt");
@@ -725,7 +729,7 @@
     `;
   }
 
-  function renderOverviewControlPanels() {
+  export function renderOverviewControlPanels() {
     const cards = getOverviewControlCards();
     if (!cards.length) {
       return "";
@@ -749,7 +753,7 @@
     `;
   }
 
-  function renderOverviewSummaryShell(strategyLabel) {
+  export function renderOverviewSummaryShell(strategyLabel) {
     const controlModeLabel = getEntityStateText("controlModeLabel");
     return `
       <section class="oq-overview-summary-shell">
@@ -778,7 +782,7 @@
     `;
   }
 
-  function getOverviewTempsModel() {
+  export function getOverviewTempsModel() {
     const outsideTempKey = getOverviewOutsideTempKey();
     const returnTempKey = getOverviewReturnTempKey();
     if (isCoolingOverviewActive()) {
@@ -810,14 +814,14 @@
     };
   }
 
-  function getOverviewTempsRenderSignature(model = getOverviewTempsModel()) {
+  export function getOverviewTempsRenderSignature(model = getOverviewTempsModel()) {
     return getRenderSignature({
       ...model,
       values: model.rows.map((row) => row.value || getEntityStateText(row.key)),
     });
   }
 
-  function renderOverviewTempsPanel() {
+  export function renderOverviewTempsPanel() {
     const model = getOverviewTempsModel();
     return renderOverviewShell({
       className: "oq-overview-temps",
@@ -832,10 +836,10 @@
     });
   }
 
-  const OVERVIEW_TREND_MAX_POINTS = 360;
-  const OVERVIEW_TREND_MIN_EFFICIENCY_INPUT_W = 100;
+  export const OVERVIEW_TREND_MAX_POINTS = 360;
+  export const OVERVIEW_TREND_MIN_EFFICIENCY_INPUT_W = 100;
 
-  function getOverviewTrendWindowHours() {
+  export function getOverviewTrendWindowHours() {
     const normalized = normalizeTrendWindowHours(state.trendWindowHours || DEFAULT_TREND_WINDOW_HOURS);
     if (normalized !== state.trendWindowHours) {
       setTrendWindowHours(normalized);
@@ -843,11 +847,11 @@
     return normalized;
   }
 
-  function getOverviewTrendWindowMs(windowHours = getOverviewTrendWindowHours()) {
+  export function getOverviewTrendWindowMs(windowHours = getOverviewTrendWindowHours()) {
     return Math.max(1, Number(windowHours) || 24) * 60 * 60 * 1000;
   }
 
-  function formatOverviewTrendWindowLabel(windowHours = getOverviewTrendWindowHours()) {
+  export function formatOverviewTrendWindowLabel(windowHours = getOverviewTrendWindowHours()) {
     const hours = Number(windowHours) || 24;
     if (hours >= 72 && hours % 24 === 0) {
       return `${hours / 24}d`;
@@ -855,7 +859,7 @@
     return `${hours}u`;
   }
 
-  function formatOverviewTrendWindowText(windowHours = getOverviewTrendWindowHours()) {
+  export function formatOverviewTrendWindowText(windowHours = getOverviewTrendWindowHours()) {
     const hours = Number(windowHours) || 24;
     if (hours >= 72 && hours % 24 === 0) {
       const days = hours / 24;
@@ -864,7 +868,7 @@
     return `${hours} uur`;
   }
 
-  function formatOverviewTrendDateTimeLabel(timestamp) {
+  export function formatOverviewTrendDateTimeLabel(timestamp) {
     if (!Number.isFinite(timestamp)) {
       return "—";
     }
@@ -885,7 +889,7 @@
     }
   }
 
-  function getOverviewUptimeMillis() {
+  export function getOverviewUptimeMillis() {
     const entity = state.entities.uptime;
     if (!entity) {
       return Number.NaN;
@@ -909,7 +913,7 @@
     return numeric * 1000;
   }
 
-  function parseOverviewTrendRow(row) {
+  export function parseOverviewTrendRow(row) {
     const parts = String(row || "").trim().split("|");
     if (parts.length < 5) {
       return null;
@@ -937,21 +941,21 @@
     };
   }
 
-  function isDevPreviewEnvironment() {
+  export function isDevPreviewEnvironment() {
     return Boolean(
       (typeof window !== "undefined" && window.__OQ_DEV_CONTROLS__)
       || (typeof window !== "undefined" && window.__OQ_DEV_META)
     );
   }
 
-  function getOverviewTrendDevMockSamples(windowHours = getOverviewTrendWindowHours()) {
+  export function getOverviewTrendDevMockSamples(windowHours = getOverviewTrendWindowHours()) {
     if (typeof window === "undefined" || !window.__OQ_DEV_TREND_MOCKS__ || typeof window.__OQ_DEV_TREND_MOCKS__.buildTrendPreviewSamples !== "function") {
       return [];
     }
     return window.__OQ_DEV_TREND_MOCKS__.buildTrendPreviewSamples(windowHours);
   }
 
-  function getOverviewTrendSamples() {
+  export function getOverviewTrendSamples() {
     const windowMs = getOverviewTrendWindowMs();
     const raw = String(state.trendHistoryRaw || "").trim();
     if (!raw) {
@@ -980,7 +984,7 @@
     return isDevPreviewEnvironment() ? getOverviewTrendDevMockSamples(windowHours) : [];
   }
 
-  function getOverviewTrendCardsModel() {
+  export function getOverviewTrendCardsModel() {
     const windowHours = getOverviewTrendWindowHours();
     const windowText = formatOverviewTrendWindowText(windowHours);
     const samples = getOverviewTrendSamples();
@@ -1068,7 +1072,7 @@
     ];
   }
 
-  function getOverviewTrendCardSignature(card) {
+  export function getOverviewTrendCardSignature(card) {
     const latest = card.samples[card.samples.length - 1] || null;
     return getRenderSignature({
       id: card.id,
@@ -1089,7 +1093,7 @@
     });
   }
 
-  function getOverviewTrendSeriesValue(series, sample) {
+  export function getOverviewTrendSeriesValue(series, sample) {
     if (!series || !sample) {
       return Number.NaN;
     }
@@ -1100,7 +1104,7 @@
     return Number.isFinite(numeric) ? numeric : Number.NaN;
   }
 
-  function getOverviewTrendRange(samples, series) {
+  export function getOverviewTrendRange(samples, series) {
     const values = [];
     samples.forEach((sample) => {
       series.forEach((item) => {
@@ -1121,7 +1125,7 @@
     };
   }
 
-  function getNiceTickStep(rawStep) {
+  export function getNiceTickStep(rawStep) {
     if (!Number.isFinite(rawStep) || rawStep <= 0) {
       return 1;
     }
@@ -1140,7 +1144,7 @@
     return niceFraction * (10 ** exponent);
   }
 
-  function getOverviewTrendAxisTicks(range, series) {
+  export function getOverviewTrendAxisTicks(range, series) {
     const rangeMin = Number.isFinite(range?.min) ? range.min : 0;
     const rangeMax = Number.isFinite(range?.max) ? range.max : 1;
     const rangeSpan = Math.max(rangeMax - rangeMin, 1);
@@ -1185,7 +1189,7 @@
     };
   }
 
-  function getOverviewTrendChartModel(samples, series, options = {}) {
+  export function getOverviewTrendChartModel(samples, series, options = {}) {
     const rawWindowHours = Number(options.windowHours);
     const windowHours = Number.isFinite(rawWindowHours) ? rawWindowHours : getOverviewTrendWindowHours();
     const windowMs = getOverviewTrendWindowMs(windowHours);
@@ -1326,7 +1330,7 @@
     };
   }
 
-  function getOverviewTrendRenderSignature() {
+  export function getOverviewTrendRenderSignature() {
     return getRenderSignature({
       windowHours: getOverviewTrendWindowHours(),
       trendSignature: state.trendHistorySignature || "",
@@ -1335,11 +1339,11 @@
     });
   }
 
-  function getOverviewTrendCardById(cardId) {
+  export function getOverviewTrendCardById(cardId) {
     return getOverviewTrendCardsModel().find((card) => card.id === cardId) || null;
   }
 
-  function getNearestOverviewTrendPointIndex(model, x) {
+  export function getNearestOverviewTrendPointIndex(model, x) {
     if (!model || !Array.isArray(model.points) || model.points.length === 0) {
       return -1;
     }
@@ -1356,7 +1360,7 @@
     return nearestIndex;
   }
 
-  function renderOverviewTrendLatestPill(series, sample) {
+  export function renderOverviewTrendLatestPill(series, sample) {
     const value = getOverviewTrendSeriesCurrentValue(series, sample);
     return `
       <div class="oq-overview-trend-pill oq-overview-trend-pill--${escapeHtml(series.tone)}" data-oq-trend-current="${escapeHtml(series.id)}">
@@ -1366,7 +1370,7 @@
     `;
   }
 
-  function getOverviewTrendSeriesCurrentValue(series, fallbackSample) {
+  export function getOverviewTrendSeriesCurrentValue(series, fallbackSample) {
     if (series?.currentKey && hasEntity(series.currentKey)) {
       const current = getEntityNumericValue(series.currentKey);
       if (Number.isFinite(current)) {
@@ -1376,7 +1380,7 @@
     return getOverviewTrendSeriesValue(series, fallbackSample);
   }
 
-  function patchOverviewTrendCurrentValues(root) {
+  export function patchOverviewTrendCurrentValues(root) {
     if (!root) {
       return;
     }
@@ -1401,7 +1405,7 @@
     });
   }
 
-  function renderOverviewTrendChart(samples, series, mockData = false, windowHours = getOverviewTrendWindowHours()) {
+  export function renderOverviewTrendChart(samples, series, mockData = false, windowHours = getOverviewTrendWindowHours()) {
     const model = getOverviewTrendChartModel(samples, series, { mockData, windowHours });
     const windowText = formatOverviewTrendWindowText(windowHours);
     const startLabel = formatOverviewTrendDateTimeLabel(model.startTime);
@@ -1467,7 +1471,7 @@
     `;
   }
 
-  function renderOverviewTrendCard(card) {
+  export function renderOverviewTrendCard(card) {
     const latest = card.samples[card.samples.length - 1] || null;
     const windowText = formatOverviewTrendWindowText(card.windowHours);
     return `
@@ -1497,7 +1501,7 @@
     `;
   }
 
-  function renderOverviewTrendsPanel() {
+  export function renderOverviewTrendsPanel() {
     const cards = getOverviewTrendCardsModel();
     return `
       <section class="oq-overview-trends" aria-label="Diagnose" data-render-signature="${escapeHtml(getOverviewTrendRenderSignature())}">
@@ -1508,7 +1512,7 @@
     `;
   }
 
-  function renderOverviewTrendsDisabledNotice() {
+  export function renderOverviewTrendsDisabledNotice() {
     return `
       <div class="oq-overview-trends-disabled">
         <p>Trendhistorie</p>
@@ -1521,7 +1525,7 @@
     `;
   }
 
-  function renderTrendWindowSwitcher() {
+  export function renderTrendWindowSwitcher() {
     const windowHours = getOverviewTrendWindowHours();
     const flashHistoryEnabled = isTrendHistoryFlashEnabled();
     return `
@@ -1550,7 +1554,7 @@
     `;
   }
 
-  function renderTrendsInfoToggle() {
+  export function renderTrendsInfoToggle() {
     const infoId = "overview-trends-history";
     const open = state.settingsInfoOpen === infoId;
     const copy = "De waarden boven de grafieken zijn live. De grafieken bewaren elke 5 minuten een meetpunt, standaard 7 dagen in het werkgeheugen. Met flashopslag blijft historie ook na herstart of OTA beschikbaar, tot 30 dagen terug.";
@@ -1571,7 +1575,7 @@
     `;
   }
 
-  function renderDiagnosisView() {
+  export function renderDiagnosisView() {
     const trendHistoryEnabled = isTrendHistoryEnabled();
     const trendSamples = getOverviewTrendSamples();
     const hasTrendSamples = trendSamples.length > 0;
@@ -1602,7 +1606,7 @@
     `;
   }
 
-  function patchDiagnosisDom() {
+  export function patchDiagnosisDom() {
     if (!state.root || state.appView !== "diagnosis") {
       return false;
     }
@@ -1627,7 +1631,7 @@
     return true;
   }
 
-  function getOverviewTrendHoverNodes(card) {
+  export function getOverviewTrendHoverNodes(card) {
     if (!card) {
       return null;
     }
@@ -1659,7 +1663,7 @@
     return nodes;
   }
 
-  function updateOverviewTrendHoverCard(card, model, pointIndex, nodes = getOverviewTrendHoverNodes(card)) {
+  export function updateOverviewTrendHoverCard(card, model, pointIndex, nodes = getOverviewTrendHoverNodes(card)) {
     if (!card || !model || !Array.isArray(model.points) || model.points.length === 0) {
       return;
     }
@@ -1719,7 +1723,7 @@
     card.dataset.oqTrendHoverIndex = indexText;
   }
 
-  function clearOverviewTrendHoverCard(card) {
+  export function clearOverviewTrendHoverCard(card) {
     if (!card) {
       return;
     }
@@ -1733,7 +1737,7 @@
     delete card.dataset.oqTrendHoverIndex;
   }
 
-  function syncOverviewTrendInteractions(root = state.root) {
+  export function syncOverviewTrendInteractions(root = state.root) {
     if (!root) {
       return;
     }

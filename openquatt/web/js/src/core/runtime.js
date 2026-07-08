@@ -1,7 +1,15 @@
-  const DEFAULT_TREND_WINDOW_HOURS = 24;
-  const TREND_WINDOW_HOURS_OPTIONS = [3, 12, 24, 72, 168, 336, 720];
+import { isTrendHistoryEnabled } from "./app-shared.js";
+import { APP_VIEW_IDS, FAN_ROTATION_DEG_PER_SEC, FAST_POLL_INTERVAL_MS, FLOW_OFFSET_PX_PER_SEC, HIDDEN_POLL_INTERVAL_MS, OFFICIAL_ESPHOME_UI_URL, POLL_JITTER_MAX_MS, POLL_JITTER_MIN_MS, SETTINGS_GROUP_IDS, SETTINGS_GROUPS } from "./config.js";
+import { handleChange, handleClick, handleFocusChange, handleInput, handleKeyDown, handlePointerDown, handlePointerMove, handlePointerUp, handleSettingsInteractionEnd, handleSettingsInteractionStart, handleWheel } from "./entity-actions.js";
+import { primeEntities, syncEntities } from "./entity-sync.js";
+import { getStoredDebugRecordingAcknowledgedId, refreshDebugRecordingDeviceStatus } from "../features/debug-recording.js";
+import { isFirmwareOtaQuietActive } from "../features/firmware-update.js";
+import { render } from "../views/shell.js";
 
-  const state = {
+  export const DEFAULT_TREND_WINDOW_HOURS = 24;
+  export const TREND_WINDOW_HOURS_OPTIONS = [3, 12, 24, 72, 168, 336, 720];
+
+  export const state = {
     mounted: false,
     root: null,
     nativeApp: null,
@@ -229,7 +237,7 @@
     },
   };
 
-  function getStoredOverviewTheme() {
+  export function getStoredOverviewTheme() {
     try {
       return window.localStorage.getItem("oq-overview-theme") === "dark" ? "dark" : "light";
     } catch (_error) {
@@ -237,7 +245,7 @@
     }
   }
 
-  function setOverviewTheme(theme) {
+  export function setOverviewTheme(theme) {
     state.overviewTheme = theme === "dark" ? "dark" : "light";
     try {
       window.localStorage.setItem("oq-overview-theme", state.overviewTheme);
@@ -246,15 +254,15 @@
     }
   }
 
-  function getStoredInterfacePanelOpen() {
+  export function getStoredInterfacePanelOpen() {
     return false;
   }
 
-  function setInterfacePanelOpen(open) {
+  export function setInterfacePanelOpen(open) {
     state.interfacePanelOpen = open === true;
   }
 
-  function getStoredSurface() {
+  export function getStoredSurface() {
     try {
       return window.localStorage.getItem("oq-active-surface") === "native" ? "native" : "app";
     } catch (_error) {
@@ -262,7 +270,7 @@
     }
   }
 
-  function setStoredSurface(surface) {
+  export function setStoredSurface(surface) {
     try {
       window.localStorage.setItem("oq-active-surface", surface === "native" ? "native" : "app");
     } catch (_error) {
@@ -270,7 +278,7 @@
     }
   }
 
-  function getStoredDevPanelOpen() {
+  export function getStoredDevPanelOpen() {
     try {
       return window.localStorage.getItem("oq-dev-panel-open") === "true";
     } catch (_error) {
@@ -278,7 +286,7 @@
     }
   }
 
-  function getStoredSettingsGroup() {
+  export function getStoredSettingsGroup() {
     try {
       const stored = window.localStorage.getItem("oq-settings-group");
       return SETTINGS_GROUP_IDS.has(stored) ? stored : SETTINGS_GROUPS[0].id;
@@ -287,7 +295,7 @@
     }
   }
 
-  function setSettingsGroup(groupId, options = {}) {
+  export function setSettingsGroup(groupId, options = {}) {
     state.settingsGroup = SETTINGS_GROUP_IDS.has(groupId) ? groupId : SETTINGS_GROUPS[0].id;
     try {
       window.localStorage.setItem("oq-settings-group", state.settingsGroup);
@@ -299,7 +307,7 @@
     }
   }
 
-  function setDevPanelOpen(open) {
+  export function setDevPanelOpen(open) {
     state.devPanelOpen = open === true;
     try {
       window.localStorage.setItem("oq-dev-panel-open", state.devPanelOpen ? "true" : "false");
@@ -308,7 +316,7 @@
     }
   }
 
-  function getStoredHpVisualMode() {
+  export function getStoredHpVisualMode() {
     try {
       return window.localStorage.getItem("oq-hp-visual-mode") === "compact" ? "compact" : "schematic";
     } catch (_error) {
@@ -316,7 +324,7 @@
     }
   }
 
-  function setHpVisualMode(mode) {
+  export function setHpVisualMode(mode) {
     state.hpVisualMode = mode === "compact" ? "compact" : "schematic";
     try {
       window.localStorage.setItem("oq-hp-visual-mode", state.hpVisualMode);
@@ -325,7 +333,7 @@
     }
   }
 
-  function getStoredHpLayoutMode() {
+  export function getStoredHpLayoutMode() {
     try {
       const stored = window.localStorage.getItem("oq-hp-layout-mode");
       return stored === "focus-hp1" || stored === "focus-hp2" ? stored : "equal";
@@ -334,7 +342,7 @@
     }
   }
 
-  function setHpLayoutMode(mode) {
+  export function setHpLayoutMode(mode) {
     state.hpLayoutMode = mode === "focus-hp1" || mode === "focus-hp2" ? mode : "equal";
     try {
       window.localStorage.setItem("oq-hp-layout-mode", state.hpLayoutMode);
@@ -343,7 +351,7 @@
     }
   }
 
-  function getStoredTrendWindowHours() {
+  export function getStoredTrendWindowHours() {
     try {
       const stored = Number(window.localStorage.getItem("oq-trend-window-hours"));
       return TREND_WINDOW_HOURS_OPTIONS.includes(stored) ? stored : DEFAULT_TREND_WINDOW_HOURS;
@@ -352,7 +360,7 @@
     }
   }
 
-  function isTrendHistoryFlashEnabled() {
+  export function isTrendHistoryFlashEnabled() {
     const entity = state.entities?.trendHistoryFlashEnabled;
     if (!entity) {
       return false;
@@ -364,13 +372,13 @@
     return raw === "on" || raw === "true" || raw === "1";
   }
 
-  function getAvailableTrendWindowHoursOptions() {
+  export function getAvailableTrendWindowHoursOptions() {
     return isTrendHistoryFlashEnabled()
       ? TREND_WINDOW_HOURS_OPTIONS
       : TREND_WINDOW_HOURS_OPTIONS.filter((hours) => hours <= 168);
   }
 
-  function normalizeTrendWindowHours(hours) {
+  export function normalizeTrendWindowHours(hours) {
     const options = getAvailableTrendWindowHoursOptions();
     const numeric = Number(hours);
     if (options.includes(numeric)) {
@@ -382,7 +390,7 @@
     return options.includes(DEFAULT_TREND_WINDOW_HOURS) ? DEFAULT_TREND_WINDOW_HOURS : options[0];
   }
 
-  function setTrendWindowHours(hours) {
+  export function setTrendWindowHours(hours) {
     state.trendWindowHours = normalizeTrendWindowHours(hours);
     try {
       window.localStorage.setItem("oq-trend-window-hours", String(state.trendWindowHours));
@@ -391,11 +399,11 @@
     }
   }
 
-  function getDefaultAppView() {
+  export function getDefaultAppView() {
     return "overview";
   }
 
-  function getReducedMotionMedia() {
+  export function getReducedMotionMedia() {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
       return null;
     }
@@ -406,11 +414,11 @@
     }
   }
 
-  function getPrefersReducedMotion() {
+  export function getPrefersReducedMotion() {
     return Boolean(getReducedMotionMedia()?.matches);
   }
 
-  function handleReducedMotionPreferenceChange(event) {
+  export function handleReducedMotionPreferenceChange(event) {
     state.reducedMotion = Boolean(event?.matches);
     if (state.reducedMotion) {
       stopMotionLoop();
@@ -419,7 +427,7 @@
     startMotionLoop();
   }
 
-  function bindReducedMotionPreference() {
+  export function bindReducedMotionPreference() {
     const media = getReducedMotionMedia();
     if (!media || state.motionPreferenceMedia === media) {
       return;
@@ -435,11 +443,11 @@
     state.reducedMotion = Boolean(media.matches);
   }
 
-  function hasLoadedEntities() {
+  export function hasLoadedEntities() {
     return Object.keys(state.entities).length > 0;
   }
 
-  function stopMotionLoop() {
+  export function stopMotionLoop() {
     if (state.motionFrame) {
       window.cancelAnimationFrame(state.motionFrame);
       state.motionFrame = 0;
@@ -448,16 +456,16 @@
     clearLegacyMotionVariables();
   }
 
-  function getEntityPollJitterMs() {
+  export function getEntityPollJitterMs() {
     return POLL_JITTER_MIN_MS + Math.floor(Math.random() * (POLL_JITTER_MAX_MS - POLL_JITTER_MIN_MS + 1));
   }
 
-  function getEntityPollDelayMs() {
+  export function getEntityPollDelayMs() {
     const base = document.hidden ? HIDDEN_POLL_INTERVAL_MS : FAST_POLL_INTERVAL_MS;
     return base + getEntityPollJitterMs();
   }
 
-  function scheduleEntityPolling(delayMs = getEntityPollDelayMs()) {
+  export function scheduleEntityPolling(delayMs = getEntityPollDelayMs()) {
     if (state.pollTimer || state.nativeOpen || state.updateInstallBusy) {
       return;
     }
@@ -471,11 +479,11 @@
     }, delayMs);
   }
 
-  function startEntityPolling() {
+  export function startEntityPolling() {
     scheduleEntityPolling();
   }
 
-  function stopEntityPolling() {
+  export function stopEntityPolling() {
     if (!state.pollTimer) {
       return;
     }
@@ -483,7 +491,7 @@
     state.pollTimer = null;
   }
 
-  function handleVisibilityChange() {
+  export function handleVisibilityChange() {
     if (state.nativeOpen) {
       return;
     }
@@ -494,7 +502,7 @@
     }
   }
 
-  function syncSurfaceRuntime(options = {}) {
+  export function syncSurfaceRuntime(options = {}) {
     syncNativeVisibility();
     if (state.nativeOpen) {
       stopEntityPolling();
@@ -518,7 +526,7 @@
     void syncEntities({ forceFast: true });
   }
 
-  function normalizeAppView(view) {
+  export function normalizeAppView(view) {
     if (view === "trends") {
       view = "diagnosis";
     }
@@ -531,11 +539,11 @@
     return view;
   }
 
-  function normalizeUrlToken(value) {
+  export function normalizeUrlToken(value) {
     return String(value || "").trim().toLowerCase();
   }
 
-  function getUrlAppView() {
+  export function getUrlAppView() {
     try {
       const url = new URL(window.location.href);
       const rawQueryView = normalizeUrlToken(url.searchParams.get("view") || "");
@@ -552,7 +560,7 @@
     }
   }
 
-  function getUrlSettingsGroup() {
+  export function getUrlSettingsGroup() {
     try {
       const url = new URL(window.location.href);
       const section = normalizeUrlToken(url.searchParams.get("section") || "");
@@ -571,7 +579,7 @@
     }
   }
 
-  function syncUrlAppView(mode = "replace") {
+  export function syncUrlAppView(mode = "replace") {
     try {
       const url = new URL(window.location.href);
       const normalized = normalizeAppView(state.appView) || getDefaultAppView();
@@ -595,7 +603,7 @@
     }
   }
 
-  function setAppView(view, options = {}) {
+  export function setAppView(view, options = {}) {
     const normalized = normalizeAppView(view) || getDefaultAppView();
     const mode = options.syncMode || "replace";
     const changed = state.appView !== normalized;
@@ -606,7 +614,7 @@
     }
   }
 
-  function handlePopState() {
+  export function handlePopState() {
     const nextView = getUrlAppView() || getDefaultAppView();
     const nextSettingsGroup = nextView === "settings" ? (getUrlSettingsGroup() || state.settingsGroup) : "";
     if (nextView === state.appView && (nextView !== "settings" || nextSettingsGroup === state.settingsGroup)) {
@@ -626,7 +634,7 @@
     void syncEntities({ forceFast: true });
   }
 
-  function syncNativeVisibility() {
+  export function syncNativeVisibility() {
     if (!state.nativeApp) {
       return;
     }
@@ -636,7 +644,7 @@
     state.nativeApp.setAttribute("aria-hidden", state.nativeOpen ? "false" : "true");
   }
 
-  function boot() {
+  export function boot() {
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", mountWhenReady, { once: true });
     } else {
@@ -650,21 +658,21 @@
     document.addEventListener("visibilitychange", handleVisibilityChange);
   }
 
-  function handleMockUpdated() {
+  export function handleMockUpdated() {
     if (!state.mounted) {
       return;
     }
     void syncEntities();
   }
 
-  function handleDevControlsChanged() {
+  export function handleDevControlsChanged() {
     if (!state.mounted) {
       return;
     }
     render();
   }
 
-  function mountWhenReady() {
+  export function mountWhenReady() {
     ensureViewportMeta();
     let app = document.querySelector("esp-app");
     if (!app) {
@@ -688,7 +696,7 @@
     }
   }
 
-  function ensureViewportMeta() {
+  export function ensureViewportMeta() {
     if (!document.head) {
       return;
     }
@@ -702,7 +710,7 @@
     viewport.setAttribute("content", "width=device-width, initial-scale=1");
   }
 
-  function mountPanel(app) {
+  export function mountPanel(app) {
     const root = document.createElement("section");
     root.id = "oq-helper-root";
     root.lang = "nl-NL";
@@ -732,7 +740,7 @@
     render();
   }
 
-  function loadScriptOnce(src) {
+  export function loadScriptOnce(src) {
     return new Promise((resolve, reject) => {
       if (!src) {
         resolve();
@@ -763,7 +771,7 @@
     });
   }
 
-  async function ensureNativeFrontendLoaded() {
+  export async function ensureNativeFrontendLoaded() {
     if (state.nativeFrontendLoaded || state.nativeFrontendLoading) {
       return;
     }
@@ -789,7 +797,7 @@
     }
   }
 
-  function bindHeaderDevControls() {
+  export function bindHeaderDevControls() {
     if (!state.root) {
       return;
     }
@@ -800,7 +808,7 @@
     controls.bind(state.root);
   }
 
-  function clearLegacyMotionVariables() {
+  export function clearLegacyMotionVariables() {
     if (!state.root) {
       return;
     }
@@ -813,7 +821,7 @@
     }
   }
 
-  function refreshMotionTargets() {
+  export function refreshMotionTargets() {
     state.motionTargets = {
       pipeFlows: [],
       fanBlades: [],
@@ -847,11 +855,11 @@
     return state.motionTargets.pipeFlows.length + state.motionTargets.fanBlades.length;
   }
 
-  function hasMotionTargets() {
+  export function hasMotionTargets() {
     return state.motionTargets.pipeFlows.length > 0 || state.motionTargets.fanBlades.length > 0;
   }
 
-  function syncMotionVariables(now = performance.now()) {
+  export function syncMotionVariables(now = performance.now()) {
     if (!state.root || state.reducedMotion) {
       return false;
     }
@@ -878,7 +886,7 @@
     return true;
   }
 
-  function tickMotion(now) {
+  export function tickMotion(now) {
     if (!syncMotionVariables(now)) {
       state.motionFrame = 0;
       state.motionStartedAt = 0;
@@ -887,7 +895,7 @@
     state.motionFrame = window.requestAnimationFrame(tickMotion);
   }
 
-  function startMotionLoop() {
+  export function startMotionLoop() {
     if (state.motionFrame || state.reducedMotion) {
       return;
     }
@@ -903,9 +911,4 @@
       return;
     }
     state.motionFrame = window.requestAnimationFrame(tickMotion);
-  }
-
-  function getBasePath() {
-    const path = window.location.pathname.replace(/\/$/, "");
-    return path === "" ? "" : path;
   }

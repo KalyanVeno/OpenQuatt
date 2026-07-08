@@ -1,4 +1,18 @@
-  function renderGenerationWorkspace(mode = "wizard") {
+import { getEntityNumericValue, getEntityStateText, hasEntity, isEntityActive } from "../core/app-shared.js";
+import { QUICK_STEPS } from "../core/config.js";
+import { isCurveMode } from "../core/domain-helpers.js";
+import { formatValue, getEntityValue, toTimeInputValue } from "../core/entity-store.js";
+import { state } from "../core/runtime.js";
+import { getDeviceMeta, getInstallationTopology } from "./device-context.js";
+import { isWebServerLogScrollerNearBottom } from "./webserver-logs.js";
+import { formatSettingsOptionLabel, renderSettingsFieldCard, renderSettingsInfoToggle } from "../settings/core.js";
+import { renderCurveGraph, renderFlowSettingsFields, renderHeatingCurveProfileField, renderHeatingStrategyExplainCards, renderPowerHouseAdvancedField, renderPowerHouseBaseFields, renderSettingsCurveInputs, renderStrategySelectionFields } from "../settings/heating.js";
+import { renderBoilerCvFields, renderHpGenerationField } from "../settings/installation.js";
+import { renderSilentSettingsGrid } from "../settings/silent.js";
+import { renderWaterSettingsFields } from "../settings/water.js";
+import { escapeHtml } from "../core/html.js";
+
+  export function renderGenerationWorkspace(mode = "wizard") {
     const pickerMode = mode === "picker";
     if (pickerMode) {
       return `
@@ -22,7 +36,7 @@
     `;
   }
 
-  function normalizeQuickStartCicFeedUrl(rawValue) {
+  export function normalizeQuickStartCicFeedUrl(rawValue) {
     const value = String(rawValue || "").trim();
     if (!value) {
       return "";
@@ -45,7 +59,7 @@
     }
   }
 
-  function getQuickStartCicFeedUrlModel() {
+  export function getQuickStartCicFeedUrlModel() {
     const configuredUrl = String(getEntityValue("cicFeedUrl") || "").trim();
     const draftUrl = state.quickStartCicFeedUrlDraft === null
       ? configuredUrl
@@ -57,7 +71,7 @@
     };
   }
 
-  function renderQuickStartCicFeedUrlField(model, busy) {
+  export function renderQuickStartCicFeedUrlField(model, busy) {
     return `
       <article class="oq-settings-field oq-settings-field--span-2" data-oq-settings-field="quickStartCicFeedUrl">
         <div class="oq-settings-field-head">
@@ -84,7 +98,7 @@
     `;
   }
 
-  function normalizeQuickStartHardwareProfile(value) {
+  export function normalizeQuickStartHardwareProfile(value) {
     const normalized = String(value || "").trim().toLowerCase();
     if (normalized === "heatpump_controller_q" || normalized.includes("q-edition") || normalized.includes("controller q")) {
       return "heatpump_controller_q";
@@ -98,7 +112,7 @@
     return "";
   }
 
-  function getQuickStartHardwareProfileModel() {
+  export function getQuickStartHardwareProfileModel() {
     let profile = normalizeQuickStartHardwareProfile(getEntityValue("hardwareProfileText"));
     let inferred = false;
     if (!profile) {
@@ -130,7 +144,7 @@
     };
   }
 
-  function getQuickStartFlowSourceModel() {
+  export function getQuickStartFlowSourceModel() {
     const generation = String(getEntityValue("hpGeneration") || "").trim();
     const hardware = getQuickStartHardwareProfileModel();
     const isV1 = generation === "V1";
@@ -208,7 +222,7 @@
     };
   }
 
-  function getQuickStartThermostatSourceModel() {
+  export function getQuickStartThermostatSourceModel() {
     const hardware = getQuickStartHardwareProfileModel();
     const { isQEdition, isRemoteProfile } = hardware;
     const currentRoomTempSource = String(getEntityValue("roomTempSource") || "").trim();
@@ -280,7 +294,7 @@
     };
   }
 
-  function renderFlowSourceWorkspace() {
+  export function renderFlowSourceWorkspace() {
     const model = getQuickStartFlowSourceModel();
     const busy = state.busyAction === "quickstart-flow-source" || state.busyAction === "quickstart-flow-refresh";
     const flowTestBusy = state.busyAction === "quickstart-flow-test-start" || state.busyAction === "quickstart-flow-test-abort";
@@ -365,7 +379,7 @@
     `;
   }
 
-  function renderThermostatSourceWorkspace() {
+  export function renderThermostatSourceWorkspace() {
     const model = getQuickStartThermostatSourceModel();
     const busy = state.busyAction === "quickstart-thermostat-source";
     const statusClass = model.status === "Geldig" ? " is-active" : "";
@@ -442,7 +456,7 @@
     `;
   }
 
-  function renderQuickStartModal() {
+  export function renderQuickStartModal() {
     if (!state.quickStartModalOpen || state.loadingEntities || state.complete === null || (state.complete && state.quickStartModalMode !== "generation")) {
       return "";
     }
@@ -485,14 +499,14 @@
     `;
   }
 
-  function getQuickStartModalScrollerElement() {
+  export function getQuickStartModalScrollerElement() {
     if (!state.root) {
       return null;
     }
     return state.root.querySelector("[data-oq-quickstart-scroller]");
   }
 
-  function captureQuickStartScrollState() {
+  export function captureQuickStartScrollState() {
     const scroller = getQuickStartModalScrollerElement();
     if (!scroller) {
       return null;
@@ -506,7 +520,7 @@
     };
   }
 
-  function restoreQuickStartScrollState(scrollState) {
+  export function restoreQuickStartScrollState(scrollState) {
     if (!scrollState) {
       return;
     }
@@ -525,7 +539,7 @@
     scroller.scrollTop = Math.max(0, restoredScrollTop);
   }
 
-  function queueQuickStartScrollRestore(scrollState, defer = true) {
+  export function queueQuickStartScrollRestore(scrollState, defer = true) {
     if (!scrollState) {
       return;
     }
@@ -547,7 +561,7 @@
     applyScrollState();
   }
 
-  function renderStrategyWorkspace() {
+  export function renderStrategyWorkspace() {
     return `
       <section class="oq-helper-panel">
         <p class="oq-helper-label">${escapeHtml(getQuickStepKicker("strategy"))}</p>
@@ -560,7 +574,7 @@
     `;
   }
 
-  function renderBoilerWorkspace() {
+  export function renderBoilerWorkspace() {
     return `
       <section class="oq-helper-panel">
         <p class="oq-helper-label">${escapeHtml(getQuickStepKicker("boiler"))}</p>
@@ -572,7 +586,7 @@
     `;
   }
 
-  function renderFlowWorkspace() {
+  export function renderFlowWorkspace() {
     return `
       <section class="oq-helper-panel">
         <p class="oq-helper-label">${escapeHtml(getQuickStepKicker("flow"))}</p>
@@ -584,7 +598,7 @@
     `;
   }
 
-  function renderHeatingWorkspace() {
+  export function renderHeatingWorkspace() {
     return `
       <section class="oq-helper-panel">
         <p class="oq-helper-label">${escapeHtml(getQuickStepKicker("heating"))}</p>
@@ -613,7 +627,7 @@
     `;
   }
 
-  function renderWaterWorkspace() {
+  export function renderWaterWorkspace() {
     return `
       <section class="oq-helper-panel">
         <p class="oq-helper-label">${escapeHtml(getQuickStepKicker("water"))}</p>
@@ -625,7 +639,7 @@
     `;
   }
 
-  function renderSilentWorkspace() {
+  export function renderSilentWorkspace() {
     return `
       <section class="oq-helper-panel">
         <p class="oq-helper-label">${escapeHtml(getQuickStepKicker("silent"))}</p>
@@ -637,7 +651,7 @@
     `;
   }
 
-  function renderConfirmWorkspace() {
+  export function renderConfirmWorkspace() {
     return `
       <section class="oq-helper-panel">
         <p class="oq-helper-label">${escapeHtml(getQuickStepKicker("confirm"))}</p>
@@ -663,7 +677,7 @@
     `;
   }
 
-  function renderActiveStep() {
+  export function renderActiveStep() {
     if (state.currentStep === "generation") {
       return renderGenerationWorkspace();
     }
@@ -694,16 +708,16 @@
     return renderStrategyWorkspace();
   }
 
-  function getQuickSteps() {
+  export function getQuickSteps() {
     return QUICK_STEPS.filter((step) => !step.optionalEntity || hasEntity(step.optionalEntity));
   }
 
-  function getQuickStepKicker(stepId) {
+  export function getQuickStepKicker(stepId) {
     const index = getQuickSteps().findIndex((step) => step.id === stepId);
     return `Stap ${Math.max(0, index) + 1}`;
   }
 
-  function getQuickStepStatus(index) {
+  export function getQuickStepStatus(index) {
     const currentIndex = getCurrentQuickStepIndex();
     const isSelected = index === currentIndex;
     const isDone = state.complete === true || index < currentIndex;
@@ -714,7 +728,7 @@
     };
   }
 
-  function renderStepOverview(compact = false) {
+  export function renderStepOverview(compact = false) {
     return getQuickSteps().map((step, index) => {
       const stepStatus = getQuickStepStatus(index);
       return `
@@ -735,22 +749,22 @@
     }).join("");
   }
 
-  function getCurrentQuickStep() {
+  export function getCurrentQuickStep() {
     const steps = getQuickSteps();
     return steps.find((step) => step.id === state.currentStep) || steps[0] || QUICK_STEPS[0];
   }
 
-  function getCurrentQuickStepIndex() {
+  export function getCurrentQuickStepIndex() {
     return Math.max(0, getQuickSteps().findIndex((step) => step.id === state.currentStep));
   }
 
-  function selectQuickStepByOffset(offset) {
+  export function selectQuickStepByOffset(offset) {
     const steps = getQuickSteps();
     const nextIndex = Math.min(steps.length - 1, Math.max(0, getCurrentQuickStepIndex() + offset));
     state.currentStep = steps[nextIndex]?.id || QUICK_STEPS[0].id;
   }
 
-  function renderQuickStartStepNav(options = {}) {
+  export function renderQuickStartStepNav(options = {}) {
     const index = getCurrentQuickStepIndex();
     const steps = getQuickSteps();
     const previousStep = index > 0 ? steps[index - 1] : null;
@@ -774,7 +788,7 @@
     `;
   }
 
-  function renderQuickStartSidebar() {
+  export function renderQuickStartSidebar() {
     const stepIndex = getCurrentQuickStepIndex();
     const steps = getQuickSteps();
     return `
@@ -792,7 +806,7 @@
     `;
   }
 
-  function renderConfirmReviewCards() {
+  export function renderConfirmReviewCards() {
     const generationTitle = formatSettingsOptionLabel(getEntityStateText("hpGeneration"));
     const strategyTitle = isCurveMode() ? "Stooklijn" : "Power House";
     const formatReviewOption = (key) => formatSettingsOptionLabel(getEntityStateText(key));

@@ -1,6 +1,13 @@
-const WEB_SERVER_LOG_MAX_ENTRIES = 250;
+import { copyTextToClipboard } from "../core/browser-utils.js";
+import { refreshEntities } from "../core/entity-sync.js";
+import { state } from "../core/runtime.js";
+import { getBasePath } from "../core/url-path.js";
+import { escapeHtml } from "../core/html.js";
+import { render } from "../views/shell.js";
 
-function getWebServerLogDemoEntries() {
+export const WEB_SERVER_LOG_MAX_ENTRIES = 250;
+
+export function getWebServerLogDemoEntries() {
   if (typeof window === "undefined") {
     return [];
   }
@@ -19,7 +26,7 @@ function getWebServerLogDemoEntries() {
     .filter((entry) => entry.trim() !== "");
 }
 
-function isWebServerLogDemoMode() {
+export function isWebServerLogDemoMode() {
   if (typeof window === "undefined") {
     return false;
   }
@@ -27,15 +34,15 @@ function isWebServerLogDemoMode() {
   return getWebServerLogDemoEntries().length > 0;
 }
 
-function getWebServerLogUrl() {
+export function getWebServerLogUrl() {
   return `${getBasePath()}/events`;
 }
 
-function getWebServerLogHistoryUrl() {
+export function getWebServerLogHistoryUrl() {
   return `${getBasePath()}/openquatt/logs/recent`;
 }
 
-function isWebServerLogHistoryEnabled() {
+export function isWebServerLogHistoryEnabled() {
   const entity = state.entities?.webServerLogHistoryEnabled;
   if (!entity) {
     return true;
@@ -47,7 +54,7 @@ function isWebServerLogHistoryEnabled() {
   return raw === "on" || raw === "true" || raw === "1";
 }
 
-function getWebServerLogStatusLabel() {
+export function getWebServerLogStatusLabel() {
   if (state.nativeOpen) {
     return "Niet beschikbaar";
   }
@@ -60,7 +67,7 @@ function getWebServerLogStatusLabel() {
   return "Beschikbaar";
 }
 
-function formatWebServerLogDuration(value) {
+export function formatWebServerLogDuration(value) {
   const totalSeconds = Math.max(0, Math.floor(Number(value) / 1000));
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -68,7 +75,7 @@ function formatWebServerLogDuration(value) {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-function formatWebServerLogDateTime(value) {
+export function formatWebServerLogDateTime(value) {
   const numeric = Number(value) || 0;
   if (numeric > 946684800000) {
     const date = value instanceof Date ? value : new Date(numeric);
@@ -90,7 +97,7 @@ function formatWebServerLogDateTime(value) {
   return formatWebServerLogDuration(numeric);
 }
 
-function getWebServerLogTimeTooltip(value) {
+export function getWebServerLogTimeTooltip(value) {
   const numeric = Number(value) || 0;
   if (numeric > 946684800000) {
     return new Date(numeric).toLocaleString("nl-NL", {
@@ -110,7 +117,7 @@ function getWebServerLogTimeTooltip(value) {
   return `Sinds opstart: ${hours}u ${minutes}m ${seconds}s`;
 }
 
-function getWebServerLogHistoryStatusLabel() {
+export function getWebServerLogHistoryStatusLabel() {
   if (state.nativeOpen) {
     return "Niet beschikbaar";
   }
@@ -120,7 +127,7 @@ function getWebServerLogHistoryStatusLabel() {
   return isWebServerLogHistoryEnabled() ? "Buffer aan" : "Buffer uit";
 }
 
-function getWebServerLogHistoryInfoCopy() {
+export function getWebServerLogHistoryInfoCopy() {
   if (!isWebServerLogHistoryEnabled()) {
     return "Geen tijdelijke buffer in RAM. De viewer toont alleen live /events.";
   }
@@ -128,11 +135,11 @@ function getWebServerLogHistoryInfoCopy() {
   return "Slaat de laatste firmwarelogs tijdelijk op in RAM. De viewer leest die buffer bij openen en blijft daarna live /events volgen.";
 }
 
-function getWebServerLoggerLevelEntity() {
+export function getWebServerLoggerLevelEntity() {
   return state.entities?.debugLevel || null;
 }
 
-function getWebServerLoggerLevelOptions(entity = getWebServerLoggerLevelEntity()) {
+export function getWebServerLoggerLevelOptions(entity = getWebServerLoggerLevelEntity()) {
   const options = Array.isArray(entity?.option)
     ? entity.option
     : Array.isArray(entity?.options)
@@ -141,13 +148,13 @@ function getWebServerLoggerLevelOptions(entity = getWebServerLoggerLevelEntity()
   return options.length ? options : ["NONE", "ERROR", "WARN", "INFO", "CONFIG", "DEBUG"];
 }
 
-function getWebServerLoggerLevelValue(entity = getWebServerLoggerLevelEntity()) {
+export function getWebServerLoggerLevelValue(entity = getWebServerLoggerLevelEntity()) {
   const value = String(entity?.value ?? entity?.state ?? "").trim();
   const options = getWebServerLoggerLevelOptions(entity);
   return options.includes(value) ? value : (options.includes("INFO") ? "INFO" : options[0] || "");
 }
 
-function getWebServerLogEntryKey(entry) {
+export function getWebServerLogEntryKey(entry) {
   if (!entry || typeof entry !== "object") {
     return "";
   }
@@ -159,7 +166,7 @@ function getWebServerLogEntryKey(entry) {
   return raw ? `raw:${raw}:${Math.round(receivedAt / 1000)}` : "";
 }
 
-function isDuplicateWebServerLogEntry(candidate, existingEntry = null) {
+export function isDuplicateWebServerLogEntry(candidate, existingEntry = null) {
   if (!candidate || !existingEntry) {
     return false;
   }
@@ -181,7 +188,7 @@ function isDuplicateWebServerLogEntry(candidate, existingEntry = null) {
   return Math.abs(candidateReceivedAt - existingReceivedAt) <= 2000;
 }
 
-function compareWebServerLogEntries(left, right) {
+export function compareWebServerLogEntries(left, right) {
   const leftTime = Number(left.receivedAt ?? left.ts ?? 0);
   const rightTime = Number(right.receivedAt ?? right.ts ?? 0);
   if (leftTime !== rightTime) {
@@ -197,7 +204,7 @@ function compareWebServerLogEntries(left, right) {
   return String(left.raw ?? "").localeCompare(String(right.raw ?? ""));
 }
 
-function mergeWebServerLogEntries(entries, { prepend = false } = {}) {
+export function mergeWebServerLogEntries(entries, { prepend = false } = {}) {
   if (!Array.isArray(entries) || entries.length === 0) {
     return;
   }
@@ -218,7 +225,7 @@ function mergeWebServerLogEntries(entries, { prepend = false } = {}) {
   state.webServerLogEntries = deduped.slice(-WEB_SERVER_LOG_MAX_ENTRIES);
 }
 
-function createWebServerLogEntry(raw, options = {}) {
+export function createWebServerLogEntry(raw, options = {}) {
   const text = stripAnsiSequences(raw).trimEnd();
   const receivedAt = Number(options.receivedAt);
   const seq = Number(options.seq);
@@ -231,13 +238,13 @@ function createWebServerLogEntry(raw, options = {}) {
   };
 }
 
-function getDemoLogReceivedAt(index, total) {
+export function getDemoLogReceivedAt(index, total) {
   const spacingMs = 90 * 1000;
   const offset = Math.max(0, total - index - 1) * spacingMs;
   return Date.now() - offset;
 }
 
-function seedWebServerLogDemoEntries() {
+export function seedWebServerLogDemoEntries() {
   const entries = getWebServerLogDemoEntries();
   const total = entries.length;
   return entries.map((entry, index) => createWebServerLogEntry(entry, {
@@ -246,7 +253,7 @@ function seedWebServerLogDemoEntries() {
   }));
 }
 
-function scrollWebServerLogToBottom() {
+export function scrollWebServerLogToBottom() {
   const scroller = getWebServerLogScrollerElement();
   if (!scroller) {
     return;
@@ -254,7 +261,7 @@ function scrollWebServerLogToBottom() {
   scroller.scrollTop = scroller.scrollHeight;
 }
 
-function captureWebServerLogScrollState() {
+export function captureWebServerLogScrollState() {
   const scroller = getWebServerLogScrollerElement();
   if (!scroller) {
     return null;
@@ -267,7 +274,7 @@ function captureWebServerLogScrollState() {
   };
 }
 
-function restoreWebServerLogScrollState(scrollState) {
+export function restoreWebServerLogScrollState(scrollState) {
   if (!scrollState) {
     return;
   }
@@ -286,7 +293,7 @@ function restoreWebServerLogScrollState(scrollState) {
   scroller.scrollTop = Math.max(0, restoredScrollTop);
 }
 
-function queueWebServerLogScrollRestore(scrollState, defer = true) {
+export function queueWebServerLogScrollRestore(scrollState, defer = true) {
   if (!scrollState) {
     return;
   }
@@ -308,14 +315,14 @@ function queueWebServerLogScrollRestore(scrollState, defer = true) {
   applyScrollState();
 }
 
-function getCm100CommissioningModalScrollerElement() {
+export function getCm100CommissioningModalScrollerElement() {
   if (!state.root) {
     return null;
   }
   return state.root.querySelector("[data-oq-cm100-commissioning-scroller]");
 }
 
-function captureCm100CommissioningScrollState() {
+export function captureCm100CommissioningScrollState() {
   const scroller = getCm100CommissioningModalScrollerElement();
   if (!scroller) {
     return null;
@@ -328,7 +335,7 @@ function captureCm100CommissioningScrollState() {
   };
 }
 
-function restoreCm100CommissioningScrollState(scrollState) {
+export function restoreCm100CommissioningScrollState(scrollState) {
   if (!scrollState) {
     return;
   }
@@ -347,7 +354,7 @@ function restoreCm100CommissioningScrollState(scrollState) {
   scroller.scrollTop = Math.max(0, restoredScrollTop);
 }
 
-function queueCm100CommissioningScrollRestore(scrollState, defer = true) {
+export function queueCm100CommissioningScrollRestore(scrollState, defer = true) {
   if (!scrollState) {
     return;
   }
@@ -369,14 +376,14 @@ function queueCm100CommissioningScrollRestore(scrollState, defer = true) {
   applyScrollState();
 }
 
-function getServiceTaskModalScrollerElement() {
+export function getServiceTaskModalScrollerElement() {
   if (!state.root) {
     return null;
   }
   return state.root.querySelector("[data-oq-service-task-scroller]");
 }
 
-function captureServiceTaskModalScrollState() {
+export function captureServiceTaskModalScrollState() {
   const scroller = getServiceTaskModalScrollerElement();
   if (!scroller) {
     return null;
@@ -387,7 +394,7 @@ function captureServiceTaskModalScrollState() {
   };
 }
 
-function restoreServiceTaskModalScrollState(scrollState) {
+export function restoreServiceTaskModalScrollState(scrollState) {
   if (!scrollState) {
     return;
   }
@@ -400,7 +407,7 @@ function restoreServiceTaskModalScrollState(scrollState) {
   scroller.scrollTop = Math.max(0, scrollState.scrollTop);
 }
 
-function queueServiceTaskModalScrollRestore(scrollState, defer = true) {
+export function queueServiceTaskModalScrollRestore(scrollState, defer = true) {
   if (!scrollState) {
     return;
   }
@@ -423,14 +430,14 @@ function queueServiceTaskModalScrollRestore(scrollState, defer = true) {
   applyScrollState();
 }
 
-function getHistoryStorageModalScrollerElement() {
+export function getHistoryStorageModalScrollerElement() {
   if (!state.root) {
     return null;
   }
   return state.root.querySelector("[data-oq-history-storage-scroller]");
 }
 
-function captureHistoryStorageModalScrollState() {
+export function captureHistoryStorageModalScrollState() {
   const scroller = getHistoryStorageModalScrollerElement();
   if (!scroller) {
     return null;
@@ -441,7 +448,7 @@ function captureHistoryStorageModalScrollState() {
   };
 }
 
-function restoreHistoryStorageModalScrollState(scrollState) {
+export function restoreHistoryStorageModalScrollState(scrollState) {
   if (!scrollState) {
     return;
   }
@@ -454,7 +461,7 @@ function restoreHistoryStorageModalScrollState(scrollState) {
   scroller.scrollTop = Math.max(0, scrollState.scrollTop);
 }
 
-function queueHistoryStorageModalScrollRestore(scrollState, defer = true) {
+export function queueHistoryStorageModalScrollRestore(scrollState, defer = true) {
   if (!scrollState) {
     return;
   }
@@ -476,7 +483,7 @@ function queueHistoryStorageModalScrollRestore(scrollState, defer = true) {
   applyScrollState();
 }
 
-async function refreshWebServerLogHistory(options = {}) {
+export async function refreshWebServerLogHistory(options = {}) {
   if (state.nativeOpen || typeof window.fetch !== "function") {
     return;
   }
@@ -524,7 +531,7 @@ async function refreshWebServerLogHistory(options = {}) {
   }
 }
 
-function normalizeRecentWebServerLogEntry(entry, fallbackSeq = 0) {
+export function normalizeRecentWebServerLogEntry(entry, fallbackSeq = 0) {
   if (!entry || typeof entry !== "object") {
     return null;
   }
@@ -540,7 +547,7 @@ function normalizeRecentWebServerLogEntry(entry, fallbackSeq = 0) {
   });
 }
 
-function normalizeRecentWebServerLogPayload(payload) {
+export function normalizeRecentWebServerLogPayload(payload) {
   if (!payload || typeof payload !== "object") {
     return [];
   }
@@ -555,7 +562,7 @@ function normalizeRecentWebServerLogPayload(payload) {
     .filter((entry) => entry !== null);
 }
 
-function shouldIgnoreLiveWebServerLogEntry(entry) {
+export function shouldIgnoreLiveWebServerLogEntry(entry) {
   if (!entry || !Array.isArray(state.webServerLogRecentTail) || state.webServerLogRecentTail.length === 0) {
     return false;
   }
@@ -573,7 +580,7 @@ function shouldIgnoreLiveWebServerLogEntry(entry) {
   return state.webServerLogRecentTail.includes(raw);
 }
 
-function hasWebServerLogEntry(candidate, entries = state.webServerLogEntries) {
+export function hasWebServerLogEntry(candidate, entries = state.webServerLogEntries) {
   if (!candidate || !Array.isArray(entries) || entries.length === 0) {
     return false;
   }
@@ -581,7 +588,7 @@ function hasWebServerLogEntry(candidate, entries = state.webServerLogEntries) {
   return entries.some((existing) => isDuplicateWebServerLogEntry(candidate, existing));
 }
 
-function openWebServerLogsModal() {
+export function openWebServerLogsModal() {
   if (isWebServerLogDemoMode() && state.webServerLogEntries.length === 0) {
     state.webServerLogEntries = seedWebServerLogDemoEntries();
   }
@@ -603,7 +610,7 @@ function openWebServerLogsModal() {
   }
 }
 
-function clearWebServerLogOutput() {
+export function clearWebServerLogOutput() {
   state.webServerLogEntries = [];
   state.webServerLogError = "";
   state.webServerLogHistoryError = "";
@@ -620,7 +627,7 @@ function clearWebServerLogOutput() {
   }
 }
 
-function resetWebServerLogRecoveryState() {
+export function resetWebServerLogRecoveryState() {
   const scrollState = captureWebServerLogScrollState();
   closeWebServerLogStream();
   state.webServerLogEnabled = null;
@@ -631,7 +638,7 @@ function resetWebServerLogRecoveryState() {
   }
 }
 
-function syncWebServerLogStream() {
+export function syncWebServerLogStream() {
   if (isWebServerLogDemoMode()) {
     closeWebServerLogStream();
     return;
@@ -655,7 +662,7 @@ function syncWebServerLogStream() {
   openWebServerLogStream();
 }
 
-function openWebServerLogStream() {
+export function openWebServerLogStream() {
   if (isWebServerLogDemoMode()) {
     state.webServerLogEnabled = true;
     state.webServerLogConnected = false;
@@ -688,7 +695,7 @@ function openWebServerLogStream() {
   }
 }
 
-function closeWebServerLogStream() {
+export function closeWebServerLogStream() {
   const source = state.webServerLogSource;
   if (source) {
     try {
@@ -701,7 +708,7 @@ function closeWebServerLogStream() {
   state.webServerLogConnected = false;
 }
 
-function handleWebServerLogOpen() {
+export function handleWebServerLogOpen() {
   if (!state.webServerLogSource || state.nativeOpen) {
     return;
   }
@@ -716,7 +723,7 @@ function handleWebServerLogOpen() {
   queueWebServerLogScrollRestore(scrollState);
 }
 
-function handleWebServerLogPing() {
+export function handleWebServerLogPing() {
   if (!state.webServerLogSource || state.nativeOpen) {
     return;
   }
@@ -733,7 +740,7 @@ function handleWebServerLogPing() {
   }
 }
 
-function handleWebServerLogError() {
+export function handleWebServerLogError() {
   if (!state.webServerLogSource) {
     return;
   }
@@ -749,7 +756,7 @@ function handleWebServerLogError() {
   queueWebServerLogScrollRestore(scrollState);
 }
 
-function handleWebServerLogMessage(event) {
+export function handleWebServerLogMessage(event) {
   if (!state.webServerLogSource || !event || typeof event.data !== "string") {
     return;
   }
@@ -785,7 +792,7 @@ function handleWebServerLogMessage(event) {
   }
 }
 
-function normalizeWebServerLogPayload(raw) {
+export function normalizeWebServerLogPayload(raw) {
   const text = String(raw ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trimEnd();
   if (!text) {
     return "";
@@ -814,11 +821,11 @@ function normalizeWebServerLogPayload(raw) {
   return text;
 }
 
-function stripAnsiSequences(value) {
+export function stripAnsiSequences(value) {
   return String(value ?? "").replace(/\x1b\[[0-9;]*m/g, "");
 }
 
-function getWebServerLogTone(value) {
+export function getWebServerLogTone(value) {
   const raw = String(value ?? "");
   const ansiMatches = Array.from(raw.matchAll(/\x1b\[([0-9;]*)m/g));
   for (let index = ansiMatches.length - 1; index >= 0; index -= 1) {
@@ -867,7 +874,7 @@ function getWebServerLogTone(value) {
   return "verbose";
 }
 
-function trimWebServerLogEntries(output) {
+export function trimWebServerLogEntries(output) {
   while (state.webServerLogEntries.length > WEB_SERVER_LOG_MAX_ENTRIES) {
     state.webServerLogEntries.shift();
     if (output && output.firstElementChild) {
@@ -876,21 +883,21 @@ function trimWebServerLogEntries(output) {
   }
 }
 
-function getWebServerLogOutputElement() {
+export function getWebServerLogOutputElement() {
   if (!state.root) {
     return null;
   }
   return state.root.querySelector("[data-oq-webserver-log-output]");
 }
 
-function getWebServerLogScrollerElement() {
+export function getWebServerLogScrollerElement() {
   if (!state.root) {
     return null;
   }
   return state.root.querySelector("[data-oq-webserver-log-scroller]");
 }
 
-function isWebServerLogScrollerNearBottom(scroller) {
+export function isWebServerLogScrollerNearBottom(scroller) {
   if (!scroller) {
     return false;
   }
@@ -898,7 +905,7 @@ function isWebServerLogScrollerNearBottom(scroller) {
   return remaining < 48;
 }
 
-function appendWebServerLogEntriesToDom(entries, output) {
+export function appendWebServerLogEntriesToDom(entries, output) {
   if (!output || entries.length === 0) {
     return;
   }
@@ -913,7 +920,7 @@ function appendWebServerLogEntriesToDom(entries, output) {
   }
 }
 
-function renderWebServerLogEntry(entry) {
+export function renderWebServerLogEntry(entry) {
   const timestamp = formatWebServerLogDateTime(entry.receivedAt);
   const fullTimestamp = getWebServerLogTimeTooltip(entry.receivedAt);
   return `
@@ -924,7 +931,7 @@ function renderWebServerLogEntry(entry) {
   `;
 }
 
-function renderWebServerLogEntries(entries = state.webServerLogEntries) {
+export function renderWebServerLogEntries(entries = state.webServerLogEntries) {
   if (!entries.length) {
     return `
       <p class="oq-webserver-log-empty">Nog geen logregels ontvangen. Open de log en wacht op een nieuwe melding.</p>
@@ -934,7 +941,7 @@ function renderWebServerLogEntries(entries = state.webServerLogEntries) {
   return entries.map((entry) => renderWebServerLogEntry(entry)).join("");
 }
 
-function renderWebServerLogStatusBanner() {
+export function renderWebServerLogStatusBanner() {
   const rows = [];
   if (state.webServerLogHistoryLoading) {
     rows.push(`<p class="oq-helper-modal-note">Recente firmwarelogs worden opgehaald...</p>`);
@@ -964,7 +971,7 @@ function renderWebServerLogStatusBanner() {
   return rows.join("");
 }
 
-function renderWebServerLogHistoryControls() {
+export function renderWebServerLogHistoryControls() {
   const enabled = isWebServerLogHistoryEnabled();
   const busy = state.loadingEntities || state.busyAction === "switch-webServerLogHistoryEnabled";
   const label = getWebServerLogHistoryStatusLabel();
@@ -996,7 +1003,7 @@ function renderWebServerLogHistoryControls() {
   `;
 }
 
-function renderWebServerLoggerLevelControl() {
+export function renderWebServerLoggerLevelControl() {
   const entity = getWebServerLoggerLevelEntity();
   if (!entity) {
     return "";
@@ -1023,7 +1030,7 @@ function renderWebServerLoggerLevelControl() {
   `;
 }
 
-function buildWebServerLogCopyText() {
+export function buildWebServerLogCopyText() {
   return state.webServerLogEntries
     .map((entry) => {
       const line = String(entry.raw ?? entry.text ?? "").trimEnd();
@@ -1036,37 +1043,7 @@ function buildWebServerLogCopyText() {
     .join("\n");
 }
 
-async function writeTextToClipboard(text) {
-  if (!text) {
-    return false;
-  }
-
-  if (window.navigator?.clipboard?.writeText && window.isSecureContext) {
-    await window.navigator.clipboard.writeText(text);
-    return true;
-  }
-
-  const textarea = document.createElement("textarea");
-  textarea.value = text;
-  textarea.setAttribute("readonly", "");
-  textarea.style.position = "fixed";
-  textarea.style.top = "-1000px";
-  textarea.style.opacity = "0";
-  document.body.appendChild(textarea);
-  textarea.focus();
-  textarea.select();
-
-  let success = false;
-  try {
-    success = document.execCommand("copy");
-  } finally {
-    document.body.removeChild(textarea);
-  }
-
-  return success;
-}
-
-async function copyWebServerLogOutput() {
+export async function copyWebServerLogOutput() {
   const text = buildWebServerLogCopyText();
   state.webServerLogCopyMessage = "";
   state.webServerLogCopyError = "";
@@ -1078,7 +1055,7 @@ async function copyWebServerLogOutput() {
   }
 
   try {
-    const copied = await writeTextToClipboard(text);
+    const copied = await copyTextToClipboard(text);
     if (!copied) {
       throw new Error("Kopiëren naar het klembord is niet gelukt.");
     }
@@ -1092,7 +1069,7 @@ async function copyWebServerLogOutput() {
   }
 }
 
-function renderWebServerLogsModal() {
+export function renderWebServerLogsModal() {
   const demoMode = isWebServerLogDemoMode();
   return `
     <div class="oq-helper-modal-backdrop${state.overviewTheme === "dark" ? " oq-helper-modal-backdrop--dark" : ""}" data-oq-modal="system">

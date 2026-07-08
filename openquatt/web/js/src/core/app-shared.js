@@ -1,4 +1,13 @@
-  function renderAppSummary() {
+import { APP_VIEWS, renderOqIcon } from "./config.js";
+import { isCurveMode } from "./domain-helpers.js";
+import { formatValue, getEntityValue, hasEntity } from "./entity-store.js";
+import { formatNumericState } from "./formatting.js";
+import { escapeHtml } from "./html.js";
+import { state } from "./runtime.js";
+
+export { hasEntity } from "./entity-store.js";
+
+  export function renderAppSummary() {
     const parts = [];
     parts.push(isCurveMode() ? "Stooklijn" : "Power House");
     const profile = String(getEntityValue(isCurveMode() ? "curveControlProfile" : "phResponseProfile") || "").trim();
@@ -28,12 +37,7 @@
     return parts.filter(Boolean).join(", ") || "Instellingen beschikbaar";
   }
 
-  function hasEntity(key) {
-    const entity = state.entities[key];
-    return Boolean(entity);
-  }
-
-  function getEntityStateText(key, fallback = "—") {
+  export function getEntityStateText(key, fallback = "—") {
     const entity = state.entities[key];
     if (!entity) {
       return fallback;
@@ -54,17 +58,17 @@
     return String(value);
   }
 
-  function getEntityNumericValue(key) {
+  export function getEntityNumericValue(key) {
     const value = Number(getEntityValue(key));
     return Number.isNaN(value) ? NaN : value;
   }
 
-  function isEfficiencyKey(key) {
+  export function isEfficiencyKey(key) {
     const normalized = String(key || "").toLowerCase();
     return normalized.includes("cop") || normalized.includes("eer");
   }
 
-  function getDerivedEfficiencyValue(key) {
+  export function getDerivedEfficiencyValue(key) {
     const normalized = String(key || "");
     if (normalized === "totalEer") {
       const output = getEntityNumericValue("totalCoolingPower");
@@ -85,7 +89,7 @@
     return NaN;
   }
 
-  function getEntityDisplayUnit(key, fallbackUnit = "") {
+  export function getEntityDisplayUnit(key, fallbackUnit = "") {
     const entityUnit = String(state.entities[key]?.uom || "").trim();
     if (entityUnit) {
       return entityUnit;
@@ -136,7 +140,7 @@
     return fallbackUnits[key] || fallbackUnit;
   }
 
-  function formatOverviewStatValue(key) {
+  export function formatOverviewStatValue(key) {
     const entity = state.entities[key];
     const derived = getDerivedEfficiencyValue(key);
     if (!entity) {
@@ -154,7 +158,7 @@
     return formatNumericState(value, decimals, getEntityDisplayUnit(key));
   }
 
-  function isEntityActive(key) {
+  export function isEntityActive(key) {
     const entity = state.entities[key];
     if (!entity) {
       return false;
@@ -166,11 +170,11 @@
     return raw === "on" || raw === "true" || raw === "1";
   }
 
-  function isTrendHistoryEnabled() {
+  export function isTrendHistoryEnabled() {
     return !hasEntity("trendHistoryEnabled") || isEntityActive("trendHistoryEnabled");
   }
 
-  function getSetupCompleteState() {
+  export function getSetupCompleteState() {
     const entity = state.entities.setupComplete;
     if (!entity) {
       return null;
@@ -189,7 +193,7 @@
     return null;
   }
 
-  function renderAppNav() {
+  export function renderAppNav() {
     return `
       <div class="oq-helper-app-nav">
         ${APP_VIEWS.filter((view) => view.id !== "diagnosis" || isTrendHistoryEnabled()).map((view) => `
@@ -207,11 +211,11 @@
     `;
   }
 
-  function getAppViewLabel(view = state.appView) {
+  export function getAppViewLabel(view = state.appView) {
     return APP_VIEWS.find((item) => item.id === view)?.label || "OpenQuatt";
   }
 
-  function syncDocumentTitle() {
+  export function syncDocumentTitle() {
     if (typeof document === "undefined") {
       return;
     }
@@ -223,7 +227,7 @@
     document.title = `${viewLabel} • OpenQuatt`;
   }
 
-  function syncDocumentTheme() {
+  export function syncDocumentTheme() {
     if (typeof document === "undefined") {
       return;
     }

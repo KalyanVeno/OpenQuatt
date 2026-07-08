@@ -1,18 +1,18 @@
-const LOGO_MARKUP = `
+export const LOGO_MARKUP = `
     <svg class="oq-helper-logo-mark" role="img" aria-label="OpenQuatt logo" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2" viewBox="0 0 2680 900"><path d="M342.5 34.5a250 250 0 0 0 9 30q3.989 10.461 8 21 .486 7.441 5 13a939 939 0 0 0 52.5 110 2240 2240 0 0 0 60 96 5301 5301 0 0 1 69 102 417.3 417.3 0 0 1 33.5 64q.078 4.27 3 7 20.139 43.56 22.5 92a483 483 0 0 1-.5 49q-1.838 7.185-2 15-2.427 4.007-2 9l-2 11q-2.361 2.403-2 6v2q-3.93 5.764-5 13a361.4 361.4 0 0 1-25 51q-4.657 4.162-7 10-68.629 88.06-179 104a852 852 0 0 0-35 3q-16.507.25-33-.5-2.822-.297-5-1.5-9.157-2.244-19-2h-2q-7.544-2.872-16-3-113.521-21.405-172.5-121-43.368-84.229-27-178 7.821-43.96 27-84a586 586 0 0 1 33-56 5116 5116 0 0 0 130-196q21.751-40.5 42-82a2875 2875 0 0 1 20-49 273 273 0 0 0 11-35 59 59 0 0 1 5-9 29.8 29.8 0 0 1 3.5 9" style="fill:#204b96"/><path d="M342.5 34.5q6.278 14.341 9 30a250 250 0 0 1-9-30" style="fill:#6386b9"/><path d="M359.5 85.5q3.351 6.034 5 13-4.514-5.559-5-13" style="fill:#6486b9"/><path d="M342.5 119.5a571 571 0 0 1 14 40q.764 7.805 5 14v1q-.135 3.978 2 7a31.7 31.7 0 0 1 2 6q-.135 3.978 2 7-.135 3.978 2 7-.135 3.978 2 7-.135 3.978 2 7 8.966 31.83 13 65a1521 1521 0 0 0 4.5 49q.75 18.493.5 37v3q-1.152 1.144-1.5 3a919 919 0 0 0-3.5 30 85.4 85.4 0 0 0-1.5 13q26.267-39.549 29.5-87 .999-7.984 1-16.5.29-12.09-2-23.5a12.9 12.9 0 0 1 .5-5 56.1 56.1 0 0 1 10.5 17q-.11 2.29 2 3a1350 1350 0 0 1 17 37q-.501 4.486 3 7 4.654 9.453 7 20-.135 3.978 2 7-.135 3.978 2 7 3.267 9.564 4 20-.367 8.376 2 16 2.406 100.067-83 152-1.393-1.783-1-4 2.31-6.847 2-14.5.012-12.645-3-24.5.31-4.493-2-8-7.76-31.019-27.5-56-35.843 63.187-56 133l-3 5q-31.104 11.837-64.5 15.5a356 356 0 0 1-31 2.5q-18.405-58.648-2.5-118a202.4 202.4 0 0 1 17-39q45.29-69.55 83-144 28.532-61.85 40.5-129 6.37-24.912 7-51a167 167 0 0 0 3-18" style="fill:#eb8832"/><path d="M342.5 119.5a167 167 0 0 1-3 18 83.7 83.7 0 0 1 2-19q.91.186 1 1" style="fill:#575c6a"/><path d="M356.5 159.5a86.7 86.7 0 0 1 5 14q-4.236-6.195-5-14" style="fill:#a57341"/><path d="M361.5 174.5q2.135 3.022 2 7-2.135-3.022-2-7" style="fill:#9f7144"/><path d="M339.5 137.5q-.63 26.088-7 51a1077 1077 0 0 0 7-51" style="fill:#445877"/><path d="M365.5 187.5q2.135 3.022 2 7-2.135-3.022-2-7M367.5 194.5q2.135 3.022 2 7-2.135-3.022-2-7M369.5 201.5q2.135 3.022 2 7-2.135-3.022-2-7" style="fill:#a07241"/><path d="M371.5 208.5q2.135 3.022 2 7-2.135-3.022-2-7" style="fill:#9f7241"/><path d="M386.5 280.5a2229 2229 0 0 1 5.5 43q1.241 21.759-.5 43 .25-18.507-.5-37a1521 1521 0 0 1-4.5-49" style="fill:#987048"/><path d="M424.5 300.5q2.11.71 2 3-2.11-.71-2-3" style="fill:#746657"/><path d="M413.5 288.5q2.29 11.41 2 23.5-.001 8.516-1 16.5a601 601 0 0 0-1-40" style="fill:#485a73"/><path d="M443.5 340.5q2.347 3.014 3 7-3.501-2.514-3-7" style="fill:#a37144"/><path d="M453.5 367.5q2.135 3.022 2 7-2.135-3.022-2-7" style="fill:#9a6f46"/><path d="M455.5 374.5q2.135 3.022 2 7-2.135-3.022-2-7" style="fill:#926e47"/><path d="M391.5 369.5a317 317 0 0 1-5 33 919 919 0 0 1 3.5-30q.348-1.856 1.5-3" style="fill:#ac753c"/><path d="M461.5 401.5q2.186 7.647 2 16-2.367-7.624-2-16" style="fill:#a2733e"/><path d="M770.5 570.5a399 399 0 0 1 2-36q17.486-55.719 75-68.5 49.058-9.816 96 7 58.332 28.392 53.5 93.5-5.29 63.812-66.5 83.5-48.666 11.477-97-1-56.79-19.032-63-78.5m101-71q-31.006 3.518-48 30-9.226 23.782-4.5 49 12.264 35.252 49.5 39.5a194.4 194.4 0 0 0 37-1q15.804-4.398 28-15 21.365-23.762 15.5-55.5-4.6-23.892-24.5-37.5-25.143-11.653-53-9.5" style="fill:#3a89f3"/><path d="M1730.5 462.5q54.855-7.164 99 25.5c25.1 22.952 34.93 51.452 29.5 85.5q-5.445 28.14-25.5 48.5a215 215 0 0 0 32 24c.46.414.79.914 1 1.5a149.5 149.5 0 0 1-36.5 20l-3.5-.5a188.7 188.7 0 0 0-30-21.5c-32.01 10.572-64.34 11.739-97 3.5q-63.69-21.966-66-89.5 1.605-68.33 66-90.5c10.23-3.279 20.57-5.446 31-6.5m6 38c-2.47.817-5.14 1.317-8 1.5-20.21 4.676-34.38 16.51-42.5 35.5-8.24 27.209-2.08 50.375 18.5 69.5 19.63 11.699 40.3 13.699 62 6 .46-.414.79-.914 1-1.5-6.67-8.333-13.33-16.667-20-25a118 118 0 0 1 29-1.5c6.69 1.517 12.36 4.85 17 10 1.33.667 2.67.667 4 0 5.51-5.845 9.34-12.679 11.5-20.5 7.34-26.312.18-47.478-21.5-63.5q-23.79-12.921-51-10.5" style="fill:#ed8933"/><path d="M1567.5 469.5v-1h46c.32 6.854-.01 13.521-1 20v-19z" style="fill:#96c5f4"/><path d="M2250.5 648.5a326 326 0 0 0-14-37h-88a1243 1243 0 0 1-16 38.5c-16.66.5-33.33.667-50 .5a193 193 0 0 1 6.5-18 18553 18553 0 0 0 72-161c.83-.833 1.67-1.667 2.5-2.5q27-1 54 0c1.93.251 3.77.751 5.5 1.5q39.6 90.064 79.5 180c-17.57.631-34.9-.036-52-2m-59-142a1039 1039 0 0 1-23.5 57 130 130 0 0 0-4.5 15c19.68.333 39.34 0 59-1a1621 1621 0 0 1-27.5-66c-.9-1.931-2.07-3.597-3.5-5" style="fill:#ed8a33"/><path d="M2485.5 469.5v-1h180v37h-68c22.16-.997 44.49-1.331 67-1v-35z" style="fill:#eea659"/><path d="M1140.5 469.5c48.87 4.374 71.71 31.041 68.5 80-5.61 24.948-20.45 41.781-44.5 50.5a143 143 0 0 1-32 5c-20.66.5-41.33.667-62 .5-1 14.824-1.33 29.824-1 45h-43v-181zm-70 99c17.5 1.162 35.16 1.329 53 .5 2.54-.186 4.87-.686 7-1.5q19.125.322 28.5-16c8.31-25.692-.85-40.859-27.5-45.5-20.33-.5-40.66-.667-61-.5z" style="fill:#3989f3"/><path d="M1280.5 592.5c-.99 7.148-1.32 14.481-1 22h112v36c-51.88.655-103.55-.011-155-2a4879 4879 0 0 1-.5-165q.255-7.053 1.5-14 76.44-1.493 153-1v37h-111v38h102v34h-101z" style="fill:#3b8af3"/><path d="M1565.5 588.5q.42 1.184 1.5 2c.5-40.332.67-80.665.5-121h45v42c-1 46.164-1.33 92.497-1 139h-49a281 281 0 0 1-15.5-18 5912 5912 0 0 0-80-103c-.5 40.332-.67 80.665-.5 121h-43c.24-1.291-.1-2.291-1-3v-179c16.36-.283 32.69.217 49 1.5 31.55 39.375 62.88 78.875 94 118.5" style="fill:#3889f3"/><path d="M1567.5 468.5v1c.17 40.335 0 80.668-.5 121q-1.08-.816-1.5-2c.67-40 1.33-80 2-120" style="fill:#cfe7f9"/><path d="M1930.5 469.5a6522 6522 0 0 1 1.5 114c3.1 19.099 14.27 30.266 33.5 33.5 11.47 1.124 22.8.457 34-2 17.01-7.195 25.68-20.028 26-38.5 1-35.496 1.33-71.163 1-107h46v116q-10.38 61.13-72 68.5c-16.67.667-33.33.667-50 0q-58.77-9.515-66-68.5v-116z" style="fill:#ed8933"/><path d="M2072.5 585.5v-116h-46c.33 35.837 0 71.504-1 107v-108h48c.33 39.17 0 78.17-1 117" style="fill:#f1bd83"/><path d="M2461.5 468.5c1.42.951 3.09 1.284 5 1v35q-36.255-.497-72 1v145h-46v-8c1-45.83 1.33-91.83 1-138h-67v-35c59.64-.985 119.31-1.318 179-1M2485.5 469.5h179v35c-22.51-.331-44.84.003-67 1v145h-48v-145c-21.16-.997-42.49-1.331-64-1z" style="fill:#ed8932"/><path d="M579.5 470.5q2.348 3.014 3 7-2.922-2.73-3-7" style="fill:#7393c0"/><path d="M2282.5 469.5v35h67c.33 46.17 0 92.17-1 138v-137h-67c-.33-12.178 0-24.178 1-36" style="fill:#f2bd80"/><path d="M2461.5 468.5h6v37h-73q35.745-1.497 72-1v-35c-1.91.284-3.58-.049-5-1" style="fill:#f2bd82"/><path d="M2485.5 468.5v36c21.51-.331 42.84.003 64 1h-65c-.33-12.511 0-24.845 1-37" style="fill:#f2be84"/><path d="M1930.5 469.5h-46v116c-1-38.83-1.33-77.83-1-117 15.84-.33 31.51.004 47 1" style="fill:#ed9e49"/><path d="M376.5 518.5q2.31 3.507 2 8-1.902-3.608-2-8" style="fill:#575e68"/><path d="M378.5 526.5q3.012 11.855 3 24.5.31 7.653-2 14.5a544 544 0 0 0-1-39" style="fill:#555a71"/><path d="M772.5 534.5a399 399 0 0 0-2 36q-1.735-12.235-.5-25 .628-5.838 2.5-11" style="fill:#85b9f5"/><path d="M557.5 586.5q.837 1.935 3 2.5-56.438-5.331-112 6a1117 1117 0 0 0-43 12 2536 2536 0 0 1-107 37 412 412 0 0 1-76 13q-47.99 3.102-91-18a620 620 0 0 1-24-16.5q-3.118-9.6-2.5-20a345 345 0 0 0 36.5 21.5 194.3 194.3 0 0 0 42 9.5q44.101 4.2 87-7a550 550 0 0 0 32-7.5 1150 1150 0 0 1 96-31 342 342 0 0 1 82.5-11.5q39.153-1.598 76.5 10" style="fill:#81cbf2"/><path d="M557.5 586.5a248 248 0 0 0 15 4q-12.054 137.357-138 193.5-104.056 39.986-207-2-100.8-48.767-120-159.5a620 620 0 0 0 24 16.5q43.01 21.102 91 18a412 412 0 0 0 76-13 2536 2536 0 0 0 107-37 1117 1117 0 0 1 43-12q55.562-11.331 112-6-2.163-.565-3-2.5" style="fill:#3888f2"/><path d="M1280.5 592.5v21h89v1h-90c-.32-7.519.01-14.852 1-22" style="fill:#c9e0f8"/><path d="M604.5 618.5q.297 7.875-2 15 .162-7.815 2-15" style="fill:#a6bbd7"/><path d="M270.5 626.5q-42.899 11.2-87 7a659 659 0 0 0 53-1.5 1796 1796 0 0 1 34-5.5" style="fill:#3a6fb0"/><path d="M602.5 633.5q.427 4.993-2 9-.427-4.993 2-9" style="fill:#839fc7"/><path d="M1369.5 614.5v-1h23v38h-156v-3a3024 3024 0 0 0 155 2v-36z" style="fill:#76b1f3"/><path d="M1422.5 647.5c.9.709 1.24 1.709 1 3h43a485 485 0 0 1-44 1z" style="fill:#98c7f8"/><path d="M1612.5 511.5v140c-16.84.33-33.51-.003-50-1h49c-.33-46.503 0-92.836 1-139" style="fill:#7bb4f4"/><path d="M2394.5 505.5h1v146c-15.84.33-31.51-.004-47-1h46z" style="fill:#f6d4ac"/><path d="M598.5 653.5q.361 3.597-2 6-.361-3.597 2-6" style="fill:#8fa9cb"/><path d="M596.5 661.5q-1.649 6.966-5 13 1.07-7.236 5-13" style="fill:#7294c1"/><path d="M566.5 725.5q-2.343 5.838-7 10 2.343-5.838 7-10" style="fill:#a3b9d4"/><path d="M270.5 835.5q8.456.128 16 3-8.341-.684-16-3" style="fill:#557cb2"/><path d="M288.5 838.5q9.843-.244 19 2-9.825.069-19-2" style="fill:#597eb4"/><path d="M380.5 839.5q-17.097 3.54-35 3a852 852 0 0 1 35-3" style="fill:#7d9ac4"/></svg>
   `;
-  const FIRMWARE_RELEASE_URLS = {
+  export const FIRMWARE_RELEASE_URLS = {
     main: "https://github.com/jeroen85/OpenQuatt/releases/latest",
     dev: "https://github.com/jeroen85/OpenQuatt/releases/tag/dev-latest",
   };
-  const OFFICIAL_ESPHOME_UI_URL = "https://oi.esphome.io/v3/www.js";
-  const ENTITY_REFRESH_CONCURRENCY = 2;
-  const FAST_VIEW_ENTITY_REFRESH_CONCURRENCY = 4;
-  const TREND_HISTORY_REFRESH_INTERVAL_MS = 60000;
-  const STRATEGY_OPTION_POWER_HOUSE = "Power House";
-  const STRATEGY_OPTION_CURVE = "Water Temperature Control (heating curve)";
+  export const OFFICIAL_ESPHOME_UI_URL = "https://oi.esphome.io/v3/www.js";
+  export const ENTITY_REFRESH_CONCURRENCY = 2;
+  export const FAST_VIEW_ENTITY_REFRESH_CONCURRENCY = 4;
+  export const TREND_HISTORY_REFRESH_INTERVAL_MS = 60000;
+  export const STRATEGY_OPTION_POWER_HOUSE = "Power House";
+  export const STRATEGY_OPTION_CURVE = "Water Temperature Control (heating curve)";
 
-  const QUICK_STEPS = [
+  export const QUICK_STEPS = [
     {
       id: "generation",
       kicker: "Stap 1",
@@ -136,27 +136,27 @@ const LOGO_MARKUP = `
     },
   ];
 
-  const ODU_RUNTIME_FREQUENCY_HP_IDS = [1, 2];
-  const ODU_RUNTIME_FREQUENCY_LEVELS = Array.from({ length: 11 }, (_item, index) => index);
-  const ODU_RUNTIME_FREQUENCY_MODES = ["cooling", "heating"];
+  export const ODU_RUNTIME_FREQUENCY_HP_IDS = [1, 2];
+  export const ODU_RUNTIME_FREQUENCY_LEVELS = Array.from({ length: 11 }, (_item, index) => index);
+  export const ODU_RUNTIME_FREQUENCY_MODES = ["cooling", "heating"];
 
-  function getOduRuntimeFrequencyModeLabel(mode) {
+  export function getOduRuntimeFrequencyModeLabel(mode) {
     return mode === "cooling" ? "cooling" : "heating";
   }
 
-  function getOduRuntimeFrequencyModeKey(mode) {
+  export function getOduRuntimeFrequencyModeKey(mode) {
     return mode === "cooling" ? "Cooling" : "Heating";
   }
 
-  function getOduRuntimeFrequencyValueKey(hpIndex, mode, level) {
+  export function getOduRuntimeFrequencyValueKey(hpIndex, mode, level) {
     return `hp${hpIndex}OduRuntime${getOduRuntimeFrequencyModeKey(mode)}F${level}`;
   }
 
-  function getOduRuntimeFrequencyControlKey(hpIndex, suffix) {
+  export function getOduRuntimeFrequencyControlKey(hpIndex, suffix) {
     return `hp${hpIndex}OduRuntimeFrequency${suffix}`;
   }
 
-  function getOduRuntimeFrequencyHpKeys(hpIndex) {
+  export function getOduRuntimeFrequencyHpKeys(hpIndex) {
     return [
       getOduRuntimeFrequencyControlKey(hpIndex, "Enable"),
       getOduRuntimeFrequencyControlKey(hpIndex, "Load"),
@@ -168,20 +168,20 @@ const LOGO_MARKUP = `
     ];
   }
 
-  function getOduRuntimeFrequencyButtonHp(key) {
+  export function getOduRuntimeFrequencyButtonHp(key) {
     const match = String(key || "").match(/^hp([12])OduRuntimeFrequency(?:Load|Apply)$/);
     return match ? Number(match[1]) : 0;
   }
 
-  const ODU_RUNTIME_FREQUENCY_KEYS = ODU_RUNTIME_FREQUENCY_HP_IDS.flatMap(getOduRuntimeFrequencyHpKeys);
-  const ODU_RUNTIME_FREQUENCY_BUTTON_KEYS = new Set(
+  export const ODU_RUNTIME_FREQUENCY_KEYS = ODU_RUNTIME_FREQUENCY_HP_IDS.flatMap(getOduRuntimeFrequencyHpKeys);
+  export const ODU_RUNTIME_FREQUENCY_BUTTON_KEYS = new Set(
     ODU_RUNTIME_FREQUENCY_HP_IDS.flatMap((hpIndex) => [
       getOduRuntimeFrequencyControlKey(hpIndex, "Load"),
       getOduRuntimeFrequencyControlKey(hpIndex, "Apply"),
     ]),
   );
 
-  const ENTITY_DEFS = {
+  export const ENTITY_DEFS = {
     setupComplete: { domain: "binary_sensor", name: "Setup Complete", optional: true },
     status: { domain: "binary_sensor", name: "Status", optional: true },
     firmwareUpdate: { domain: "update", name: "Firmware Update", optional: true },
@@ -640,16 +640,16 @@ const LOGO_MARKUP = `
     });
   });
 
-  const APP_VIEWS = [
+  export const APP_VIEWS = [
     { id: "overview", label: "Overzicht", icon: "monitor-dashboard" },
     { id: "energy", label: "Energie", icon: "zap" },
     { id: "diagnosis", label: "Diagnose", icon: "activity" },
     { id: "results", label: "Resultaten", icon: "bar-chart" },
     { id: "settings", label: "Instellingen", icon: "settings" },
   ];
-  const APP_VIEW_IDS = new Set(APP_VIEWS.map((view) => view.id));
+  export const APP_VIEW_IDS = new Set(APP_VIEWS.map((view) => view.id));
 
-  const OQ_ICON_PATHS = {
+  export const OQ_ICON_PATHS = {
     activity: '<path d="M3 12h4l2-7 4 14 2-7h6"/>',
     "bar-chart": '<path d="M4 19V5"/><path d="M20 19H4"/><rect x="7" y="11" width="3" height="5" rx="1"/><rect x="12" y="7" width="3" height="9" rx="1"/><rect x="17" y="3" width="3" height="13" rx="1"/>',
     clipboard: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
@@ -672,15 +672,24 @@ const LOGO_MARKUP = `
     zap: '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/>',
   };
 
-  function renderOqIcon(name, className = "") {
+  export function renderOqIcon(name, className = "") {
     const paths = OQ_ICON_PATHS[name];
     if (!paths) {
       return "";
     }
-    const classAttr = className ? ` class="${escapeHtml(className)}"` : "";
+    const classAttr = className ? ` class="${escapeAttribute(className)}"` : "";
     return `<svg${classAttr} viewBox="0 0 24 24" aria-hidden="true" focusable="false">${paths}</svg>`;
   }
-  const SETTINGS_GROUPS = [
+
+  function escapeAttribute(value) {
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll("\"", "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+  export const SETTINGS_GROUPS = [
     { id: "installation", label: "Installatie", icon: "home-cog" },
     { id: "heating", label: "Verwarmen", icon: "flame" },
     { id: "cooling", label: "Koelen", icon: "snowflake" },
@@ -688,8 +697,8 @@ const LOGO_MARKUP = `
     { id: "service", label: "Service", icon: "tool" },
     { id: "system", label: "Systeem", icon: "server" },
   ];
-  const SETTINGS_GROUP_IDS = new Set(SETTINGS_GROUPS.map((group) => group.id));
-  const HP_PANEL_CONFIGS = [
+  export const SETTINGS_GROUP_IDS = new Set(SETTINGS_GROUPS.map((group) => group.id));
+  export const HP_PANEL_CONFIGS = [
     {
       title: "HP1",
       accent: "blue",
@@ -756,7 +765,7 @@ const LOGO_MARKUP = `
     },
   ];
 
-  const CURVE_POINTS = [
+  export const CURVE_POINTS = [
     { key: "curveM20", outdoor: -20, label: "-20°C" },
     { key: "curveM10", outdoor: -10, label: "-10°C" },
     { key: "curve0", outdoor: 0, label: "0°C" },
@@ -765,7 +774,7 @@ const LOGO_MARKUP = `
     { key: "curve15", outdoor: 15, label: "15°C" },
   ];
 
-  const POWER_HOUSE_KEYS = [
+  export const POWER_HOUSE_KEYS = [
     "housePower",
     "houseColdTemp",
     "houseOutdoorMax",
@@ -776,16 +785,16 @@ const LOGO_MARKUP = `
     "phDemandRiseTime",
     "phDemandFallTime",
   ];
-  const LIMIT_KEYS = ["dayMax", "silentMax", "maxWater"];
-  const FLOW_SETTING_KEYS = ["flowControlMode", "flowSetpoint", "coolingFlowSetpoint", "manualIpwm"];
-  const FLOW_TUNING_KEYS = ["flowKp", "flowKi"];
-  const SENSOR_CALIBRATION_KEYS = [
+  export const LIMIT_KEYS = ["dayMax", "silentMax", "maxWater"];
+  export const FLOW_SETTING_KEYS = ["flowControlMode", "flowSetpoint", "coolingFlowSetpoint", "manualIpwm"];
+  export const FLOW_TUNING_KEYS = ["flowKp", "flowKi"];
+  export const SENSOR_CALIBRATION_KEYS = [
     "hp1WaterInOffset",
     "hp1WaterOutOffset",
     "hp2WaterInOffset",
     "hp2WaterOutOffset",
   ];
-  const SENSOR_CALIBRATION_STATE_KEYS = [
+  export const SENSOR_CALIBRATION_STATE_KEYS = [
     "hp1WaterInRaw",
     "hp1WaterIn",
     "hp1WaterOutRaw",
@@ -795,7 +804,7 @@ const LOGO_MARKUP = `
     "hp2WaterOutRaw",
     "hp2WaterOut",
   ];
-  const INSTALLATION_MONITORING_STATE_KEYS = [
+  export const INSTALLATION_MONITORING_STATE_KEYS = [
     "compressorStarts2hWarningLimit",
     "compressorStarts72hWarningLimit",
     "compressorCyclingWarning2h",
@@ -829,7 +838,7 @@ const LOGO_MARKUP = `
     "hp1Failures",
     "hp2Failures",
   ];
-  const INSTALLATION_MONITORING_OVERVIEW_KEYS = [
+  export const INSTALLATION_MONITORING_OVERVIEW_KEYS = [
     "compressorCyclingWarning2h",
     "compressorCyclingWarning72h",
     "alternatingCompressorStartsWarning",
@@ -843,7 +852,7 @@ const LOGO_MARKUP = `
     "hp1Failures",
     "hp2Failures",
   ];
-  const COMMISSIONING_STATE_KEYS = [
+  export const COMMISSIONING_STATE_KEYS = [
     "commissioningStatus",
     "cm100Active",
     "commissioningCm100Start",
@@ -920,7 +929,7 @@ const LOGO_MARKUP = `
     "hp1Mode",
     "hp2Mode",
   ];
-  const SERVICE_STATUS_ENTITY_KEYS = new Set([
+  export const SERVICE_STATUS_ENTITY_KEYS = new Set([
     "commissioningStatus",
     "cm100Active",
     "boilerPowerTestResult",
@@ -957,17 +966,17 @@ const LOGO_MARKUP = `
     "hpWaterCalibrationResultHp2InRawAvg",
     "hpWaterCalibrationResultHp2OutRawAvg",
   ]);
-  const CIC_COMPATIBILITY_KEYS = ["cicCompatibilityMode"];
-  const OPENTHERM_SETTING_KEYS = ["otEnabled", "otLinkProblem"];
-  const CIC_POLLING_SETTING_KEYS = ["cicPollingEnabled", "cicFeedUrl", "cicDataStale"];
-  const OPENTHERM_DIAGNOSTIC_KEYS = [
+  export const CIC_COMPATIBILITY_KEYS = ["cicCompatibilityMode"];
+  export const OPENTHERM_SETTING_KEYS = ["otEnabled", "otLinkProblem"];
+  export const CIC_POLLING_SETTING_KEYS = ["cicPollingEnabled", "cicFeedUrl", "cicDataStale"];
+  export const OPENTHERM_DIAGNOSTIC_KEYS = [
     "otThermostatChEnable",
     "otThermostatCoolingEnable",
     "otControlSetpoint",
     "otRoomSetpoint",
     "otRoomTemp",
   ];
-  const CIC_POLLING_DIAGNOSTIC_KEYS = [
+  export const CIC_POLLING_DIAGNOSTIC_KEYS = [
     "cicJsonFeedOk",
     "cicWaterSupplyTemp",
     "cicControlSetpoint",
@@ -978,7 +987,7 @@ const LOGO_MARKUP = `
     "cicChEnabled",
     "cicCoolingEnabled",
   ];
-  const SENSOR_SELECTION_KEYS = [
+  export const SENSOR_SELECTION_KEYS = [
     "waterSupplySource",
     "localWaterSupplyTempSource",
     "flowSource",
@@ -991,7 +1000,7 @@ const LOGO_MARKUP = `
     "coolingEnableSource",
     "coolingDewPointSource",
   ];
-  const SENSOR_SELECTION_STATE_KEYS = [
+  export const SENSOR_SELECTION_STATE_KEYS = [
     "supplyTemp",
     "waterSupplyTempEsp",
     "waterSupplyTempPt1000",
@@ -1051,7 +1060,7 @@ const LOGO_MARKUP = `
     "mqttCoolingDewPointAge",
     "mqttCoolingDewPointValid",
   ];
-  const QUICK_START_FLOW_SOURCE_KEYS = [
+  export const QUICK_START_FLOW_SOURCE_KEYS = [
     "hardwareProfileText",
     "hpGeneration",
     "flowSource",
@@ -1072,7 +1081,7 @@ const LOGO_MARKUP = `
     "cm100Active",
     "quickFlowTest",
   ];
-  const QUICK_START_THERMOSTAT_SOURCE_KEYS = [
+  export const QUICK_START_THERMOSTAT_SOURCE_KEYS = [
     "hardwareProfileText",
     "roomTempSource",
     "roomSetpointSource",
@@ -1101,7 +1110,7 @@ const LOGO_MARKUP = `
     "mqttRoomSetpointAge",
     "mqttRoomSetpointValid",
   ];
-  const COOLING_SETTING_KEYS = [
+  export const COOLING_SETTING_KEYS = [
     "coolingMinimumSupplyTemp",
     "coolingDemandMax",
     "coolingRestartDelta",
@@ -1122,19 +1131,19 @@ const LOGO_MARKUP = `
     "coolingFallbackMinSupplyTemp",
     "coolingEffectiveMinSupplyTemp",
   ];
-  const CURVE_SETTING_KEYS = [...CURVE_POINTS.map((point) => point.key), "curveFallbackSupply", "curveControlProfile"];
-  const COMPRESSOR_SETTING_KEYS = ["minRuntime", "hp1ExcludedA", "hp1ExcludedB", "hp2ExcludedA", "hp2ExcludedB"];
-  const SILENT_SETTING_KEYS = ["silentStartTime", "silentEndTime", "silentMax", "dayMax"];
-  const DEBUG_RECORDING_SAMPLE_INTERVAL_MS = 10000;
-  const DEBUG_RECORDING_BUSY_RETRY_MS = 1000;
-  const DEBUG_RECORDING_LOG_LIMIT = 120;
-  const DEBUG_RECORDING_EVENT_LIMIT = 1000;
-  const DEBUG_RECORDING_DURATION_OPTIONS = [
+  export const CURVE_SETTING_KEYS = [...CURVE_POINTS.map((point) => point.key), "curveFallbackSupply", "curveControlProfile"];
+  export const COMPRESSOR_SETTING_KEYS = ["minRuntime", "hp1ExcludedA", "hp1ExcludedB", "hp2ExcludedA", "hp2ExcludedB"];
+  export const SILENT_SETTING_KEYS = ["silentStartTime", "silentEndTime", "silentMax", "dayMax"];
+  export const DEBUG_RECORDING_SAMPLE_INTERVAL_MS = 10000;
+  export const DEBUG_RECORDING_BUSY_RETRY_MS = 1000;
+  export const DEBUG_RECORDING_LOG_LIMIT = 120;
+  export const DEBUG_RECORDING_EVENT_LIMIT = 1000;
+  export const DEBUG_RECORDING_DURATION_OPTIONS = [
     { minutes: 15, label: "15 min" },
     { minutes: 30, label: "30 min" },
     { minutes: 60, label: "1 uur" },
   ];
-  const DEBUG_RECORDING_KEYS = [
+  export const DEBUG_RECORDING_KEYS = [
     "projectVersionText",
     "releaseChannelText",
     "installationTopology",
@@ -1276,11 +1285,11 @@ const LOGO_MARKUP = `
     "cicDataStale",
     "otLinkProblem",
   ];
-  const FIRMWARE_ENTITY_KEYS = ["firmwareUpdate", "firmwareUpdateChannel", "firmwareUpdateTarget", "firmwareUpdateProgress", "firmwareUpdateStatus"];
-  const FIRMWARE_TEST_ENTITY_KEYS = ["firmwareTestOtaUrl", "firmwareTestOtaMd5Url", "installFirmwareTestOta"];
-  const FIRMWARE_MODAL_KEYS = [...FIRMWARE_ENTITY_KEYS, ...FIRMWARE_TEST_ENTITY_KEYS, "installFirmwareUpdateTarget", "projectVersionText", "releaseChannelText", "installationTopology", "hardwareProfileText", "connectionText"];
-  const TOPOLOGY_HINT_KEYS = ["hp2ExcludedA", "hp2ExcludedB", "hp2Power", "hp2WaterOut"];
-  const HEADER_ENTITY_KEYS = [
+  export const FIRMWARE_ENTITY_KEYS = ["firmwareUpdate", "firmwareUpdateChannel", "firmwareUpdateTarget", "firmwareUpdateProgress", "firmwareUpdateStatus"];
+  export const FIRMWARE_TEST_ENTITY_KEYS = ["firmwareTestOtaUrl", "firmwareTestOtaMd5Url", "installFirmwareTestOta"];
+  export const FIRMWARE_MODAL_KEYS = [...FIRMWARE_ENTITY_KEYS, ...FIRMWARE_TEST_ENTITY_KEYS, "installFirmwareUpdateTarget", "projectVersionText", "releaseChannelText", "installationTopology", "hardwareProfileText", "connectionText"];
+  export const TOPOLOGY_HINT_KEYS = ["hp2ExcludedA", "hp2ExcludedB", "hp2Power", "hp2WaterOut"];
+  export const HEADER_ENTITY_KEYS = [
     "status",
     "uptime",
     "uptimeReadable",
@@ -1297,7 +1306,7 @@ const LOGO_MARKUP = `
     "releaseChannelText",
     "espInternalTemp",
   ];
-  const OVERVIEW_KEYS = [
+  export const OVERVIEW_KEYS = [
     "strategy",
     "openquattEnabled",
     "boilerCvAssistEnabled",
@@ -1416,7 +1425,7 @@ const LOGO_MARKUP = `
     "hp2Eev",
     "hp2FourWay",
   ];
-  const FAST_OVERVIEW_KEYS = [
+  export const FAST_OVERVIEW_KEYS = [
     "strategy",
     "openquattEnabled",
     "boilerCvAssistEnabled",
@@ -1505,7 +1514,7 @@ const LOGO_MARKUP = `
     "hp2FourWay",
     ...INSTALLATION_MONITORING_OVERVIEW_KEYS,
   ];
-  const OVERVIEW_METADATA_KEYS = [
+  export const OVERVIEW_METADATA_KEYS = [
     "hpGeneration",
     "boilerCvAssistEnabled",
     "boilerRatedHeatPower",
@@ -1579,7 +1588,7 @@ const LOGO_MARKUP = `
     "hp2WaterIn",
     "hp2WaterOut",
   ];
-  const OVERVIEW_ENERGY_COLUMN_CONFIGS = [
+  export const OVERVIEW_ENERGY_COLUMN_CONFIGS = [
     {
       label: "Nu",
       tone: "blue",
@@ -1647,7 +1656,7 @@ const LOGO_MARKUP = `
       ],
     },
   ];
-  const SETTINGS_KEYS = [
+  export const SETTINGS_KEYS = [
     "strategy",
     "installationTopology",
     "hpGeneration",
@@ -1685,9 +1694,9 @@ const LOGO_MARKUP = `
     ...SILENT_SETTING_KEYS,
     ...ODU_RUNTIME_FREQUENCY_KEYS,
   ];
-  const SETTINGS_BACKUP_WRITABLE_DOMAINS = new Set(["number", "select", "switch", "text", "time", "datetime"]);
-  const SETTINGS_BACKUP_EXPECTED_EXTRA_KEYS = new Set(["setupComplete", "openquattResumeAt", "firmwareUpdateChannel"]);
-  const SETTINGS_BACKUP_EXCLUDED_KEYS = new Set([
+  export const SETTINGS_BACKUP_WRITABLE_DOMAINS = new Set(["number", "select", "switch", "text", "time", "datetime"]);
+  export const SETTINGS_BACKUP_EXPECTED_EXTRA_KEYS = new Set(["setupComplete", "openquattResumeAt", "firmwareUpdateChannel"]);
+  export const SETTINGS_BACKUP_EXCLUDED_KEYS = new Set([
     "installationTopology",
     ...COMMISSIONING_STATE_KEYS,
     ...ODU_RUNTIME_FREQUENCY_KEYS,
@@ -1701,7 +1710,7 @@ const LOGO_MARKUP = `
   ]);
   // Keep this aligned with persisted UI settings. The build checks that new
   // writable settings are backed up or explicitly excluded above.
-  const SETTINGS_BACKUP_SECTIONS = [
+  export const SETTINGS_BACKUP_SECTIONS = [
     {
       id: "installation",
       label: "Installatie",
@@ -1823,22 +1832,22 @@ const LOGO_MARKUP = `
       ],
     },
   ];
-  const SETTINGS_BACKUP_SCHEMA_VERSION = 1;
-  const SETTINGS_BACKUP_KEYS = [...new Set(SETTINGS_BACKUP_SECTIONS.flatMap((section) => section.keys))];
-  const SETTINGS_BACKUP_KEY_SET = new Set(SETTINGS_BACKUP_KEYS);
-  const FAST_POLL_INTERVAL_MS = 5000;
-  const BULK_POLL_INTERVAL_MS = 30000;
-  const STATIC_POLL_INTERVAL_MS = 60000;
-  const FIRMWARE_OTA_START_QUIET_MS = 12000;
-  const FIRMWARE_OTA_INSTALL_POLL_INTERVAL_MS = 4000;
-  const CONNECTIVITY_PROBE_TIMEOUT_MS = 1500;
-  const CONNECTIVITY_PROBE_SUCCESS_TTL_MS = 30000;
-  const SUPPLEMENTARY_STATUS_REFRESH_INTERVAL_MS = 30000;
-  const LOGIN_MODAL_AUTH_STATUS_REFRESH_INTERVAL_MS = 1000;
-  const HIDDEN_POLL_INTERVAL_MS = 30000;
-  const POLL_JITTER_MIN_MS = 250;
-  const POLL_JITTER_MAX_MS = 750;
-  const FLOW_DASH_CYCLE_PX = 22;
-  const FLOW_OFFSET_PX_PER_SEC = FLOW_DASH_CYCLE_PX / 1.7;
-  const FAN_ROTATION_DEG_PER_SEC = 360 / 3.2;
-const OPENQUATT_RESUME_CLEAR_VALUE = "2000-01-01 00:00:00";
+  export const SETTINGS_BACKUP_SCHEMA_VERSION = 1;
+  export const SETTINGS_BACKUP_KEYS = [...new Set(SETTINGS_BACKUP_SECTIONS.flatMap((section) => section.keys))];
+  export const SETTINGS_BACKUP_KEY_SET = new Set(SETTINGS_BACKUP_KEYS);
+  export const FAST_POLL_INTERVAL_MS = 5000;
+  export const BULK_POLL_INTERVAL_MS = 30000;
+  export const STATIC_POLL_INTERVAL_MS = 60000;
+  export const FIRMWARE_OTA_START_QUIET_MS = 12000;
+  export const FIRMWARE_OTA_INSTALL_POLL_INTERVAL_MS = 4000;
+  export const CONNECTIVITY_PROBE_TIMEOUT_MS = 1500;
+  export const CONNECTIVITY_PROBE_SUCCESS_TTL_MS = 30000;
+  export const SUPPLEMENTARY_STATUS_REFRESH_INTERVAL_MS = 30000;
+  export const LOGIN_MODAL_AUTH_STATUS_REFRESH_INTERVAL_MS = 1000;
+  export const HIDDEN_POLL_INTERVAL_MS = 30000;
+  export const POLL_JITTER_MIN_MS = 250;
+  export const POLL_JITTER_MAX_MS = 750;
+  export const FLOW_DASH_CYCLE_PX = 22;
+  export const FLOW_OFFSET_PX_PER_SEC = FLOW_DASH_CYCLE_PX / 1.7;
+  export const FAN_ROTATION_DEG_PER_SEC = 360 / 3.2;
+export const OPENQUATT_RESUME_CLEAR_VALUE = "2000-01-01 00:00:00";
