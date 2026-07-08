@@ -2,6 +2,7 @@ import { access, readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
+import { gzipSync } from "node:zlib";
 import { build, transform } from "esbuild";
 import { resolveCssSources } from "./css-source-list.mjs";
 
@@ -12,6 +13,36 @@ const jsSourceDir = path.join(webDir, "js", "src");
 const cssSources = resolveCssSources(webDir);
 
 const allowedBareImports = new Set(["virtual:embedded-assets"]);
+const bundleBudgetHeadroomBytes = 5 * 1024;
+const bundleGzipBaselines = new Map([
+  ["js/openquatt-app.js", 174413],
+  ["css/openquatt-app.css", 35238],
+]);
+const boundaryAllowedEdges = new Set([
+  "core/entity-actions.js -> features/debug-recording.js",
+  "core/entity-actions.js -> features/firmware-actions.js",
+  "core/entity-actions.js -> features/firmware-update.js",
+  "core/entity-actions.js -> features/mqtt-actions.js",
+  "core/entity-actions.js -> features/mqtt.js",
+  "core/entity-actions.js -> features/quickstart-actions.js",
+  "core/entity-actions.js -> features/quickstart.js",
+  "core/entity-actions.js -> features/security-actions.js",
+  "core/entity-actions.js -> features/storage-history.js",
+  "core/entity-actions.js -> features/webserver-logs.js",
+  "core/entity-actions.js -> settings/installation.js",
+  "core/entity-actions.js -> views/energy.js",
+  "core/entity-sync.js -> features/mqtt-actions.js",
+  "core/entity-sync.js -> features/security-actions.js",
+  "core/entity-write-actions.js -> features/firmware-update.js",
+  "core/entity-write-actions.js -> features/security-actions.js",
+  "core/entity-write-actions.js -> features/storage-history.js",
+  "core/entity-write-actions.js -> features/webserver-logs.js",
+  "core/render-signatures.js -> features/security-actions.js",
+  "core/runtime.js -> features/debug-recording.js",
+  "settings/storage.js -> views/energy.js",
+  "views/overview.js -> settings/cooling.js",
+  "views/shell.js -> settings/core.js",
+]);
 
 function toBundlePath(value) {
   return value.split(path.sep).join("/");
@@ -66,6 +97,29 @@ async function resolveRelativeImport(importer, specifier) {
   return null;
 }
 
+function toSourceRelative(filePath) {
+  return toBundlePath(path.relative(jsSourceDir, filePath));
+}
+
+async function buildSourceImportGraph() {
+  const sourceFiles = await collectFiles(jsSourceDir, (filePath) => filePath.endsWith(".js"));
+  const graph = new Map(sourceFiles.map((filePath) => [toSourceRelative(filePath), []]));
+  for (const filePath of sourceFiles) {
+    const source = await readFile(filePath, "utf8");
+    const relativePath = toSourceRelative(filePath);
+    for (const specifier of extractImportSpecifiers(source)) {
+      if (!specifier.startsWith(".")) {
+        continue;
+      }
+      const resolved = await resolveRelativeImport(filePath, specifier);
+      if (resolved) {
+        graph.get(relativePath).push(toSourceRelative(resolved));
+      }
+    }
+  }
+  return graph;
+}
+
 async function checkSourceImports() {
   const sourceFiles = await collectFiles(jsSourceDir, (filePath) => filePath.endsWith(".js"));
   const errors = [];
@@ -86,6 +140,73 @@ async function checkSourceImports() {
   }
   if (errors.length) {
     throw new Error(`Source import check failed:\n- ${errors.join("\n- ")}`);
+  }
+}
+
+async function checkImportCycles() {
+  const graph = await buildSourceImportGraph();
+  const visiting = new Set();
+  const visited = new Set();
+  const stack = [];
+  const cycleMessages = new Set();
+
+  function visit(node) {
+    if (visiting.has(node)) {
+      const start = stack.indexOf(node);
+      if (start >= 0) {
+        cycleMessages.add([...stack.slice(start), node].join(" -> "));
+      }
+      return;
+    }
+    if (visited.has(node)) {
+      return;
+    }
+
+    visiting.add(node);
+    stack.push(node);
+    for (const target of graph.get(node) || []) {
+      visit(target);
+    }
+    stack.pop();
+    visiting.delete(node);
+    visited.add(node);
+  }
+
+  for (const node of graph.keys()) {
+    visit(node);
+  }
+
+  if (cycleMessages.size) {
+    throw new Error(`Import cycle check failed:\n- ${[...cycleMessages].join("\n- ")}`);
+  }
+}
+
+async function checkImportBoundaries() {
+  const graph = await buildSourceImportGraph();
+  const errors = [];
+  const seenEdges = new Set();
+  for (const [source, targets] of graph.entries()) {
+    for (const target of targets) {
+      const edge = `${source} -> ${target}`;
+      seenEdges.add(edge);
+      if (source.startsWith("core/") && (target.startsWith("features/") || target.startsWith("settings/") || target.startsWith("views/")) && !boundaryAllowedEdges.has(edge)) {
+        errors.push(`${edge}; core-to-UI imports need an explicit smoke allowlist entry`);
+      }
+      if (source.startsWith("views/") && target.startsWith("settings/") && !boundaryAllowedEdges.has(edge)) {
+        errors.push(`${edge}; view-to-settings imports need an explicit smoke allowlist entry`);
+      }
+      if (source.startsWith("settings/") && target.startsWith("views/") && !boundaryAllowedEdges.has(edge)) {
+        errors.push(`${edge}; settings-to-view imports need an explicit smoke allowlist entry`);
+      }
+    }
+  }
+  for (const edge of boundaryAllowedEdges) {
+    if (!seenEdges.has(edge)) {
+      errors.push(`${edge}; remove stale smoke allowlist entry`);
+    }
+  }
+  if (errors.length) {
+    throw new Error(`Import boundary check failed:\n- ${errors.join("\n- ")}`);
   }
 }
 
@@ -156,6 +277,21 @@ async function checkCssBundleFresh() {
   }
 }
 
+async function checkBundleGzipBudgets() {
+  const errors = [];
+  for (const [relativePath, baselineBytes] of bundleGzipBaselines.entries()) {
+    const maxBytes = baselineBytes + bundleBudgetHeadroomBytes;
+    const bytes = await readFile(path.join(webDir, relativePath));
+    const gzipBytes = gzipSync(bytes).length;
+    if (gzipBytes > maxBytes) {
+      errors.push(`${relativePath} gzip ${gzipBytes} B exceeds budget ${maxBytes} B`);
+    }
+  }
+  if (errors.length) {
+    throw new Error(`Bundle budget check failed:\n- ${errors.join("\n- ")}`);
+  }
+}
+
 function assertContains(source, needle, label) {
   if (!source.includes(needle)) {
     throw new Error(`${label} is missing expected source contract: ${needle}`);
@@ -172,6 +308,7 @@ async function checkWriteActionContracts() {
   }
 
   const entityActions = await source("js/src/core/entity-actions.js");
+  const entityWriteActions = await source("js/src/core/entity-write-actions.js");
   const securityActions = await source("js/src/features/security-actions.js");
   const mqttActions = await source("js/src/features/mqtt-actions.js");
   const firmwareActions = await source("js/src/features/firmware-actions.js");
@@ -187,9 +324,10 @@ async function checkWriteActionContracts() {
   assertContains(debugRecording, 'getDebugRecordingEndpoint("stop")', "Debug recording stop");
   assertContains(debugRecording, 'getDebugRecordingEndpoint("download")', "Debug recording download");
   assertContains(entityActions, 'triggerNamedButton("restartAction"', "Restart confirm");
-  assertContains(entityActions, 'commitOpenQuattRegulationPause("")', "OpenQuatt indefinite pause");
-  assertContains(entityActions, 'commitOpenQuattRegulationResumeNow()', "OpenQuatt resume");
+  assertContains(entityWriteActions, "export async function commitOpenQuattRegulationPause", "OpenQuatt pause write helper");
+  assertContains(entityWriteActions, "export async function commitOpenQuattRegulationResumeNow", "OpenQuatt resume write helper");
   assertContains(entityActions, 'ODU_RUNTIME_FREQUENCY_BUTTON_KEYS.has(buttonKey)', "ODU runtime named buttons");
+  assertContains(entityWriteActions, "ODU_RUNTIME_FREQUENCY_BUTTON_KEYS.has(key)", "ODU runtime named button write helper");
 }
 
 async function checkSharedBrowserUtilityContracts() {
@@ -328,6 +466,8 @@ globalThis.normalizeBasePath = normalizeBasePath;`,
 async function main() {
   await stat(path.join(webDir, "dev.html"));
   await checkSourceImports();
+  await checkImportCycles();
+  await checkImportBoundaries();
   await checkBasePathNormalization();
   await checkWriteActionContracts();
   await checkSharedBrowserUtilityContracts();
@@ -335,6 +475,7 @@ async function main() {
   await checkRuntimeBoundaryContracts();
   await checkJavaScriptBundleFresh();
   await checkCssBundleFresh();
+  await checkBundleGzipBudgets();
   console.log("Web smoke ok");
 }
 
