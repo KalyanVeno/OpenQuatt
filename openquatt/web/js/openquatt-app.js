@@ -122,13 +122,15 @@
             <span class="oq-settings-mqtt-sensor-name">${s(i.label)}</span>
             <span class="oq-settings-mqtt-sensor-value">
               ${c?Qh(i):'<span class="oq-settings-mqtt-sensor-value-missing">\u2014</span>'}
+            </span>
+            <span class="oq-settings-mqtt-sensor-status-cell">
+              <em
+                class="oq-settings-mqtt-sensor-status oq-settings-mqtt-sensor-status--${f}"
+                title="${s(q)}"
+                aria-label="${s(S)}: ${s(q)}"
+              >${s(w)}</em>
               ${y?`<span class="oq-settings-mqtt-sensor-retained" title="${s(x)}" aria-label="${s(x)}">R</span>`:""}
             </span>
-            <em
-              class="oq-settings-mqtt-sensor-status oq-settings-mqtt-sensor-status--${f}"
-              title="${s(q)}"
-              aria-label="${s(S)}: ${s(q)}"
-            >${s(w)}</em>
             <button
               class="oq-settings-toggle-switch oq-settings-mqtt-sensor-inline-toggle${c?" is-on":""}"
               type="button"

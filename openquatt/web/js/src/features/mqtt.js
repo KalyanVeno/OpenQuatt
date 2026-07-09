@@ -365,13 +365,15 @@ import { escapeHtml } from "../core/html.js";
             <span class="oq-settings-mqtt-sensor-name">${escapeHtml(sensor.label)}</span>
             <span class="oq-settings-mqtt-sensor-value">
               ${inputEnabled ? renderMqttSensorValue(sensor) : '<span class="oq-settings-mqtt-sensor-value-missing">—</span>'}
+            </span>
+            <span class="oq-settings-mqtt-sensor-status-cell">
+              <em
+                class="oq-settings-mqtt-sensor-status oq-settings-mqtt-sensor-status--${statusTone}"
+                title="${escapeHtml(statusTitle)}"
+                aria-label="${escapeHtml(validityTitle)}: ${escapeHtml(statusTitle)}"
+              >${escapeHtml(statusLabel)}</em>
               ${retained ? `<span class="oq-settings-mqtt-sensor-retained" title="${escapeHtml(retainedTitle)}" aria-label="${escapeHtml(retainedTitle)}">R</span>` : ""}
             </span>
-            <em
-              class="oq-settings-mqtt-sensor-status oq-settings-mqtt-sensor-status--${statusTone}"
-              title="${escapeHtml(statusTitle)}"
-              aria-label="${escapeHtml(validityTitle)}: ${escapeHtml(statusTitle)}"
-            >${escapeHtml(statusLabel)}</em>
             <button
               class="oq-settings-toggle-switch oq-settings-mqtt-sensor-inline-toggle${inputEnabled ? " is-on" : ""}"
               type="button"

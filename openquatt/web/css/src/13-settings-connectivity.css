@@ -249,9 +249,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 17px;
-  height: 17px;
-  margin-left: 2px;
+  width: 16px;
+  height: 16px;
   border: 1px solid rgba(100, 116, 139, 0.28);
   border-radius: 999px;
   background: rgba(100, 116, 139, 0.08);
@@ -281,11 +280,18 @@
   font-weight: 700;
 }
 
-.oq-settings-mqtt-sensor-status {
+.oq-settings-mqtt-sensor-status-cell {
   grid-column: 3;
   display: inline-flex;
   align-items: center;
   justify-self: start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.oq-settings-mqtt-sensor-status {
+  display: inline-flex;
+  align-items: center;
   gap: 4px;
   min-height: 24px;
   padding: 4px 9px;
@@ -632,7 +638,7 @@
     grid-area: value;
   }
 
-  .oq-settings-mqtt-sensor-status {
+  .oq-settings-mqtt-sensor-status-cell {
     grid-area: status;
     grid-column: 1 / -1;
     justify-self: start;
