@@ -195,10 +195,16 @@ binary_sensor:
       if (!id(cooling_enable_source).has_state()) return false;
       const auto source = id(cooling_enable_source).current_option();
       if (source == "Disabled") return true;
+      const bool cic_valid = id(feed_ok).has_state() && id(feed_ok).state &&
+                             id(cic_data_stale).has_state() && !id(cic_data_stale).state &&
+                             id(cic_cooling_enabled).has_state();
+      const bool ha_valid = id(cooling_enable_valid_ha).state && id(cooling_enable_ha).has_state();
       #if OQ_HARDWARE_HEATPUMP_CONTROLLER_Q
       if (source == "OT thermostat") return id(ot_thermostat_status_valid).has_state() && id(ot_thermostat_status_valid).state;
       #endif
-      if (source == "HA input") return id(cooling_enable_valid_ha).state && id(cooling_enable_ha).has_state();
+      if (source == "CIC") return cic_valid;
+      if (source == "CIC or HA input") return cic_valid || ha_valid;
+      if (source == "HA input") return ha_valid;
       if (source == "MQTT") return id(mqtt_cooling_enable_valid).has_state() && id(mqtt_cooling_enable_valid).state &&
                                   id(mqtt_cooling_enable).has_state();
       return false;
@@ -230,9 +236,15 @@ binary_sensor:
       if (manual_enabled) return true;
       if (source == "Disabled") return false;
       if (!id(cooling_enable_valid).state) return false;
+      const bool cic_enabled = id(feed_ok).has_state() && id(feed_ok).state &&
+                               id(cic_data_stale).has_state() && !id(cic_data_stale).state &&
+                               id(cic_cooling_enabled).has_state() && id(cic_cooling_enabled).state;
+      const bool ha_enabled = id(cooling_enable_valid_ha).state && id(cooling_enable_ha).has_state() && id(cooling_enable_ha).state;
       #if OQ_HARDWARE_HEATPUMP_CONTROLLER_Q
       if (source == "OT thermostat") return id(ot_thermostat_cooling_enable).state;
       #endif
+      if (source == "CIC") return cic_enabled;
+      if (source == "CIC or HA input") return cic_enabled || ha_enabled;
       if (source == "HA input") return id(cooling_enable_ha).state;
       if (source == "MQTT") return id(mqtt_cooling_enable).state;
       return false;
@@ -292,6 +304,10 @@ text_sensor:
       const auto source = id(cooling_enable_source).current_option();
       const bool manual_enabled = id(oq_manual_cooling_enable).state;
       const bool valid = id(cooling_enable_valid).has_state() && id(cooling_enable_valid).state;
+      const bool cic_enabled = id(feed_ok).has_state() && id(feed_ok).state &&
+                               id(cic_data_stale).has_state() && !id(cic_data_stale).state &&
+                               id(cic_cooling_enabled).has_state() && id(cic_cooling_enabled).state;
+      const bool ha_enabled = id(cooling_enable_valid_ha).state && id(cooling_enable_ha).has_state() && id(cooling_enable_ha).state;
 
       auto with_manual = [&](const std::string &base) -> std::string {
         if (!manual_enabled) return base;
@@ -303,6 +319,13 @@ text_sensor:
       #if OQ_HARDWARE_HEATPUMP_CONTROLLER_Q
       if (source == "OT thermostat") return {with_manual(valid && id(ot_thermostat_cooling_enable).state ? "OT thermostat" : "None")};
       #endif
+      if (source == "CIC") return {with_manual(cic_enabled ? "CIC" : "None")};
+      if (source == "CIC or HA input") {
+        if (cic_enabled && ha_enabled) return {with_manual("CIC + HA input")};
+        if (cic_enabled) return {with_manual("CIC")};
+        if (ha_enabled) return {with_manual("HA input")};
+        return {with_manual("None")};
+      }
       if (source == "HA input") return {with_manual(valid && id(cooling_enable_ha).state ? "HA input" : "None")};
       if (source == "MQTT") return {with_manual(valid && id(mqtt_cooling_enable).state ? "MQTT" : "None")};
       return {"Unknown"};

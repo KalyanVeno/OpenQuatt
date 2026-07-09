@@ -65,10 +65,12 @@ select:
     optimistic: true
     restore_value: true
     options:
-      - Disabled
-      - OT thermostat
+      - CIC
       - HA input
       - MQTT
+      - CIC or HA input
+      - Disabled
+      - OT thermostat
     initial_option: Disabled
     web_server:
       sorting_group_id: oq_sensor_selection

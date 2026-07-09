@@ -446,10 +446,14 @@ import { escapeHtml } from "../core/html.js";
       const entity = state.entities[key] || {};
       const current = String(getEntityValue(key) || "");
       const allOptions = getSelectEntityOptions(entity);
-      const availableOptions = allOptions.filter((option) => isSourceAvailable(option, config));
+      const hiddenOptions = new Set(config.hiddenOptions || []);
+      const currentHidden = current && hiddenOptions.has(current);
+      const availableOptions = allOptions.filter((option) => !hiddenOptions.has(option) && isSourceAvailable(option, config));
       const currentUnavailable = current && !isSourceAvailable(current, config);
       const hideUnavailableCurrent = current === "HA input" && config.keepUnavailableCurrent !== true;
-      const renderOptions = currentUnavailable && !hideUnavailableCurrent && !availableOptions.includes(current)
+      const renderOptions = currentHidden && !availableOptions.includes(current)
+        ? [current, ...availableOptions]
+        : currentUnavailable && !hideUnavailableCurrent && !availableOptions.includes(current)
         ? [current, ...availableOptions]
         : availableOptions;
       const optionMarkup = renderOptions.map((option) => {
@@ -468,7 +472,9 @@ import { escapeHtml } from "../core/html.js";
             </select>
           </label>
         `,
-        warning: currentUnavailable ? `Huidige bron niet beschikbaar: ${getUnavailableSourceReason(current, config)}` : "",
+        warning: currentHidden
+          ? "Huidige bron is legacy; kies een nieuwe bron."
+          : currentUnavailable ? `Huidige bron niet beschikbaar: ${getUnavailableSourceReason(current, config)}` : "",
       };
     };
     const renderSourceCard = ({
@@ -540,7 +546,12 @@ import { escapeHtml } from "../core/html.js";
     const heatingEnableSourceDisabled = String(getEntityValue("heatingEnableSource") || "").trim() === "Disabled";
     const heatingEnableSourceLabel = formattedSourceValue("heatingEnableSource", { optionLabels: { Disabled: "Niet gebruiken" } });
     const coolingEnableSourceDisabled = String(getEntityValue("coolingEnableSource") || "").trim() === "Disabled";
-    const coolingEnableSourceLabel = formattedSourceValue("coolingEnableSource", { optionLabels: { Disabled: "Niet gebruiken / handmatig" } });
+    const coolingEnableSourceLabels = {
+      Disabled: "Niet gebruiken / handmatig",
+      CIC: "CIC (legacy)",
+      "CIC or HA input": "CIC of HA-invoer (legacy)",
+    };
+    const coolingEnableSourceLabel = formattedSourceValue("coolingEnableSource", { optionLabels: coolingEnableSourceLabels });
     const coolingEnableEffectiveSource = formattedEffectivePermissionSourceValue("coolingEnableEffectiveSource");
     const sourceCards = [
       renderSourceCard({
@@ -692,7 +703,8 @@ import { escapeHtml } from "../core/html.js";
         select: {
           key: "coolingEnableSource",
           label: "Bron",
-          optionLabels: { Disabled: "Niet gebruiken / handmatig" },
+          optionLabels: coolingEnableSourceLabels,
+          hiddenOptions: ["CIC", "CIC or HA input"],
           haKeys: ["coolingEnableHa", "coolingEnableHaValid"],
           mqttTopicKey: "cooling_enable",
           keepUnavailableCurrent: true,

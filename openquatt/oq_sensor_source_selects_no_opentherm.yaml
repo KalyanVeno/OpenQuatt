@@ -61,9 +61,11 @@ select:
     optimistic: true
     restore_value: true
     options:
-      - Disabled
+      - CIC
       - HA input
       - MQTT
+      - CIC or HA input
+      - Disabled
     initial_option: Disabled
     web_server:
       sorting_group_id: oq_sensor_selection
