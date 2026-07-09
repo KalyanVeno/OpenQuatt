@@ -305,7 +305,7 @@ class MqttConfigHandler : public AsyncWebHandler {
       const std::string csrf_token = json_escape_(status.csrf_token);
       auto *stream = request->beginResponseStream("application/json");
       stream->printf(
-          R"({"enabled":%s,"connected":%s,"broker":"%s","port":%u,"username":"%s","password_set":%s,"dew_point_topic":"%s","input_topics":{"cooling_dew_point":"%s","outside_temperature":"%s","room_temperature":"%s","room_setpoint":"%s","heating_enable":"%s","cooling_enable":"%s"},"input_enabled":{"cooling_dew_point":%s,"outside_temperature":%s,"room_temperature":%s,"room_setpoint":%s,"heating_enable":%s,"cooling_enable":%s},"source":"%s","csrf_token":"%s"})",
+          R"({"enabled":%s,"connected":%s,"broker":"%s","port":%u,"username":"%s","password_set":%s,"dew_point_topic":"%s","input_topics":{"cooling_dew_point":"%s","outside_temperature":"%s","room_temperature":"%s","room_setpoint":"%s","heating_enable":"%s","cooling_enable":"%s"},"input_enabled":{"cooling_dew_point":%s,"outside_temperature":%s,"room_temperature":%s,"room_setpoint":%s,"heating_enable":%s,"cooling_enable":%s},"input_retained":{"cooling_dew_point":%s,"outside_temperature":%s,"room_temperature":%s,"room_setpoint":%s,"heating_enable":%s,"cooling_enable":%s},"source":"%s","csrf_token":"%s"})",
           status.enabled ? "true" : "false", status.connected ? "true" : "false", broker.c_str(), status.port,
           username.c_str(), status.password_set ? "true" : "false", topic.c_str(), topic.c_str(),
           outside_topic.c_str(), room_temp_topic.c_str(), room_setpoint_topic.c_str(), heating_enable_topic.c_str(),
@@ -316,6 +316,12 @@ class MqttConfigHandler : public AsyncWebHandler {
           status.input_enabled[room_setpoint_index] ? "true" : "false",
           status.binary_input_enabled[heating_enable_index] ? "true" : "false",
           status.binary_input_enabled[cooling_enable_index] ? "true" : "false",
+          status.input_retained[static_cast<size_t>(OpenQuattMqttConfig::NumericInputKind::COOLING_DEW_POINT)] ? "true" : "false",
+          status.input_retained[outside_index] ? "true" : "false",
+          status.input_retained[room_temp_index] ? "true" : "false",
+          status.input_retained[room_setpoint_index] ? "true" : "false",
+          status.binary_input_retained[heating_enable_index] ? "true" : "false",
+          status.binary_input_retained[cooling_enable_index] ? "true" : "false",
           source.c_str(), csrf_token.c_str());
       request->send(stream);
       return;
@@ -465,10 +471,12 @@ OpenQuattMqttConfig::StatusSnapshot OpenQuattMqttConfig::get_status_snapshot() {
   for (size_t i = 0; i < this->numeric_inputs_.size(); i++) {
     snapshot.input_topics[i] = this->numeric_inputs_[i].topic;
     snapshot.input_enabled[i] = this->is_numeric_input_enabled_(i);
+    snapshot.input_retained[i] = this->numeric_inputs_[i].last_valid_retained;
   }
   for (size_t i = 0; i < this->binary_inputs_.size(); i++) {
     snapshot.binary_input_topics[i] = this->binary_inputs_[i].topic;
     snapshot.binary_input_enabled[i] = this->is_binary_input_enabled_(i);
+    snapshot.binary_input_retained[i] = this->binary_inputs_[i].last_valid_retained;
   }
   snapshot.dew_point_topic =
       this->numeric_input_(NumericInputKind::COOLING_DEW_POINT).topic;
@@ -615,7 +623,12 @@ bool OpenQuattMqttConfig::apply_storage_(const Storage &storage, const char *sou
   const bool enabled = storage.enabled != 0U;
   this->stop_client_();
 
+  bool clear_all_inputs = !enabled;
   this->lock_config_();
+  const std::string previous_broker = this->broker_;
+  const uint16_t previous_port = this->port_;
+  const std::string previous_username = this->username_;
+  const std::string previous_password = this->password_;
   this->broker_ = storage.broker;
   this->port_ = storage.port;
   this->username_ = storage.username;
@@ -624,9 +637,16 @@ bool OpenQuattMqttConfig::apply_storage_(const Storage &storage, const char *sou
   this->input_disabled_mask_.store(storage.input_disabled_mask & INPUT_MASK_ALL);
   this->config_source_ = source != nullptr ? source : "";
   const bool broker_empty = this->broker_.empty();
+  clear_all_inputs = clear_all_inputs || broker_empty || previous_broker != this->broker_ ||
+                     previous_port != this->port_ || previous_username != this->username_ ||
+                     previous_password != this->password_;
   this->unlock_config_();
   if (enabled) {
-    this->clear_disabled_inputs_();
+    if (clear_all_inputs) {
+      this->clear_all_inputs_();
+    } else {
+      this->clear_disabled_inputs_();
+    }
   } else {
     this->clear_all_inputs_();
   }
@@ -879,14 +899,18 @@ void OpenQuattMqttConfig::clear_all_inputs_() {
   for (auto &input : this->numeric_inputs_) {
     input.pending_payload_ready = false;
     input.pending_invalid_payload_ready = false;
+    input.pending_retained = false;
     input.last_valid_value = NAN;
     input.last_valid_ms = 0;
+    input.last_valid_retained = false;
   }
   for (auto &input : this->binary_inputs_) {
     input.pending_payload_ready = false;
     input.pending_invalid_payload_ready = false;
+    input.pending_retained = false;
     input.last_valid_value = false;
     input.last_valid_ms = 0;
+    input.last_valid_retained = false;
   }
   portEXIT_CRITICAL(&this->pending_lock_);
 }
@@ -901,8 +925,10 @@ void OpenQuattMqttConfig::clear_disabled_inputs_() {
     auto &input = this->numeric_inputs_[i];
     input.pending_payload_ready = false;
     input.pending_invalid_payload_ready = false;
+    input.pending_retained = false;
     input.last_valid_value = NAN;
     input.last_valid_ms = 0;
+    input.last_valid_retained = false;
   }
   for (size_t i = 0; i < this->binary_inputs_.size(); i++) {
     const uint8_t mask = static_cast<uint8_t>(1U << (NUMERIC_INPUT_COUNT + i));
@@ -912,8 +938,10 @@ void OpenQuattMqttConfig::clear_disabled_inputs_() {
     auto &input = this->binary_inputs_[i];
     input.pending_payload_ready = false;
     input.pending_invalid_payload_ready = false;
+    input.pending_retained = false;
     input.last_valid_value = false;
     input.last_valid_ms = 0;
+    input.last_valid_retained = false;
   }
   portEXIT_CRITICAL(&this->pending_lock_);
 }
@@ -1030,12 +1058,14 @@ void OpenQuattMqttConfig::mqtt_event_handler_(void *handler_args, esp_event_base
             ESP_LOGI(TAG, "Ignoring retained MQTT %s payload for control freshness", input.log_name);
             break;
           }
-          self->queue_numeric_payload_(static_cast<size_t>(numeric_input_index), event->data, event->data_len);
+          self->queue_numeric_payload_(static_cast<size_t>(numeric_input_index), event->data, event->data_len,
+                                       event->retain);
           break;
         }
         const int binary_input_index = self->find_binary_input_index_by_topic_(event->topic, event->topic_len);
         if (binary_input_index >= 0) {
-          self->queue_binary_payload_(static_cast<size_t>(binary_input_index), event->data, event->data_len);
+          self->queue_binary_payload_(static_cast<size_t>(binary_input_index), event->data, event->data_len,
+                                      event->retain);
         }
       }
       break;
@@ -1047,7 +1077,7 @@ void OpenQuattMqttConfig::mqtt_event_handler_(void *handler_args, esp_event_base
   }
 }
 
-void OpenQuattMqttConfig::queue_numeric_payload_(size_t input_index, const char *data, int len) {
+void OpenQuattMqttConfig::queue_numeric_payload_(size_t input_index, const char *data, int len, bool retained) {
   if (input_index >= this->numeric_inputs_.size() || data == nullptr || len < 0) {
     return;
   }
@@ -1058,6 +1088,7 @@ void OpenQuattMqttConfig::queue_numeric_payload_(size_t input_index, const char 
     portENTER_CRITICAL(&this->pending_lock_);
     input.pending_payload_ready = false;
     input.pending_invalid_payload_ready = true;
+    input.pending_retained = false;
     portEXIT_CRITICAL(&this->pending_lock_);
     App.wake_loop_threadsafe();
     return;
@@ -1068,11 +1099,12 @@ void OpenQuattMqttConfig::queue_numeric_payload_(size_t input_index, const char 
   input.pending_payload[copy_len] = '\0';
   input.pending_payload_ready = true;
   input.pending_invalid_payload_ready = false;
+  input.pending_retained = retained;
   portEXIT_CRITICAL(&this->pending_lock_);
   App.wake_loop_threadsafe();
 }
 
-void OpenQuattMqttConfig::queue_binary_payload_(size_t input_index, const char *data, int len) {
+void OpenQuattMqttConfig::queue_binary_payload_(size_t input_index, const char *data, int len, bool retained) {
   if (input_index >= this->binary_inputs_.size() || data == nullptr || len < 0) {
     return;
   }
@@ -1083,6 +1115,7 @@ void OpenQuattMqttConfig::queue_binary_payload_(size_t input_index, const char *
     portENTER_CRITICAL(&this->pending_lock_);
     input.pending_payload_ready = false;
     input.pending_invalid_payload_ready = true;
+    input.pending_retained = false;
     portEXIT_CRITICAL(&this->pending_lock_);
     App.wake_loop_threadsafe();
     return;
@@ -1093,6 +1126,7 @@ void OpenQuattMqttConfig::queue_binary_payload_(size_t input_index, const char *
   input.pending_payload[copy_len] = '\0';
   input.pending_payload_ready = true;
   input.pending_invalid_payload_ready = false;
+  input.pending_retained = retained;
   portEXIT_CRITICAL(&this->pending_lock_);
   App.wake_loop_threadsafe();
 }
@@ -1102,6 +1136,7 @@ void OpenQuattMqttConfig::consume_pending_numeric_payloads_() {
     char payload[PAYLOAD_MAX_LEN]{};
     bool ready = false;
     bool invalid = false;
+    bool retained = false;
 
     portENTER_CRITICAL(&this->pending_lock_);
     auto &input = this->numeric_inputs_[i];
@@ -1111,7 +1146,9 @@ void OpenQuattMqttConfig::consume_pending_numeric_payloads_() {
       invalid = true;
     } else if (input.pending_payload_ready) {
       memcpy(payload, input.pending_payload, sizeof(payload));
+      retained = input.pending_retained;
       input.pending_payload_ready = false;
+      input.pending_retained = false;
       ready = true;
     }
     portEXIT_CRITICAL(&this->pending_lock_);
@@ -1119,7 +1156,7 @@ void OpenQuattMqttConfig::consume_pending_numeric_payloads_() {
     if (invalid) {
       this->invalidate_numeric_input_(i);
     } else if (ready) {
-      this->handle_numeric_payload_(i, payload);
+      this->handle_numeric_payload_(i, payload, retained);
     }
   }
 }
@@ -1129,6 +1166,7 @@ void OpenQuattMqttConfig::consume_pending_binary_payloads_() {
     char payload[PAYLOAD_MAX_LEN]{};
     bool ready = false;
     bool invalid = false;
+    bool retained = false;
 
     portENTER_CRITICAL(&this->pending_lock_);
     auto &input = this->binary_inputs_[i];
@@ -1138,7 +1176,9 @@ void OpenQuattMqttConfig::consume_pending_binary_payloads_() {
       invalid = true;
     } else if (input.pending_payload_ready) {
       memcpy(payload, input.pending_payload, sizeof(payload));
+      retained = input.pending_retained;
       input.pending_payload_ready = false;
+      input.pending_retained = false;
       ready = true;
     }
     portEXIT_CRITICAL(&this->pending_lock_);
@@ -1146,12 +1186,12 @@ void OpenQuattMqttConfig::consume_pending_binary_payloads_() {
     if (invalid) {
       this->invalidate_binary_input_(i);
     } else if (ready) {
-      this->handle_binary_payload_(i, payload);
+      this->handle_binary_payload_(i, payload, retained);
     }
   }
 }
 
-void OpenQuattMqttConfig::handle_numeric_payload_(size_t input_index, const char *payload) {
+void OpenQuattMqttConfig::handle_numeric_payload_(size_t input_index, const char *payload, bool retained) {
   if (input_index >= this->numeric_inputs_.size() || payload == nullptr) {
     return;
   }
@@ -1166,10 +1206,11 @@ void OpenQuattMqttConfig::handle_numeric_payload_(size_t input_index, const char
 
   input.last_valid_value = value;
   input.last_valid_ms = millis();
+  input.last_valid_retained = retained;
   this->publish_runtime_state_(true);
 }
 
-void OpenQuattMqttConfig::handle_binary_payload_(size_t input_index, const char *payload) {
+void OpenQuattMqttConfig::handle_binary_payload_(size_t input_index, const char *payload, bool retained) {
   if (input_index >= this->binary_inputs_.size() || payload == nullptr) {
     return;
   }
@@ -1184,6 +1225,7 @@ void OpenQuattMqttConfig::handle_binary_payload_(size_t input_index, const char 
 
   input.last_valid_value = value;
   input.last_valid_ms = millis();
+  input.last_valid_retained = retained;
   this->publish_runtime_state_(true);
 }
 
@@ -1194,6 +1236,7 @@ void OpenQuattMqttConfig::invalidate_numeric_input_(size_t input_index) {
   auto &input = this->numeric_inputs_[input_index];
   input.last_valid_value = NAN;
   input.last_valid_ms = 0;
+  input.last_valid_retained = false;
   this->publish_runtime_state_(true);
 }
 
@@ -1204,6 +1247,7 @@ void OpenQuattMqttConfig::invalidate_binary_input_(size_t input_index) {
   auto &input = this->binary_inputs_[input_index];
   input.last_valid_value = false;
   input.last_valid_ms = 0;
+  input.last_valid_retained = false;
   this->publish_runtime_state_(true);
 }
 

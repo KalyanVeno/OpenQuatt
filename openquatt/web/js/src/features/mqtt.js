@@ -124,6 +124,11 @@ import { escapeHtml } from "../core/html.js";
     return true;
   }
 
+  export function isMqttInputRetained(key) {
+    const inputRetained = state.mqttStatus?.input_retained;
+    return Boolean(inputRetained && typeof inputRetained === "object" && inputRetained[key]);
+  }
+
   export function getMqttInputSensors() {
     return [
       {
@@ -331,6 +336,7 @@ import { escapeHtml } from "../core/html.js";
       const age = formatMqttAge(sensor.ageKey);
       const inputEnabled = isMqttInputEnabled(sensor.topicKey);
       const valid = isEntityActive(sensor.validKey);
+      const retained = inputEnabled && valid && isMqttInputRetained(sensor.topicKey);
       const copied = state.mqttCopiedTopicKey === sensor.topicKey;
       const expanded = expandedTopicKey === sensor.topicKey;
       const busy = state.mqttInputToggleBusyKey === sensor.topicKey;
@@ -347,6 +353,7 @@ import { escapeHtml } from "../core/html.js";
             : `Laatste MQTT-publicatie ${age} geleden; de waarde is niet meer geldig.`
         : "Dit topic wordt niet gebruikt. OpenQuatt subscribed er niet op.";
       const toggleTitle = inputEnabled ? "Topic uitschakelen" : "Topic gebruiken";
+      const retainedTitle = "Retained MQTT-waarde: ontvangen bij verbinden met de broker.";
       return `
         <article class="oq-settings-mqtt-sensor-row${expanded ? " is-open" : ""}${inputEnabled ? "" : " is-disabled"}">
           <div
@@ -356,7 +363,10 @@ import { escapeHtml } from "../core/html.js";
             aria-expanded="${expanded ? "true" : "false"}"
           >
             <span class="oq-settings-mqtt-sensor-name">${escapeHtml(sensor.label)}</span>
-            <span class="oq-settings-mqtt-sensor-value">${inputEnabled ? renderMqttSensorValue(sensor) : '<span class="oq-settings-mqtt-sensor-value-missing">—</span>'}</span>
+            <span class="oq-settings-mqtt-sensor-value">
+              ${inputEnabled ? renderMqttSensorValue(sensor) : '<span class="oq-settings-mqtt-sensor-value-missing">—</span>'}
+              ${retained ? `<span class="oq-settings-mqtt-sensor-retained" title="${escapeHtml(retainedTitle)}" aria-label="${escapeHtml(retainedTitle)}">R</span>` : ""}
+            </span>
             <em
               class="oq-settings-mqtt-sensor-status oq-settings-mqtt-sensor-status--${statusTone}"
               title="${escapeHtml(statusTitle)}"
