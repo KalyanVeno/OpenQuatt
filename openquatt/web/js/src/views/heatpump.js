@@ -3115,6 +3115,13 @@ import { replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfChanged } from "./vie
       expectation = "Koeling blijft actief tot de kamertemperatuur richting setpoint zakt of bescherming ingrijpt.";
       primaryReason = "keep_current";
       sinceLabel = "Koelen";
+    } else if (boilerActive) {
+      title = "CV-ketel ondersteunt";
+      copy = "De CV-ketel helpt tijdelijk omdat de warmtevraag meer vermogen vraagt dan de warmtepompen nu leveren.";
+      expectation = "De CV-ketel stopt zodra de warmtepompen de vraag weer zelf kunnen dragen.";
+      severity = "limited";
+      primaryReason = "boiler_assist";
+      sinceLabel = "Ondersteuning actief";
     } else if (duoActive) {
       title = "Duo-bedrijf actief";
       copy = "Beide warmtepompen draaien omdat de warmtevraag hoog blijft. Dit is normaal winterbedrijf.";
@@ -3128,13 +3135,6 @@ import { replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfChanged } from "./vie
       severity = "limited";
       primaryReason = "defrost_hold";
       sinceLabel = "Tijdelijk";
-    } else if (boilerActive) {
-      title = "CV ondersteunt";
-      copy = "CV-ondersteuning is actief omdat de warmtevraag meer vermogen vraagt dan de warmtepompen nu leveren.";
-      expectation = "CV stopt zodra de warmtepompen de vraag weer zelf kunnen dragen.";
-      severity = "limited";
-      primaryReason = "better_heat";
-      sinceLabel = "Assist actief";
     } else if (!hp1Running && !hp2Running) {
       title = "Geen warmtepomp actief";
       copy = "Er is nu geen warmtepompactie nodig, of het systeem wacht door bescherming of rusttijd.";
@@ -4194,8 +4194,7 @@ import { replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfChanged } from "./vie
         }
         const weights = { event: 0, span: 1, aggregate: 2 };
         return (weights[left.kind] ?? 3) - (weights[right.kind] ?? 3);
-      })
-      .slice(0, 80);
+      });
   }
 
   function getControlWorkingItems(heatPumpPanels) {
@@ -4849,8 +4848,9 @@ import { replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfChanged } from "./vie
   function renderControlWorkingTimelineTab(items, selectedItem) {
     const windowModel = getControlWorkingWindowModel();
     const visibleItems = items.filter((item) => !item.timelineHidden);
+    const timelineItems = visibleItems.slice(0, 80);
     const decisionLogError = String(state.decisionLogError || "").trim();
-    const waitingForDecisionLog = !visibleItems.length && !state.decisionLog && !decisionLogError;
+    const waitingForDecisionLog = !timelineItems.length && !state.decisionLog && !decisionLogError;
     return `
       <div class="oq-working-split">
         <section class="oq-working-list" aria-label="${escapeHtml(windowModel.eyebrow)}">
@@ -4861,8 +4861,8 @@ import { replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfChanged } from "./vie
             </div>
             <p>${escapeHtml(windowModel.copy)}</p>
           </div>
-          ${visibleItems.length
-            ? visibleItems.map((item) => renderControlWorkingTimelineItem(item, selectedItem)).join("")
+          ${timelineItems.length
+            ? timelineItems.map((item) => renderControlWorkingTimelineItem(item, selectedItem)).join("")
             : decisionLogError
             ? renderControlWorkingEmptyState("Beslislog niet beschikbaar", `De firmwarelog kon niet worden geladen (${decisionLogError}). Dit betekent niet dat deze periode leeg is.`)
             : waitingForDecisionLog

@@ -172,7 +172,8 @@ interval:
           static bool last_boiler_allowed = false;
           static bool last_boiler_blocked = false;
           static std::string last_boiler_block_reason = "";
-          if (boiler_allowed != last_boiler_allowed || boiler_block_reason != last_boiler_block_reason) {
+          const bool boiler_block_reason_changed = boiler_block_reason != last_boiler_block_reason;
+          if (boiler_allowed != last_boiler_allowed || boiler_block_reason_changed) {
             if (boiler_allowed) {
               if (commissioning_boiler) {
                 ESP_LOGI("quatt.boiler", "Boiler enabled: CM100 commissioning task and safety guards clear");
@@ -191,7 +192,7 @@ interval:
           }
 
           const bool boiler_blocked = boiler_requested && !boiler_allowed;
-          if (boiler_blocked && !last_boiler_blocked) {
+          if (boiler_blocked && (!last_boiler_blocked || boiler_block_reason_changed)) {
             id(oq_decision_log).emit(
                 openquatt_decision_log::EVENT_DECISION_BLOCKED,
                 openquatt_decision_log::SUBJECT_CV,

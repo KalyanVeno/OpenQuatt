@@ -523,6 +523,9 @@ interval:
             if (stop_reason_code == 3) {
               return openquatt_decision_log::REASON_SENSOR_FALLBACK;
             }
+            if (stop_reason_code == 6) {
+              return openquatt_decision_log::REASON_FLOW_TOO_LOW;
+            }
             if (stop_reason_code == 1 || stop_reason_code == 4) {
               return openquatt_decision_log::REASON_COOLING_LIMITER;
             }

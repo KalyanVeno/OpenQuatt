@@ -120,7 +120,7 @@ globals:
     restore_value: false
     initial_value: '0'
 
-  # 0=none, 1=limiter, 2=dew, 3=fallback, 4=projected_floor (legacy), 5=request_cleared
+  # 0=none, 1=limiter, 2=dew, 3=fallback, 4=projected_floor (legacy), 5=request_cleared, 6=permission_lost
   - id: oq_cooling_stop_reason_code
     type: int
     restore_value: false
@@ -704,10 +704,16 @@ interval:
           const bool cooling_request_cleared =
               id(cooling_enable_selected).has_state() && id(cooling_enable_selected).state &&
               id(cooling_request_active).has_state() && !id(cooling_request_active).state;
-
-          if (!active ||
+          const bool cooling_permission_lost =
+              cooling_cycle_was_active &&
+              id(cooling_enable_selected).has_state() && id(cooling_enable_selected).state &&
+              id(cooling_request_active).has_state() && id(cooling_request_active).state &&
+              (!id(cooling_permitted).has_state() || !id(cooling_permitted).state);
+          const bool cooling_sensor_missing =
               !id(cooling_supply_target).has_state() || isnan(id(cooling_supply_target).state) ||
-              !id(oq_system_supply_temp).has_state() || isnan(id(oq_system_supply_temp).state)) {
+              !id(oq_system_supply_temp).has_state() || isnan(id(oq_system_supply_temp).state);
+
+          if (!active || cooling_sensor_missing) {
             id(oq_cooling_demand_raw) = 0;
             id(oq_cooling_pid_integral) = 0.0f;
             id(oq_cooling_pid_last_error_c) = 0.0f;
@@ -719,7 +725,9 @@ interval:
             id(oq_cooling_limited_demand) = 0;
             id(oq_cooling_limiter_reason_code) = 0;
             id(oq_cooling_stop_reason_code) =
-                (cooling_cycle_was_active && cooling_request_cleared) ? 5 : 0;
+                (cooling_cycle_was_active && cooling_request_cleared) ? 5 :
+                cooling_permission_lost ? 6 :
+                (cooling_cycle_was_active && cooling_sensor_missing) ? 3 : 0;
             id(oq_cooling_buffer_gap_rate_ref_ms) = 0;
             id(oq_cooling_last_demand_change_ms) = 0;
             id(oq_cooling_oil_return_recovery_stable_since_ms) = 0;
