@@ -406,7 +406,7 @@ void OpenQuattDecisionLog::update_bucket_locked_(const DecisionEvent &event) {
       break;
   }
 
-  if (event.reason_code == REASON_DEFROST_HOLD) {
+  if (event.event_type == EVENT_DECISION_HOLD && event.reason_code == REASON_DEFROST_HOLD) {
     if (event.subject == SUBJECT_HP1) bucket->defrost_hold_count_hp1 = increment_u16_(bucket->defrost_hold_count_hp1);
     else if (event.subject == SUBJECT_HP2) bucket->defrost_hold_count_hp2 = increment_u16_(bucket->defrost_hold_count_hp2);
   } else if (event.reason_code == REASON_DEFROST_BOOST) {

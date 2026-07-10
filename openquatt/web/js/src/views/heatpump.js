@@ -1207,6 +1207,8 @@ import { replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfChanged } from "./vie
     3: "sensor_fallback",
     4: "projected_floor",
     5: "cooling_request_cleared",
+    6: "flow_too_low",
+    7: "sensor_fallback",
   });
 
   function normalizeControlWorkingCoolingReason(reasonCode) {
@@ -3053,7 +3055,7 @@ import { replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfChanged } from "./vie
 
   function getControlWorkingCurrent(heatPumpPanels) {
     const modeModel = getControlReplayModeModel(heatPumpPanels);
-    const rawControlModeLabel = getEntityStateText("controlModeLabel", "CM2");
+    const rawControlModeLabel = getEntityStateText("controlModeLabel", "—");
     const currentModeId = normalizeControlReplayModeId(rawControlModeLabel);
     const currentModeLabel = currentModeId ? currentModeId.toUpperCase() : rawControlModeLabel;
     const hp1Panel = heatPumpPanels.find((panel) => panel.title === "HP1") || heatPumpPanels[0];
@@ -3122,12 +3124,6 @@ import { replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfChanged } from "./vie
       severity = "limited";
       primaryReason = "boiler_assist";
       sinceLabel = "Ondersteuning actief";
-    } else if (duoActive) {
-      title = "Duo-bedrijf actief";
-      copy = "Beide warmtepompen draaien omdat de warmtevraag hoog blijft. Dit is normaal winterbedrijf.";
-      expectation = "Eén warmtepomp stopt zodra de warmtevraag voldoende afneemt of single-bedrijf weer efficiënter is.";
-      primaryReason = "better_heat";
-      sinceLabel = "Sinds 07:10";
     } else if (defrostActive) {
       title = "Ontdooien actief";
       copy = "Een warmtepomp ontdooit tijdelijk. Het systeem houdt de keuze rustig zodat het ontdooien vanzelf kan afronden.";
@@ -3135,6 +3131,12 @@ import { replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfChanged } from "./vie
       severity = "limited";
       primaryReason = "defrost_hold";
       sinceLabel = "Tijdelijk";
+    } else if (duoActive) {
+      title = "Duo-bedrijf actief";
+      copy = "Beide warmtepompen draaien omdat de warmtevraag hoog blijft. Dit is normaal winterbedrijf.";
+      expectation = "Eén warmtepomp stopt zodra de warmtevraag voldoende afneemt of single-bedrijf weer efficiënter is.";
+      primaryReason = "better_heat";
+      sinceLabel = "Actief";
     } else if (!hp1Running && !hp2Running) {
       title = "Geen warmtepomp actief";
       copy = "Er is nu geen warmtepompactie nodig, of het systeem wacht door bescherming of rusttijd.";
@@ -3159,13 +3161,13 @@ import { replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfChanged } from "./vie
       hp1Status: hp1Running ? "Actief" : "Beschikbaar",
       hp2Status: hp2Panel ? (hp2Running ? "Actief" : "Beschikbaar") : "Niet aanwezig",
       cvStatus: boilerActive ? "Actief" : "Uit",
-      outsideTemp: formatControlReplayNumber("outsideTempSelected", 1, "°C", "1.8 °C"),
-      supplyTemp: formatControlReplayNumber("waterSupplyTempSelected", 1, "°C", "35.2 °C"),
+      outsideTemp: formatControlReplayNumber("outsideTempSelected", 1, "°C", "—"),
+      supplyTemp: formatControlReplayNumber("waterSupplyTempSelected", 1, "°C", "—"),
       flow: formatControlReplayNumber("flowSelected", 0, "L/h", "—"),
-      hp1Starts: getControlReplayCounterValue("hp1CompressorStarts24h", "5"),
-      hp2Starts: getControlReplayCounterValue("hp2CompressorStarts24h", hp2Panel ? "3" : "n.v.t."),
-      hp1Hours: formatControlReplayRuntimeHours("hp1Minutes", "2854 u"),
-      hp2Hours: hp2Panel ? formatControlReplayRuntimeHours("hp2Minutes", "2761 u") : "n.v.t.",
+      hp1Starts: getControlReplayCounterValue("hp1CompressorStarts24h", "—"),
+      hp2Starts: getControlReplayCounterValue("hp2CompressorStarts24h", hp2Panel ? "—" : "n.v.t."),
+      hp1Hours: formatControlReplayRuntimeHours("hp1Minutes", "—"),
+      hp2Hours: hp2Panel ? formatControlReplayRuntimeHours("hp2Minutes", "—") : "n.v.t.",
       cooling: coolingContext,
       coolingProtection,
       coolingCapped,
@@ -5287,8 +5289,16 @@ import { replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfChanged } from "./vie
       hp2Running: current.hp2Running,
       hp1Starts: current.hp1Starts,
       hp2Starts: current.hp2Starts,
+      hp1Hours: current.hp1Hours,
+      hp2Hours: current.hp2Hours,
+      cvStatus: current.cvStatus,
+      strategy: current.strategyLabel,
       outside: current.outsideTemp,
       supply: current.supplyTemp,
+      flow: current.flow,
+      cooling: current.cooling,
+      coolingProtection: current.coolingProtection,
+      coolingCapped: current.coolingCapped,
       decisionLog: state.decisionLogSignature,
       decisionLogError: state.decisionLogError,
       theme: state.overviewTheme,

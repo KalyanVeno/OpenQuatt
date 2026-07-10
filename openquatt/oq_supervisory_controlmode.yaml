@@ -1543,6 +1543,21 @@ interval:
                 if (dt >= sticky_wait_ms) {
                   id(oq_sticky_until_ms) = now_ms + sticky_run_ms;
                   sticky_active_local = true;
+                  const uint32_t sticky_duration_s_raw = sticky_run_ms / 1000UL;
+                  const uint16_t sticky_duration_s =
+                      sticky_duration_s_raw > UINT16_MAX ? UINT16_MAX : (uint16_t) sticky_duration_s_raw;
+                  id(oq_decision_log).emit(
+                      openquatt_decision_log::EVENT_STICKY_PUMP_RUN,
+                      openquatt_decision_log::SUBJECT_PUMP,
+                      openquatt_decision_log::REASON_STICKY_PROTECTION,
+                      openquatt_decision_log::SEVERITY_NORMAL,
+                      0,
+                      openquatt_decision_log::STATE_STANDBY,
+                      openquatt_decision_log::STATE_ACTIVE,
+                      0,
+                      0,
+                      0,
+                      sticky_duration_s);
                 }
               }
 

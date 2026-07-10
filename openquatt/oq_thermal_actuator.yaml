@@ -166,9 +166,19 @@ interval:
           auto publish_defrost_seen = [&](bool is_hp1, bool active)->void {
             static bool last_hp1_defrost_seen = false;
             static bool last_hp2_defrost_seen = false;
+            static uint32_t hp1_defrost_started_ms = 0;
+            static uint32_t hp2_defrost_started_ms = 0;
             bool &last_seen = is_hp1 ? last_hp1_defrost_seen : last_hp2_defrost_seen;
+            uint32_t &started_ms = is_hp1 ? hp1_defrost_started_ms : hp2_defrost_started_ms;
             if (active == last_seen) {
               return;
+            }
+            uint16_t duration_s = 0;
+            if (active) {
+              started_ms = now_ms;
+            } else if (started_ms != 0) {
+              const uint32_t elapsed_s = (now_ms - started_ms) / 1000UL;
+              duration_s = elapsed_s > UINT16_MAX ? UINT16_MAX : (uint16_t) elapsed_s;
             }
             id(oq_decision_log).emit(
                 active
@@ -179,7 +189,14 @@ interval:
                 openquatt_decision_log::SEVERITY_NORMAL,
                 (uint8_t) id(oq_control_mode_code),
                 active ? openquatt_decision_log::STATE_IDLE : openquatt_decision_log::STATE_ACTIVE,
-                active ? openquatt_decision_log::STATE_ACTIVE : openquatt_decision_log::STATE_IDLE);
+                active ? openquatt_decision_log::STATE_ACTIVE : openquatt_decision_log::STATE_IDLE,
+                0,
+                0,
+                0,
+                duration_s);
+            if (!active) {
+              started_ms = 0;
+            }
             last_seen = active;
           };
 
@@ -526,6 +543,9 @@ interval:
             if (stop_reason_code == 6) {
               return openquatt_decision_log::REASON_FLOW_TOO_LOW;
             }
+            if (stop_reason_code == 7) {
+              return openquatt_decision_log::REASON_SENSOR_FALLBACK;
+            }
             if (stop_reason_code == 1 || stop_reason_code == 4) {
               return openquatt_decision_log::REASON_COOLING_LIMITER;
             }
@@ -567,7 +587,7 @@ interval:
             id(oq_decision_log).emit(
                 openquatt_decision_log::EVENT_TOPOLOGY_CHANGE,
                 subject,
-                transition_reason(new_topology_count > 0),
+                transition_reason(new_topology_count > prev_topology_count),
                 openquatt_decision_log::SEVERITY_NORMAL,
                 (uint8_t) id(oq_control_mode_code),
                 topology_state(prev_topology_count),
