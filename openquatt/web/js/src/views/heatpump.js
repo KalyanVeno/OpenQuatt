@@ -4864,7 +4864,9 @@ import { replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfChanged } from "./vie
             <p>${escapeHtml(windowModel.copy)}</p>
           </div>
           ${timelineItems.length
-            ? timelineItems.map((item) => renderControlWorkingTimelineItem(item, selectedItem)).join("")
+            ? `<div class="oq-working-timeline">
+                ${timelineItems.map((item) => renderControlWorkingTimelineItem(item, selectedItem)).join("")}
+              </div>`
             : decisionLogError
             ? renderControlWorkingEmptyState("Beslislog niet beschikbaar", `De firmwarelog kon niet worden geladen (${decisionLogError}). Dit betekent niet dat deze periode leeg is.`)
             : waitingForDecisionLog

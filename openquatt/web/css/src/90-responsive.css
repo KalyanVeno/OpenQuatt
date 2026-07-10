@@ -1121,6 +1121,10 @@ esp-app.oq-native-app.oq-native-app--collapsed {
     padding-right: 8px;
   }
 
+  .oq-working-timeline {
+    --oq-working-rail-offset: 84px;
+  }
+
   .oq-working-entry-status {
     grid-column: 3;
     justify-self: start;
