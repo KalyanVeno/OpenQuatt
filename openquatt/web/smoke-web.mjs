@@ -458,6 +458,7 @@ async function checkSharedBrowserUtilityContracts() {
   const utilityRelativePath = "core/browser-utils.js";
   const utilitySource = await readFile(path.join(jsSourceDir, utilityRelativePath), "utf8");
   for (const [needle, label] of [
+    ["export async function fetchWithTimeout", "fetch timeout helper"],
     ["export async function copyTextToClipboard", "clipboard helper"],
     ["export function downloadBlobFile", "blob download helper"],
     ["export function downloadJsonFile", "JSON download helper"],
@@ -469,6 +470,8 @@ async function checkSharedBrowserUtilityContracts() {
 
   const sourceFiles = await collectFiles(jsSourceDir, (filePath) => filePath.endsWith(".js"));
   const sharedOnlyPatterns = [
+    { pattern: "new AbortController", label: "fetch timeout controllers" },
+    { pattern: "controller.abort()", label: "fetch timeout aborts" },
     { pattern: "clipboard.writeText", label: "clipboard writes" },
     { pattern: 'document.createElement("textarea")', label: "clipboard textarea fallback" },
     { pattern: 'document.execCommand("copy")', label: "clipboard execCommand fallback" },

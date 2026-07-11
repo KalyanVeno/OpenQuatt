@@ -279,42 +279,6 @@
 
   
 
-  .oq-hp-schematic-topbar,
-  .oq-hp-schematic-topbar-chips {
-    align-items: flex-start;
-    justify-content: flex-start;
-  }
-
-  .oq-hp-schematic-component--compressor {
-    left: auto;
-    right: 18px;
-    top: 18px;
-    transform: none;
-    text-align: right;
-  }
-
-  .oq-hp-schematic-component--condenser {
-    left: 18px;
-    top: 18px;
-  }
-
-  .oq-hp-schematic-component--evaporator {
-    right: 18px;
-    top: 72px;
-  }
-
-  .oq-hp-schematic-pipe-label--supply {
-    top: 112px;
-  }
-
-  .oq-hp-schematic-pipe-label--return {
-    bottom: 26px;
-  }
-
-  .oq-hp-schematic-footer-grid {
-    grid-template-columns: 1fr;
-  }
-
   .oq-overview-energy {
     padding: 18px;
   }
@@ -1043,7 +1007,6 @@
 
   #oq-helper-root .oq-hp-tech-pipe-flow,
   #oq-helper-root .oq-hp-tech-condensor-ref-flow,
-  #oq-helper-root .oq-boiler-card-pipe-flow,
   #oq-helper-root .oq-hp-tech-fan-blades {
     will-change: auto;
   }
