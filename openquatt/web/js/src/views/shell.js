@@ -15,7 +15,8 @@ import { captureQuickStartScrollState, queueQuickStartScrollRestore, renderQuick
 import { captureCm100CommissioningScrollState, captureHistoryStorageModalScrollState, captureServiceTaskModalScrollState, captureWebServerLogScrollState, queueCm100CommissioningScrollRestore, queueHistoryStorageModalScrollRestore, queueServiceTaskModalScrollRestore, queueWebServerLogScrollRestore, syncWebServerLogStream } from "../features/webserver-logs.js";
 import { renderSettingsGroupContent, renderSettingsGroupNav } from "../settings/core.js";
 import { renderEnergyView, renderResultsView } from "./energy.js";
-import { renderControlReplayView, renderOverviewView, syncTechTooltipLayers } from "./heatpump.js";
+import { renderControlReplayView } from "../features/control-replay-view.js";
+import { renderOverviewView, syncTechTooltipLayers } from "./heatpump.js";
 import { renderDiagnosisView, syncOverviewTrendInteractions } from "./overview.js";
 
 export function renderSettingsView() {

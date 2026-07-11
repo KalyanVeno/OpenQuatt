@@ -4,6 +4,7 @@ import { downloadBlobFile, downloadJsonFile } from "../core/browser-utils.js";
 import { ENTITY_DEFS, FAST_VIEW_ENTITY_REFRESH_CONCURRENCY, SETTINGS_BACKUP_KEY_SET, SETTINGS_BACKUP_KEYS, SETTINGS_BACKUP_SCHEMA_VERSION, SETTINGS_BACKUP_SECTIONS, TREND_HISTORY_REFRESH_INTERVAL_MS } from "../core/config.js";
 import { buildEntityPath } from "../core/domain-helpers.js";
 import { getEnergyHistoryRequestQuery } from "../core/energy-history-query.js";
+import { getEnergyHistoryDateKeyFromDate, parseEnergyHistoryDateKey } from "../core/energy-history-domain.js";
 import { updateEnergyHistoryState } from "../core/feature-state.js";
 import { setEntityBackupValue } from "../core/entity-backup.js";
 import { formatValue, getEntityValue, normalizeDateTimeValue, normalizeTimeValue, parseLooseNumber } from "../core/entity-store.js";
@@ -306,39 +307,18 @@ import { render } from "../core/render-scheduler.js";
       return 0;
     }
     const text = String(value).trim();
-    let year = 0;
-    let month = 0;
-    let day = 0;
-    const compactMatch = text.match(/^(\d{4})(\d{2})(\d{2})$/);
     const timestampParts = parseEnergyHistoryImportTimestampParts(text);
-    const dashedMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (compactMatch) {
-      year = Number(compactMatch[1]);
-      month = Number(compactMatch[2]);
-      day = Number(compactMatch[3]);
-    } else if (timestampParts) {
+    if (timestampParts) {
       return timestampParts.dateKey;
-    } else if (dashedMatch) {
-      year = Number(dashedMatch[1]);
-      month = Number(dashedMatch[2]);
-      day = Number(dashedMatch[3]);
-    } else {
-      const parsedDate = new Date(text);
-      if (Number.isNaN(parsedDate.getTime())) {
-        return 0;
-      }
-      year = parsedDate.getFullYear();
-      month = parsedDate.getMonth() + 1;
-      day = parsedDate.getDate();
     }
-    if (year < 2020 || year > 2099 || month < 1 || month > 12 || day < 1 || day > 31) {
-      return 0;
+    const compact = text.match(/^\d{8}$/)?.[0]
+      || text.match(/^(\d{4})-(\d{2})-(\d{2})$/)?.slice(1).join("");
+    let parsed = compact ? parseEnergyHistoryDateKey(compact) : null;
+    if (!parsed) {
+      const date = new Date(text);
+      parsed = Number.isNaN(date.getTime()) ? null : parseEnergyHistoryDateKey(getEnergyHistoryDateKeyFromDate(date));
     }
-    const check = new Date(Date.UTC(year, month - 1, day));
-    if (check.getUTCFullYear() !== year || check.getUTCMonth() !== month - 1 || check.getUTCDate() !== day) {
-      return 0;
-    }
-    return (year * 10000) + (month * 100) + day;
+    return parsed && parsed.year <= 2099 ? parsed.key : 0;
   }
 
   export function formatEnergyHistoryImportDateKey(dateKey) {

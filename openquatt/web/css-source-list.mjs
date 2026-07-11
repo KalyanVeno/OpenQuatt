@@ -16,6 +16,7 @@ export const CSS_SOURCE_FILES = [
   "css/src/16-settings-storage.css",
   "css/src/17-settings-integrations-controls.css",
   "css/src/20-overview.css",
+  "css/src/21-control-replay.css",
   "css/src/30-energy.css",
   "css/src/40-heatpump.css",
   "css/src/90-responsive.css",

@@ -19,11 +19,6 @@ function parseControlReplayCustomDateTime(value) {
 }
 
 const controlReplayActionHandlers = {
-  "select-control-replay-focus": ({ button }) => {
-    state.controlReplayFocusFilter = button.dataset.replayFocus || "all";
-    state.controlReplaySelectedEpisode = "";
-    render();
-  },
   "select-control-replay-tab": ({ button }) => {
     const tab = button.dataset.replayTab || "status";
     state.controlReplayTab = normalizeControlReplayTab(tab) || "status";
