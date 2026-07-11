@@ -454,6 +454,26 @@ async function checkResponsiveCssOwnership() {
   }
 }
 
+async function checkProductionInterfaceCssContracts() {
+  const relativeSources = cssSources.map((filePath) => toBundlePath(path.relative(webDir, filePath)));
+  if (relativeSources.includes("css/src/02-devtools.css")) {
+    throw new Error("Production CSS includes preview-only devtools styles");
+  }
+  if (!relativeSources.includes("css/src/02-interface-panel.css")) {
+    throw new Error("Production CSS is missing interface panel styles");
+  }
+
+  const productionCss = (await Promise.all(cssSources.map((filePath) => readFile(filePath, "utf8")))).join("\n");
+  for (const [needle, label] of [
+    [".oq-helper-hub {", "interface panel"],
+    [".oq-helper-hub-toggle {", "interface panel toggle"],
+    [".oq-helper-status-grid {", "interface status grid"],
+    ["esp-app.oq-native-app {", "ESPHome fallback surface"],
+  ]) {
+    assertContains(productionCss, needle, `Production CSS: ${label}`);
+  }
+}
+
 async function checkSharedBrowserUtilityContracts() {
   const utilityRelativePath = "core/browser-utils.js";
   const utilitySource = await readFile(path.join(jsSourceDir, utilityRelativePath), "utf8");
@@ -667,6 +687,7 @@ async function main() {
   await checkEmbeddedAssetContracts();
   await checkBrowserSmokeMatrix();
   await checkResponsiveCssOwnership();
+  await checkProductionInterfaceCssContracts();
   await checkSharedBrowserUtilityContracts();
   await checkSharedCoreUtilityContracts();
   await checkRuntimeBoundaryContracts();

@@ -3,6 +3,7 @@ import path from "node:path";
 export const CSS_SOURCE_FILES = [
   "css/src/00-tokens.css",
   "css/src/01-shell.css",
+  "css/src/02-interface-panel.css",
   "css/src/02-devtools.css",
   "css/src/03-modals.css",
   "css/src/04-debug-recording.css",
