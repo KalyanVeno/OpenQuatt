@@ -4,7 +4,7 @@ import { getEntityValue } from "../core/entity-store.js";
 import { formatFailures, formatWarningFailures } from "../core/failure-format.js";
 import { getOverviewControlsRenderSignature, getRenderSignature } from "../core/render-signatures.js";
 import { state } from "../core/state.js";
-import { refreshMotionTargets } from "../core/motion.js";
+import { startMotionLoop } from "../core/motion.js";
 import { getInstallationMonitoringModel } from "../core/installation-monitoring.js";
 import { setViewPatchControls } from "../core/view-patch-controls.js";
 import { getInstallationTopology } from "../features/device-context.js";
@@ -1388,7 +1388,7 @@ import { replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfChanged } from "./vie
       updatePipeGroup(board, id.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`), pipe.tone, pipe.d);
     });
     ensureTechTooltipLayering(board);
-    refreshMotionTargets();
+    startMotionLoop();
   }
 
   export function patchOverviewDom() {
