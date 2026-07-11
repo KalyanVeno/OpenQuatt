@@ -791,13 +791,14 @@
       pushEvent(9, "candidate_blocked", "HP2", "candidate_in_rest", "limited", 2, "standby", "blocked", 5, 420);
       pushEvent(4, "decision_hold", "HP2", "hold_active", "limited", 2, "standby", "blocked", 5);
     } else if (isFlowHoldScenario()) {
-      pushEvent(16, "flow_hold_start", "SYSTEM", "flow_preflow", "limited", 1, "standby", "limited", 2);
+      pushEvent(16, "flow_hold_start", "SYSTEM", "flow_preflow", "normal", 1, "standby", "limited", 2);
+      pushEvent(15, "decision_blocked", "SYSTEM", "flow_too_low", "limited", 1, "limited", "blocked", 180, 0, 250);
       pushEvent(9, "flow_hold_clear", "SYSTEM", "flow_preflow", "normal", 1, "limited", "active", 2, 0, 0, 420);
       pushEvent(6, "source_start", "HP1", "runtime_lead", "normal", 2, "standby", "active", 3);
       pushEvent(2, "flow_hold_start", "SYSTEM", "flow_postflow", "limited", 1, "active", "limited", 0);
     } else if (state.scenario === "cooling_stop_reasons") {
       // Two complete cooling runs: one is stopped by dew-point protection, the other ends normally.
-      pushEvent(96, "flow_hold_start", "SYSTEM", "flow_preflow", "limited", 1, "standby", "limited");
+      pushEvent(96, "flow_hold_start", "SYSTEM", "flow_preflow", "normal", 1, "standby", "limited");
       pushEvent(95, "flow_hold_clear", "SYSTEM", "flow_preflow", "normal", 1, "limited", "active", 4, 0, 0, 45);
       pushEvent(94, "topology_change", "HP2", "runtime_lead", "normal", 5, "idle", "single", 0, 1);
       pushEvent(94, "source_start", "HP2", "runtime_lead", "normal", 5, "idle", "active", 1);
@@ -815,8 +816,8 @@
       const pushLogEvent = (eventUptimeS, ...eventArgs) => {
         pushEvent((logUptimeS - eventUptimeS) / 60, ...eventArgs);
       };
-      pushLogEvent(186, "flow_hold_start", "SYSTEM", "flow_too_low", "limited", 1, "standby", "limited");
-      pushLogEvent(236, "flow_hold_clear", "SYSTEM", "flow_too_low", "normal", 1, "limited", "active", 5, 0, 0, 50);
+      pushLogEvent(186, "flow_hold_start", "SYSTEM", "flow_preflow", "normal", 1, "standby", "limited");
+      pushLogEvent(236, "flow_hold_clear", "SYSTEM", "flow_preflow", "normal", 1, "limited", "active", 5, 0, 0, 50);
       pushLogEvent(249, "topology_change", "HP2", "runtime_lead", "normal", 5, "idle", "single", 0, 1);
       pushLogEvent(249, "source_start", "HP2", "runtime_lead", "normal", 5, "idle", "active", 1);
       pushLogEvent(891, "cooling_limited", "COOLING", "capacity_cap", "limited", 5, "active", "limited", 2, 3, 119);
