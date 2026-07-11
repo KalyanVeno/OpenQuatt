@@ -907,30 +907,6 @@ import { isSystemInStandby, replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfCh
     }
   }
 
-  export function getOverviewUptimeMillis() {
-    const entity = state.entities.uptime;
-    if (!entity) {
-      return Number.NaN;
-    }
-
-    const numeric = getEntityNumericValue("uptime");
-    if (!Number.isFinite(numeric)) {
-      return Number.NaN;
-    }
-
-    const unit = String(entity.uom ?? entity.unit_of_measurement ?? "").trim().toLowerCase();
-    if (unit === "d") {
-      return numeric * 24 * 60 * 60 * 1000;
-    }
-    if (unit === "h") {
-      return numeric * 60 * 60 * 1000;
-    }
-    if (unit === "m" || unit === "min") {
-      return numeric * 60 * 1000;
-    }
-    return numeric * 1000;
-  }
-
   export function parseOverviewTrendRow(row) {
     const parts = String(row || "").trim().split("|");
     if (parts.length < 5) {
@@ -961,13 +937,13 @@ import { isSystemInStandby, replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfCh
 
   export function isDevPreviewEnvironment() {
     return Boolean(
-      (typeof window !== "undefined" && window.__OQ_DEV_CONTROLS__)
-      || (typeof window !== "undefined" && window.__OQ_DEV_META)
+      (__OQ_PREVIEW__ && typeof window !== "undefined" && window.__OQ_DEV_CONTROLS__)
+      || (__OQ_PREVIEW__ && typeof window !== "undefined" && window.__OQ_DEV_META)
     );
   }
 
   export function getOverviewTrendDevMockSamples(windowHours = getOverviewTrendWindowHours()) {
-    if (typeof window === "undefined" || !window.__OQ_DEV_TREND_MOCKS__ || typeof window.__OQ_DEV_TREND_MOCKS__.buildTrendPreviewSamples !== "function") {
+    if (!__OQ_PREVIEW__ || typeof window === "undefined" || !window.__OQ_DEV_TREND_MOCKS__ || typeof window.__OQ_DEV_TREND_MOCKS__.buildTrendPreviewSamples !== "function") {
       return [];
     }
     return window.__OQ_DEV_TREND_MOCKS__.buildTrendPreviewSamples(windowHours);

@@ -4,7 +4,7 @@ import { downloadBlobFile, downloadJsonFile } from "../core/browser-utils.js";
 import { ENTITY_DEFS, FAST_VIEW_ENTITY_REFRESH_CONCURRENCY, SETTINGS_BACKUP_KEY_SET, SETTINGS_BACKUP_KEYS, SETTINGS_BACKUP_SCHEMA_VERSION, SETTINGS_BACKUP_SECTIONS, TREND_HISTORY_REFRESH_INTERVAL_MS } from "../core/config.js";
 import { buildEntityPath } from "../core/domain-helpers.js";
 import { getEnergyHistoryRequestQuery } from "../core/energy-history-query.js";
-import { updateEnergyHistoryState } from "../core/energy-history-state.js";
+import { updateEnergyHistoryState } from "../core/feature-state.js";
 import { setEntityBackupValue } from "../core/entity-backup.js";
 import { formatValue, getEntityValue, normalizeDateTimeValue, normalizeTimeValue, parseLooseNumber } from "../core/entity-store.js";
 import { refreshEntities, syncEntities } from "../core/entity-sync.js";
@@ -1273,17 +1273,6 @@ import { render } from "../core/render-scheduler.js";
     }
   }
 
-  export function openSettingsBackupImportPicker() {
-    if (!state.root || state.settingsBackupBusy) {
-      return;
-    }
-
-    const input = state.root.querySelector('[data-oq-backup-file-input]');
-    if (input) {
-      input.click();
-    }
-  }
-
   export async function handleSettingsBackupFileSelection(file) {
     if (!file || state.settingsBackupBusy) {
       return;
@@ -1396,8 +1385,8 @@ import { render } from "../core/render-scheduler.js";
 
   export function isDevPreviewEnvironmentForFetches() {
     return Boolean(
-      (typeof window !== "undefined" && window.__OQ_DEV_CONTROLS__)
-      || (typeof window !== "undefined" && window.__OQ_DEV_META)
+      (__OQ_PREVIEW__ && typeof window !== "undefined" && window.__OQ_DEV_CONTROLS__)
+      || (__OQ_PREVIEW__ && typeof window !== "undefined" && window.__OQ_DEV_META)
     );
   }
 

@@ -1,14 +1,15 @@
 (function () {
-  const DOMAINS = new Set(["select", "number", "sensor", "text", "text_sensor", "binary_sensor", "button", "time", "datetime", "update", "switch"]);
   const OPENQUATT_RESUME_CLEAR_VALUE = "2000-01-01 00:00:00";
   const OPENQUATT_AUTH_RECOVERY_WINDOW_MS = 600000;
   const DEBUG_RECORDING_BUFFER_BYTES = 1024 * 1024;
   const DEBUG_RECORDING_SAMPLE_BYTES = 516;
   const DEBUG_RECORDING_SAMPLE_CAPACITY = Math.floor(DEBUG_RECORDING_BUFFER_BYTES / DEBUG_RECORDING_SAMPLE_BYTES);
   const mockFixtures = window.__OQ_MOCK_FIXTURES__;
-  if (!mockFixtures) {
-    throw new Error("OpenQuatt mock fixtures ontbreken.");
+  const mockEntityDefs = window.__OQ_MOCK_ENTITY_DEFS__;
+  if (!mockFixtures || !Array.isArray(mockEntityDefs)) {
+    throw new Error("OpenQuatt mockmetadata ontbreekt.");
   }
+  const DOMAINS = new Set(mockEntityDefs.map(([domain]) => domain));
   const entities = new Map();
   let devControlsRoot = null;
   const state = {
@@ -281,6 +282,13 @@
       state: "",
       value: "",
       ...payload,
+    });
+  }
+
+  function seedEntityDefinitions() {
+    mockEntityDefs.forEach(([domain, name]) => {
+      const value = domain === "binary_sensor" || domain === "switch" ? false : domain === "sensor" || domain === "number" ? 0 : "";
+      setEntity(domain, name, { state: value, value });
     });
   }
 
@@ -1361,17 +1369,10 @@
 
   function seedEntities() {
     syncDevMeta();
-    setEntity("text_sensor", "Summary", { state: "" });
+    seedEntityDefinitions();
     setEntity("text_sensor", "OpenQuatt Installation Topology", { state: state.installation, value: state.installation });
     setEntity("text_sensor", "OpenQuatt Hardware Profile", { state: state.hardware, value: state.hardware });
     setEntity("text_sensor", "OpenQuatt Connection", { state: state.connection, value: state.connection });
-    setEntity("button", "Check Firmware Updates", { state: "" });
-    setEntity("button", "Install Firmware Test OTA", { state: "" });
-    setEntity("button", "Install Firmware Update Target", { state: "" });
-    setEntity("button", "Restart", { state: "" });
-    setEntity("button", "Acknowledge compressor cycling alert", { state: "" });
-    setEntity("text", "Firmware Test OTA URL", { state: "", value: "" });
-    setEntity("text", "Firmware Test OTA MD5 URL", { state: "", value: "" });
     setEntity("text_sensor", "OpenQuatt Version", { state: "v0.26.0", value: "v0.26.0" });
     setEntity("text_sensor", "OpenQuatt Release Channel", { state: "dev", value: "dev" });
     setEntity("sensor", "Uptime", { value: 0, uom: "h" });
@@ -1379,7 +1380,6 @@
     setEntity("sensor", "ESP Internal Temperature", { value: 37.8, uom: "°C" });
     setEntity("sensor", "Firmware Update Progress", { value: 0, uom: "%" });
     setEntity("text_sensor", "Firmware Update Status", { state: "Idle", value: "Idle" });
-    setEntity("button", "Trendhistorie nu opslaan", { state: "" });
     setEntity("text_sensor", "Trendhistorie beschikbaar", { state: "18,4 dagen", value: "18,4 dagen" });
     setEntity("text_sensor", "Trendhistorie oudste punt", { state: "14-04 06:00", value: "14-04 06:00" });
     setEntity("text_sensor", "Trendhistorie nieuwste punt", { state: "2 min geleden", value: "2 min geleden" });
@@ -1393,8 +1393,6 @@
     if (!state.energyHistoryHourRecords.length) {
       state.energyHistoryHourRecords = buildEnergyHistoryHourRecords();
     }
-    setEntity("button", "Lifetime energiehistorie nu opslaan", { state: "" });
-    setEntity("button", "Lifetime energiehistorie wissen", { state: "" });
     setEntity("select", "Uurdetail bewaren", {
       value: state.energyHistoryHourRetention,
       state: state.energyHistoryHourRetention,
@@ -1405,9 +1403,6 @@
       state: energyHistoryRecordCountText,
       value: energyHistoryRecordCountText,
     });
-    setEntity("text_sensor", "Lifetime energiehistorie oudste dag", { state: "", value: "" });
-    setEntity("text_sensor", "Lifetime energiehistorie nieuwste dag", { state: "", value: "" });
-    setEntity("text_sensor", "Lifetime energiehistorie laatste opslag", { state: "", value: "" });
     setEntity("sensor", "Lifetime energiehistorie grootte", { value: state.energyHistoryStoredKiB, uom: "kB" });
     setEntity("sensor", "Lifetime energiehistorie schrijfacties", { value: state.energyHistoryWrites });
     setEntity("update", "Firmware Update", {
@@ -1455,49 +1450,23 @@
       option: ["Flow Setpoint", "Manual PWM"],
     });
     setEntity("text_sensor", "Commissioning status", { state: "IDLE", value: "IDLE" });
-    setEntity("binary_sensor", "CM100 active", { value: false, state: false });
-    setEntity("button", "CM100 Start", {});
-    setEntity("button", "CM100 Stop", {});
-    setEntity("button", "Boiler Power Test Start", {});
-    setEntity("button", "Boiler Power Test Abort", {});
-    setEntity("button", "Boiler Power Test Apply", {});
-    setEntity("button", "Flow Autotune Start", {});
-    setEntity("button", "Flow Autotune Abort", {});
-    setEntity("button", "Apply Flow Autotune Kp-Ki", {});
-    setEntity("button", "Air Purge Start", {});
-    setEntity("button", "Air Purge Abort", {});
-    setEntity("button", "Manual Flow Start", {});
-    setEntity("button", "Manual Flow Abort", {});
-    setEntity("button", "Apply Manual Flow To Heating", {});
-    setEntity("button", "Apply Manual Flow To Cooling", {});
-    setEntity("switch", "Quick flow test", { value: false, state: false });
-    setEntity("button", "Manual HP Start", {});
-    setEntity("button", "Manual HP Abort", {});
-    setEntity("button", "HP Water Calibration Start", {});
-    setEntity("button", "HP Water Calibration Abort", {});
-    setEntity("button", "Apply HP Water Calibration Offsets", {});
     setEntity("switch", "Air purge return to Auto", { value: true, state: true });
-    setEntity("binary_sensor", "Boiler power test active", { value: false, state: false });
     setEntity("text_sensor", "Boiler power test status", { state: "IDLE", value: "IDLE" });
     setEntity("sensor", "Boiler power test result", { value: 0, uom: "W" });
     setEntity("sensor", "Boiler power test confidence", { value: 0, uom: "%" });
     setEntity("text_sensor", "Flow Autotune status", { state: "IDLE", value: "IDLE" });
     setEntity("number", "Flow Autotune Kp suggested", { value: 0, min_value: 0, max_value: 5, step: 0.01, uom: "" });
     setEntity("number", "Flow Autotune Ki suggested", { value: 0, min_value: 0, max_value: 5, step: 0.01, uom: "" });
-    setEntity("binary_sensor", "Air purge active", { value: false, state: false });
     setEntity("text_sensor", "Air purge status", { state: "IDLE", value: "IDLE" });
     setEntity("sensor", "Air purge remaining", { value: 0, uom: "s" });
     setEntity("sensor", "Air purge phase", { value: 0, uom: "" });
     setEntity("sensor", "Air purge target iPWM", { value: 0, uom: "iPWM" });
-    setEntity("binary_sensor", "Manual flow active", { value: false, state: false });
     setEntity("text_sensor", "Manual flow status", { state: "IDLE", value: "IDLE" });
     setEntity("sensor", "Manual flow target iPWM", { value: 400, uom: "iPWM" });
-    setEntity("binary_sensor", "Manual HP active", { value: false, state: false });
     setEntity("text_sensor", "Manual HP status", { state: "IDLE", value: "IDLE" });
     setEntity("text_sensor", "Manual HP guard status", { state: "Vrijgegeven", value: "Vrijgegeven" });
     setEntity("select", "Manual HP1 service mode", { value: "Standby", state: "Standby", option: ["Standby", "Heating", "Cooling"] });
     setEntity("select", "Manual HP2 service mode", { value: "Standby", state: "Standby", option: ["Standby", "Heating", "Cooling"] });
-    setEntity("binary_sensor", "HP water calibration active", { value: false, state: false });
     setEntity("text_sensor", "HP water calibration status", { state: "IDLE", value: "IDLE" });
     setEntity("sensor", "HP water calibration remaining", { value: 0, uom: "s" });
     setEntity("sensor", "HP water calibration phase", { value: 0, uom: "" });
@@ -1881,8 +1850,6 @@
     seedHp2Entities();
     seedOduRuntimeFrequencyEntities("HP2");
 
-    setEntity("button", "Complete setup", {});
-    setEntity("button", "Reset setup state", {});
   }
 
   function seedHp2Entities() {

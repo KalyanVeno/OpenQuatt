@@ -345,48 +345,6 @@ export function renderSettingsIntegrationSwitchCard(key, title, copy) {
   `;
 }
 
-export function renderSettingsButtonField(key, title, copy, buttonLabel, action, className = "", options = {}) {
-  const busy = state.loadingEntities || state.busyAction === key;
-  const disabled = options.disabled === true;
-  const buttonClass = options.buttonClass || "oq-helper-button oq-helper-button--ghost";
-  const note = options.note || "";
-  return renderSettingsFieldCard(
-    key,
-    title,
-    copy,
-    `
-      <div class="oq-settings-action-field">
-        <button
-          class="${buttonClass}"
-          type="button"
-          data-oq-action="${escapeHtml(action)}"
-          ${options.buttonKey ? `data-oq-button-key="${escapeHtml(options.buttonKey)}"` : ""}
-          ${busy || disabled ? "disabled" : ""}
-        >
-          ${escapeHtml(buttonLabel)}
-        </button>
-        ${note ? `<p class="oq-settings-action-note">${escapeHtml(note)}</p>` : ""}
-      </div>
-    `,
-    className,
-  );
-}
-
-export function renderSettingsNamedButtonField(key, title, copy, buttonLabel, className = "", options = {}) {
-  return renderSettingsButtonField(
-    key,
-    title,
-    copy,
-    buttonLabel,
-    "press-named-button",
-    className,
-    {
-      ...options,
-      buttonKey: options.buttonKey || key,
-    },
-  );
-}
-
 export function renderNamedActionButton(buttonKey, label, buttonClass = "oq-helper-button oq-helper-button--ghost", disabled = false) {
   return `
     <button

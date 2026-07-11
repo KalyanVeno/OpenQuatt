@@ -3,7 +3,7 @@ import { BULK_POLL_INTERVAL_MS, CIC_COMPATIBILITY_KEYS, CIC_POLLING_DIAGNOSTIC_K
 import { buildEntityPath, isCurveMode } from "./domain-helpers.js";
 import { getEntityValue, parseLooseNumber } from "./entity-store.js";
 import { state } from "./state.js";
-import { updateWebServerLogState } from "./webserver-log-state.js";
+import { updateWebServerLogState } from "./feature-state.js";
 import { getDefaultAppView, getUrlAppView, setAppView } from "./navigation.js";
 import { isFirmwareOtaQuietActive } from "./firmware-quiet.js";
 import { getInstallationMonitoringModel, syncInstallationMonitoringDetailsState } from "./installation-monitoring.js";
@@ -257,7 +257,7 @@ import { render } from "./render-scheduler.js";
   }
 
   export function getDevInitialLoadDelayMs() {
-    const raw = typeof window !== "undefined" ? Number(window.__OQ_DEV_LOAD_DELAY_MS || 0) : 0;
+    const raw = __OQ_PREVIEW__ && typeof window !== "undefined" ? Number(window.__OQ_DEV_LOAD_DELAY_MS || 0) : 0;
     return Number.isFinite(raw) && raw > 0 ? raw : 0;
   }
 
@@ -488,37 +488,6 @@ import { render } from "./render-scheduler.js";
     return state.deviceReconnectMode || state.busyAction === "restartAction" || state.updateInstallBusy || state.updateInstallPhaseHint
       ? RECONNECT_ENTITY_REQUEST_TIMEOUT_MS
       : ENTITY_REQUEST_TIMEOUT_MS;
-  }
-
-  export async function fetchEntityPayload(key, detail = "state") {
-    const entity = ENTITY_DEFS[key];
-    const url = `${buildEntityPath(entity.domain, entity.name)}${detail === "all" ? "?detail=all" : ""}`;
-    const timeoutMs = getEntityRequestTimeoutMs();
-
-    if (typeof AbortController === "function") {
-      const controller = new AbortController();
-      const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
-      try {
-        const response = await fetch(url, { signal: controller.signal });
-        if (!response.ok) {
-          throw new Error(`${entity.name} HTTP ${response.status}`);
-        }
-        return response.json();
-      } catch (error) {
-        if (controller.signal.aborted) {
-          throw new Error(`${entity.name} request timed out after ${timeoutMs}ms`);
-        }
-        throw error;
-      } finally {
-        window.clearTimeout(timeoutId);
-      }
-    }
-
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`${entity.name} HTTP ${response.status}`);
-    }
-    return response.json();
   }
 
   export function isLikelyDeviceConnectionError(message) {

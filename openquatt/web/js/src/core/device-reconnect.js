@@ -1,6 +1,6 @@
 import { state } from "./state.js";
 import { render } from "./render-scheduler.js";
-import { updateFirmwareState } from "./firmware-state.js";
+import { updateFirmwareState } from "./feature-state.js";
 
 export const DEVICE_RECONNECT_RECOVERY_CLEAR_DELAY_MS = 1500;
 

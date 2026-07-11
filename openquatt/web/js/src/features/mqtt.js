@@ -43,14 +43,6 @@ import { renderModalShell } from "../core/modal-shell.js";
     return "MQTT inputbronnen staan uit. Stel een broker in om externe bronwaarden te ontvangen.";
   }
 
-  export function formatMqttNumericValue(key, decimals = 2) {
-    const value = getEntityNumericValue(key);
-    if (!Number.isFinite(value)) {
-      return "Geen meting";
-    }
-    return `${value.toFixed(decimals)} °C`;
-  }
-
   export function renderMqttNumericValue(key, decimals = 2) {
     const value = getEntityNumericValue(key);
     if (!Number.isFinite(value)) {
@@ -97,10 +89,6 @@ import { renderModalShell } from "../core/modal-shell.js";
       return "Nog geen status";
     }
     return isEntityActive(validKey) ? "Geldig" : "Ontbreekt of verouderd";
-  }
-
-  export function getMqttDewPointValidityLabel() {
-    return getMqttValidityLabel("mqttCoolingDewPointValid");
   }
 
   export function getMqttInputTopic(key) {

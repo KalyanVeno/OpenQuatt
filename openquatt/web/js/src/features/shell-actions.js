@@ -3,7 +3,7 @@ import { ensureNativeFrontendLoaded, setDevPanelOpen, setInterfacePanelOpen, set
 import { state } from "../core/state.js";
 import { invokeActionMap } from "../core/action-router.js";
 import { resetFirmwareManualUploadSelection, resetFirmwareTestSelection } from "./firmware-update.js";
-import { updateFirmwareState } from "../core/firmware-state.js";
+import { updateFirmwareState } from "../core/feature-state.js";
 import { stopLoginAuthStatusPolling } from "./security-actions.js";
 
 function selectSurface(button) {
@@ -45,17 +45,19 @@ function selectSurface(button) {
 }
 
 const shellActionHandlers = {
-  "set-mock-boiler": (button) => {
-    if (typeof window.__OQ_SET_MOCK_BOILER__ === "function") {
-      window.__OQ_SET_MOCK_BOILER__(button.dataset.boilerMode || "off");
-    }
-  },
+  ...(__OQ_PREVIEW__ ? {
+    "set-mock-boiler": (button) => {
+      if (typeof window.__OQ_SET_MOCK_BOILER__ === "function") {
+        window.__OQ_SET_MOCK_BOILER__(button.dataset.boilerMode || "off");
+      }
+    },
+    "toggle-dev-panel": () => {
+      setDevPanelOpen(!state.devPanelOpen);
+      render();
+    },
+  } : {}),
   "toggle-interface-panel": () => {
     setInterfacePanelOpen(!state.interfacePanelOpen);
-    render();
-  },
-  "toggle-dev-panel": () => {
-    setDevPanelOpen(!state.devPanelOpen);
     render();
   },
   "select-surface": (button) => selectSurface(button),

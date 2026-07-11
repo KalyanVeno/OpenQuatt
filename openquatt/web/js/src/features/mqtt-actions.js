@@ -1,6 +1,6 @@
 import { copyTextToClipboard } from "../core/browser-utils.js";
 import { invokeActionMap } from "../core/action-router.js";
-import { updateMqttState } from "../core/mqtt-state.js";
+import { updateMqttState } from "../core/feature-state.js";
 import { getEntitySignatureFragment } from "../core/render-signatures.js";
 import { state } from "../core/state.js";
 import { shouldRefreshSupplementaryStatus } from "../core/supplementary-refresh.js";

@@ -568,11 +568,3 @@ import { escapeHtml } from "../core/html.js";
     `;
   }
 
-  export function renderCurveInputs() {
-    return `
-      <div class="oq-helper-curve-grid">
-        ${CURVE_POINTS.map((point) => renderNumberInputField(point.key, `Aanvoertemp. bij ${point.label}`, `Doelaanvoertemperatuur bij ${point.label} buitentemperatuur.`)).join("")}
-        ${renderNumberInputField("curveFallbackSupply", "Fallback-aanvoertemperatuur zonder buitentemperatuur", "Aanvoertemperatuur die gebruikt wordt als de buitentemperatuursensor niet beschikbaar is.", { footerMarkup: renderCurveFallbackSuggestionMarkup(true) })}
-      </div>
-    `;
-  }

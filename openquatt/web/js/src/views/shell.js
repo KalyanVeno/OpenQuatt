@@ -10,7 +10,7 @@ import { bindHeaderDevControls, syncNativeVisibility } from "../core/runtime.js"
 import { renderDeviceReconnectModal, renderUpdateModal } from "../features/firmware-update.js";
 import { getDeviceVersionLabel, getHeaderRenderSignature, renderDevPanel, renderHeaderStatus, renderNativeSurfaceShell, renderSystemModal } from "../features/header-status.js";
 import { getMqttSensorsModalRenderSignature } from "../features/mqtt-actions.js";
-import { updateMqttState } from "../core/mqtt-state.js";
+import { updateMqttState } from "../core/feature-state.js";
 import { captureQuickStartScrollState, queueQuickStartScrollRestore, renderQuickStartModal } from "../features/quickstart.js";
 import { captureCm100CommissioningScrollState, captureHistoryStorageModalScrollState, captureServiceTaskModalScrollState, captureWebServerLogScrollState, queueCm100CommissioningScrollRestore, queueHistoryStorageModalScrollRestore, queueServiceTaskModalScrollRestore, queueWebServerLogScrollRestore, syncWebServerLogStream } from "../features/webserver-logs.js";
 import { renderSettingsGroupContent, renderSettingsGroupNav } from "../settings/core.js";

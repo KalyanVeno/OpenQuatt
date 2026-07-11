@@ -33,7 +33,7 @@ export const state = {
   summary: "",
   stage: "Laden...",
   interfacePanelOpen: getStoredInterfacePanelOpen(),
-  devPanelOpen: getStoredDevPanelOpen(),
+  devPanelOpen: __OQ_PREVIEW__ && getStoredDevPanelOpen(),
   nativeOpen: getStoredSurface() === "native",
   currentStep: "generation",
   quickStartModalMode: "wizard",
@@ -91,6 +91,9 @@ export function getStoredSurface() {
 
 
 export function getStoredDevPanelOpen() {
+  if (!__OQ_PREVIEW__) {
+    return false;
+  }
   try {
     return window.localStorage.getItem("oq-dev-panel-open") === "true";
   } catch (_error) {

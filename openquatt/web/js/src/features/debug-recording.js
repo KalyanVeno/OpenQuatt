@@ -4,7 +4,7 @@ import { copyTextToClipboard, downloadTextFile } from "../core/browser-utils.js"
 import { DEBUG_RECORDING_BUSY_RETRY_MS, DEBUG_RECORDING_DURATION_OPTIONS, DEBUG_RECORDING_EVENT_LIMIT, DEBUG_RECORDING_KEYS, DEBUG_RECORDING_LOG_LIMIT, DEBUG_RECORDING_SAMPLE_INTERVAL_MS, ENTITY_DEFS, FAST_VIEW_ENTITY_REFRESH_CONCURRENCY } from "../core/config.js";
 import { getEntityValue, parseLooseNumber } from "../core/entity-store.js";
 import { buildBulkEntityChunks, refreshEntities } from "../core/entity-sync.js";
-import { updateDebugRecordingState } from "../core/debug-recording-state.js";
+import { updateDebugRecordingState } from "../core/feature-state.js";
 import { state } from "../core/state.js";
 import { getBasePath } from "../core/url-path.js";
 import { getFirmwareDeviceLabel, getInstallationLabel, getInstallationTopology } from "./device-context.js";
@@ -732,59 +732,6 @@ export async function stopDebugRecording(options = {}) {
   }
 }
 
-export function trimDebugRecordingLogs(payload) {
-  const entries = Array.isArray(payload?.entries) ? payload.entries : [];
-  const enabled = typeof payload?.enabled === "boolean" ? payload.enabled : null;
-  return {
-    available: payload?.available === true,
-    enabled,
-    limit: DEBUG_RECORDING_LOG_LIMIT,
-    truncated: entries.length > DEBUG_RECORDING_LOG_LIMIT,
-    entries: entries.slice(-DEBUG_RECORDING_LOG_LIMIT),
-    ...(payload?.error ? { error: payload.error } : {}),
-  };
-}
-
-export async function fetchDebugRecordingLogs() {
-  if (typeof window.fetch !== "function") {
-    return { available: false, entries: [], error: "fetch unavailable" };
-  }
-  try {
-    await refreshEntities(["webServerLogHistoryEnabled"], "all", { concurrency: FAST_VIEW_ENTITY_REFRESH_CONCURRENCY });
-  } catch (_error) {
-    // Log history is optional; the recording itself should still export cleanly.
-  }
-  if (hasEntity("webServerLogHistoryEnabled") && !isEntityActive("webServerLogHistoryEnabled")) {
-    return trimDebugRecordingLogs({
-      available: false,
-      enabled: false,
-      entries: [],
-    });
-  }
-  try {
-    const response = await window.fetch(`${getBasePath()}/openquatt/logs/recent`, {
-      cache: "no-store",
-      headers: { "Cache-Control": "no-store" },
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    const payload = await response.json();
-    return trimDebugRecordingLogs({
-      available: true,
-      enabled: payload?.enabled !== false,
-      entries: Array.isArray(payload?.entries) ? payload.entries : [],
-    });
-  } catch (error) {
-    return trimDebugRecordingLogs({
-      available: false,
-      enabled: null,
-      entries: [],
-      error: error.message || String(error),
-    });
-  }
-}
-
 export function buildDebugRecordingCorePayload(extra = {}) {
   const endedAt = state.debugRecordingActive ? Date.now() : Number(state.debugRecordingLastSampleAt || Date.now());
   return {
@@ -813,16 +760,6 @@ export function buildDebugRecordingCorePayload(extra = {}) {
   };
 }
 
-export async function buildDebugRecordingBundle() {
-  if (state.debugRecordingDeviceBundle) {
-    return state.debugRecordingDeviceBundle;
-  }
-  const logs = await fetchDebugRecordingLogs();
-  const source = getDebugRecordingSourceMeta();
-
-  return buildDebugRecordingCorePayload({ source, logs });
-}
-
 export function getDebugRecordingCompactJson(payload) {
   return JSON.stringify(payload);
 }
@@ -837,19 +774,6 @@ export function getDebugRecordingEstimatedBytes() {
   } catch (_error) {
     return getDebugRecordingCompactJson(buildDebugRecordingCorePayload()).length;
   }
-}
-
-export function getDebugRecordingSourceMeta() {
-  const releaseChannel = String(getEntityValue("releaseChannelText") || "").trim();
-  const updateChannel = String(getEntityValue("firmwareUpdateChannel") || "").trim();
-  return {
-    device: getFirmwareDeviceLabel(),
-    installation: getInstallationLabel(),
-    topology: typeof getInstallationTopology === "function" ? getInstallationTopology() : "",
-    firmware_version: getFirmwareCurrentVersion(),
-    firmware_channel: releaseChannel || updateChannel,
-    firmware_update_channel: updateChannel || releaseChannel,
-  };
 }
 
 export function formatDebugRecordingBytes(bytes) {

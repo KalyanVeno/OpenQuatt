@@ -231,6 +231,9 @@ import { render } from "../core/render-scheduler.js";
   }
 
   export function renderHeaderDevControls() {
+    if (!__OQ_PREVIEW__) {
+      return "";
+    }
     const controls = typeof window !== "undefined" ? window.__OQ_DEV_CONTROLS__ : null;
     if (!controls || typeof controls.render !== "function") {
       return "";
@@ -239,6 +242,9 @@ import { render } from "../core/render-scheduler.js";
   }
 
   export function renderDevPanel() {
+    if (!__OQ_PREVIEW__) {
+      return "";
+    }
     const controlsMarkup = renderHeaderDevControls();
     if (!controlsMarkup) {
       return "";

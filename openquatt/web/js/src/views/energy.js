@@ -4,8 +4,8 @@ import { setEnergyHistoryRequestQueryProvider } from "../core/energy-history-que
 import { getRenderSignature } from "../core/render-signatures.js";
 import { state } from "../core/state.js";
 import { setViewPatchControls } from "../core/view-patch-controls.js";
-import { refreshEnergyHistoryData } from "../features/energy-history-import-export.js";
-import { updateEnergyHistoryState } from "../core/energy-history-state.js";
+import { refreshEnergyHistoryData } from "../features/storage-history.js";
+import { updateEnergyHistoryState } from "../core/feature-state.js";
 import { escapeHtml } from "../core/html.js";
 import { render } from "../core/render-scheduler.js";
 import { replaceOuterHtmlIfSignatureChanged } from "./view-utils.js";
@@ -696,34 +696,12 @@ import { replaceOuterHtmlIfSignatureChanged } from "./view-utils.js";
     return bucket;
   }
 
-  export function copyEnergyHistoryRecordToBucket(record, label, sortKey = record?.dateKey) {
-    const parsed = parseEnergyHistoryDateKey(record?.dateKey);
-    if (!parsed) {
-      return null;
-    }
-    return mergeEnergyHistoryRecordIntoBucket(createEnergyHistoryBucket({
-      dateKey: parsed.key,
-      year: parsed.year,
-      month: parsed.month,
-      day: parsed.day,
-      label,
-      tooltipLabel: record.tooltipLabel || label,
-      sortKey,
-      source: record.source || "record",
-    }), record);
-  }
-
   export function getEnergyHistoryRecordsByDate(records) {
     const byDate = new Map();
     records.forEach((record) => {
       byDate.set(record.dateKey, record);
     });
     return byDate;
-  }
-
-  export function getEnergyHistoryLatestParsed(records) {
-    const latest = records[records.length - 1];
-    return latest ? parseEnergyHistoryDateKey(latest.dateKey) : null;
   }
 
   export function normalizeEnergyHistoryPeriodValue(view, value) {

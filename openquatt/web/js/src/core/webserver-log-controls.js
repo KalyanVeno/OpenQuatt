@@ -1,5 +1,5 @@
 import { state } from "./state.js";
-import { updateWebServerLogState } from "./webserver-log-state.js";
+import { updateWebServerLogState } from "./feature-state.js";
 
 let webServerLogControls = {};
 

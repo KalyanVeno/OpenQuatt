@@ -81,7 +81,9 @@ const jsSourceFiles = await collectFiles(path.join(webDir, "js", "src"), (file) 
 const cssSourceFiles = resolveCssSources(webDir);
 const devFiles = [
   path.join(webDir, "dev.html"),
+  path.join(webDir, "css", "src", "02-devtools.css"),
   path.join(webDir, "js", "device-wrapper.js"),
+  path.join(webDir, "js", "mock-scenarios.js"),
   path.join(webDir, "js", "mock-fixtures.js"),
   path.join(webDir, "js", "mock-device.js"),
 ];

@@ -5,7 +5,7 @@ import { refreshEntities } from "../core/entity-sync.js";
 import { beginDeviceReconnect, getDeviceReconnectCopy, getDeviceReconnectStatusCopy, getDeviceReconnectStatusLabel, getDeviceReconnectTitle } from "../core/device-reconnect.js";
 import { startEntityPolling, stopEntityPolling } from "../core/entity-polling-controls.js";
 import { isFirmwareOtaQuietActive } from "../core/firmware-quiet.js";
-import { updateFirmwareState } from "../core/firmware-state.js";
+import { updateFirmwareState } from "../core/feature-state.js";
 import { renderModalShell } from "../core/modal-shell.js";
 import { state } from "../core/state.js";
 import { getDeviceMeta, getFirmwareAlternateConnection, getFirmwareAlternateTopology, getFirmwareBuildConnection, getFirmwareBuildLabelFor, getFirmwareConnectionLabel, getFirmwareDeviceLabel, getFirmwareHardwareProfile, getFirmwareTopologyLabel, getInstallationTopology, normalizeFirmwareConnection, normalizeInstallationTopologyLabel } from "./device-context.js";

@@ -11,15 +11,12 @@ import { setInterfacePanelOpen } from "./runtime.js";
 import { handleDebugRecordingAction } from "../features/debug-recording.js";
 import { handleControlReplayAction } from "../features/control-replay-actions.js";
 import { handleFirmwareAction } from "../features/firmware-actions.js";
-import { updateFirmwareState } from "./firmware-state.js";
+import { updateFirmwareState, updateEnergyHistoryState } from "./feature-state.js";
 import { getFirmwareTestAssetUrls, getFirmwareTestPrNumber, getFirmwareTestTargetModel, resetFirmwareManualUploadSelection, resetFirmwareTestSelection } from "../features/firmware-update.js";
 import { handleMqttAction, syncMqttDraftFromInput } from "../features/mqtt-actions.js";
 import { handleQuickStartAction } from "../features/quickstart-ui-actions.js";
 import { handleSecurityAction, stopLoginAuthStatusPolling } from "../features/security-actions.js";
-import { normalizeEnergyHistoryExportMode } from "../features/energy-history-import-export.js";
-import { updateEnergyHistoryState } from "./energy-history-state.js";
-import { clearSettingsBackupDraft, handleSettingsBackupFileSelection } from "../features/settings-backup-client.js";
-import { handleStorageHistoryAction } from "../features/storage-history.js";
+import { clearSettingsBackupDraft, handleSettingsBackupFileSelection, handleStorageHistoryAction, normalizeEnergyHistoryExportMode } from "../features/storage-history.js";
 import { handleSystemAction } from "../features/system-actions.js";
 import { handleShellAction } from "../features/shell-actions.js";
 import { handleViewAction } from "../features/view-actions.js";
@@ -246,7 +243,7 @@ const actionDelegates = [
   }
 
   export function handleChange(event) {
-    if (event.target.dataset.oqDevControl === "boiler" && typeof window.__OQ_SET_MOCK_BOILER__ === "function") {
+    if (__OQ_PREVIEW__ && event.target.dataset.oqDevControl === "boiler" && typeof window.__OQ_SET_MOCK_BOILER__ === "function") {
       window.__OQ_SET_MOCK_BOILER__(event.target.value);
       return;
     }

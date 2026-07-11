@@ -4,126 +4,11 @@ import { getEntityValue } from "../core/entity-store.js";
 import { state } from "../core/state.js";
 import { getInstallationLabel, getInstallationTopology } from "../features/device-context.js";
 import { getFirmwareCurrentVersion } from "../features/firmware-update.js";
-import { ENERGY_HISTORY_EXPORT_MODES, normalizeEnergyHistoryExportMode } from "../features/energy-history-import-export.js";
-import { getSettingsBackupSelectionSummary } from "../features/settings-backup-client.js";
+import { ENERGY_HISTORY_EXPORT_MODES, getSettingsBackupSelectionSummary, normalizeEnergyHistoryExportMode } from "../features/storage-history.js";
 import { formatSettingsOptionLabel, getSettingsStatValue, renderSettingsCompactSwitchControl, renderSettingsFieldCard, renderSettingsSection, renderSettingsSwitchCopy } from "./controls.js";
 import { getEnergyHistoryMetadataFromRaw, parseEnergyHistoryDateKey } from "../views/energy.js";
 import { escapeHtml } from "../core/html.js";
 import { renderModalShell } from "../core/modal-shell.js";
-
-  export function renderSettingsTrendStatsField() {
-    if (!isEntityActive("trendHistoryEnabled")) {
-      return "";
-    }
-
-    const detailStats = [
-      { key: "trendHistoryFlashOldest", label: "Eerste meting", value: getSettingsStorageStatOrFallback("trendHistoryFlashOldest", "Geen data") },
-      { key: "trendHistoryFlashNewest", label: "Laatste meting", value: getSettingsStorageStatOrFallback("trendHistoryFlashNewest", "Geen data") },
-      { key: "trendHistoryFlashLastFlush", label: "Laatst opgeslagen", value: getSettingsStorageStatOrFallback("trendHistoryFlashLastFlush", "Geen data") },
-    ];
-    const availableValue = getSettingsStorageStatOrFallback("trendHistoryFlashAvailable", "Alleen live");
-    const newestValue = getSettingsStorageStatOrFallback("trendHistoryFlashNewest", "Geen data");
-    const storageValue = getSettingsStorageStatOrFallback("trendHistoryFlashSize");
-    const writesValue = getSettingsStorageStatOrFallback("trendHistoryFlashWrites", "0");
-
-    const controlMarkup = `
-        <div class="oq-settings-trend-stats-shell">
-        <div class="oq-settings-trend-stats-summary">
-          <div class="oq-settings-trend-stats-summary-copy">
-            <span class="oq-settings-trend-stats-summary-label">Diagnosegeschiedenis</span>
-            <strong class="oq-settings-trend-stats-summary-value">${escapeHtml(availableValue)}</strong>
-            <p class="oq-settings-trend-stats-summary-note">Laatste meting in permanent geheugen: ${escapeHtml(newestValue)}.</p>
-          </div>
-          <div class="oq-settings-trend-stats-badges" aria-label="Diagnosegeschiedenis statistieken">
-            <div class="oq-settings-trend-stats-badge">
-              <span class="oq-settings-trend-stats-badge-label">Opslagruimte</span>
-              <strong class="oq-settings-trend-stats-badge-value">${escapeHtml(storageValue)}</strong>
-            </div>
-            <div class="oq-settings-trend-stats-badge">
-              <span class="oq-settings-trend-stats-badge-label">Opslagacties</span>
-              <strong class="oq-settings-trend-stats-badge-value">${escapeHtml(writesValue)}</strong>
-            </div>
-          </div>
-        </div>
-        <div class="oq-settings-trend-stats-grid">
-          ${detailStats.map((stat) => `
-            <div class="oq-settings-trend-stat">
-              <span class="oq-settings-trend-stat-label">${escapeHtml(stat.label)}</span>
-              <strong class="oq-settings-trend-stat-value">${escapeHtml(stat.value)}</strong>
-            </div>
-          `).join("")}
-        </div>
-      </div>
-    `;
-
-    return renderSettingsFieldCard(
-      "trendHistoryFlashStats",
-      "Diagnosegeschiedenis",
-      "Overzicht van wat er nu in permanent geheugen is opgeslagen.",
-      controlMarkup,
-      "oq-settings-field--span-2",
-      isEntityActive("trendHistoryFlashEnabled")
-        ? `<p class="oq-settings-action-note">Wordt ongeveer elk uur opgeslagen en ook bij herstart of update.</p>`
-        : `<p class="oq-settings-action-note">Nieuwe opslag staat uit; bestaande diagnosegeschiedenis blijft beschikbaar.</p>`,
-    );
-  }
-
-  export function renderSettingsEnergyHistoryStatsField() {
-    if (!hasEntity("lifetimeEnergyHistoryEnabled")) {
-      return "";
-    }
-
-    const detailStats = [
-      { key: "lifetimeEnergyHistoryOldest", label: "Eerste dag", value: getSettingsStorageStatOrFallback("lifetimeEnergyHistoryOldest", "Geen data") },
-      { key: "lifetimeEnergyHistoryNewest", label: "Laatste dag", value: getSettingsStorageStatOrFallback("lifetimeEnergyHistoryNewest", "Geen data") },
-      { key: "lifetimeEnergyHistoryLastWrite", label: "Laatst opgeslagen", value: getSettingsStorageStatOrFallback("lifetimeEnergyHistoryLastWrite", "Geen data") },
-    ];
-    const availableValue = getSettingsStorageStatOrFallback("lifetimeEnergyHistoryAvailable", "Geen data");
-    const newestValue = getSettingsStorageStatOrFallback("lifetimeEnergyHistoryNewest", "Geen data");
-    const storageValue = getSettingsStorageStatOrFallback("lifetimeEnergyHistorySize");
-    const writesValue = getSettingsStorageStatOrFallback("lifetimeEnergyHistoryWrites", "0");
-
-    const controlMarkup = `
-      <div class="oq-settings-trend-stats-shell">
-        <div class="oq-settings-trend-stats-summary">
-          <div class="oq-settings-trend-stats-summary-copy">
-            <span class="oq-settings-trend-stats-summary-label">Energiehistorie</span>
-            <strong class="oq-settings-trend-stats-summary-value">${escapeHtml(formatSettingsStoredDaysLabel(availableValue))}</strong>
-            <p class="oq-settings-trend-stats-summary-note">Laatste dag in permanent geheugen: ${escapeHtml(newestValue)}.</p>
-          </div>
-          <div class="oq-settings-trend-stats-badges" aria-label="Energiehistorie statistieken">
-            <div class="oq-settings-trend-stats-badge">
-              <span class="oq-settings-trend-stats-badge-label">Opslagruimte</span>
-              <strong class="oq-settings-trend-stats-badge-value">${escapeHtml(storageValue)}</strong>
-            </div>
-            <div class="oq-settings-trend-stats-badge">
-              <span class="oq-settings-trend-stats-badge-label">Opslagacties</span>
-              <strong class="oq-settings-trend-stats-badge-value">${escapeHtml(writesValue)}</strong>
-            </div>
-          </div>
-        </div>
-        <div class="oq-settings-trend-stats-grid">
-          ${detailStats.map((stat) => `
-            <div class="oq-settings-trend-stat">
-              <span class="oq-settings-trend-stat-label">${escapeHtml(stat.label)}</span>
-              <strong class="oq-settings-trend-stat-value">${escapeHtml(stat.value)}</strong>
-            </div>
-          `).join("")}
-        </div>
-      </div>
-    `;
-
-    return renderSettingsFieldCard(
-      "lifetimeEnergyHistoryStats",
-      "Energiehistorie",
-      "Dagtotalen voor langere energiegrafieken in de lokale web-app.",
-      controlMarkup,
-      "oq-settings-field--span-2",
-      isEntityActive("lifetimeEnergyHistoryEnabled")
-        ? `<p class="oq-settings-action-note">Wordt alleen bij dagwissel en normale afsluiting opgeslagen; geen continue opslag.</p>`
-        : `<p class="oq-settings-action-note">Nieuwe dagtotalen worden niet bewaard; bestaande historie blijft beschikbaar.</p>`,
-    );
-  }
 
   export function renderSettingsStorageSummaryMetric(label, value, meta = "", enabled = false) {
     return `
@@ -219,28 +104,6 @@ import { renderModalShell } from "../core/modal-shell.js";
       >
         ${escapeHtml(busy ? (options.busyLabel || buttonLabel) : buttonLabel)}
       </button>
-    `;
-  }
-
-  export function renderSettingsStorageStatGrid(stats) {
-    const visibleStats = stats.filter((stat) => stat.value || hasEntity(stat.key));
-    if (!visibleStats.length) {
-      return "";
-    }
-
-    return `
-      <div class="oq-settings-storage-stat-grid">
-        ${visibleStats.map((stat) => {
-          const value = stat.value || getSettingsStatValue(stat.key);
-          return `
-            <div>
-              <span>${escapeHtml(stat.label)}</span>
-              <strong>${escapeHtml(value)}</strong>
-              ${stat.note ? `<em>${escapeHtml(stat.note)}</em>` : ""}
-            </div>
-          `;
-        }).join("")}
-      </div>
     `;
   }
 

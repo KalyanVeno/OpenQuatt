@@ -609,13 +609,8 @@
   min-height: 96px;
   padding: 12px 14px;
   border-radius: var(--oq-helper-radius-md);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(255, 255, 255, 0.78);
-}
-
-.oq-helper-shell--dark .oq-ph-concept-note {
-  border-color: rgba(148, 163, 184, 0.12);
-  background: rgba(22, 34, 49, 0.82);
+  border: 1px solid var(--oq-settings-concept-note-border, rgba(15, 23, 42, 0.08));
+  background: var(--oq-theme-surface-479n, rgba(255, 255, 255, 0.78));
 }
 
 .oq-ph-concept-note-title {
@@ -671,11 +666,7 @@
   min-width: 0;
   border-radius: var(--oq-helper-radius-md);
   border: 1px solid var(--oq-helper-line);
-  background: rgba(255, 255, 255, 0.92);
-}
-
-.oq-helper-shell--dark .oq-settings-mini-field {
-  background: rgba(23, 35, 51, 0.92);
+  background: var(--oq-theme-surface-1bfe, rgba(255, 255, 255, 0.92));
 }
 
 .oq-settings-mini-copy-head {
@@ -710,15 +701,9 @@
 .oq-settings-mini-field--embedded {
   gap: 8px;
   padding: 10px 12px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(255, 255, 255, 0.68);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.52);
-}
-
-.oq-helper-shell--dark .oq-settings-mini-field--embedded {
-  border-color: rgba(148, 163, 184, 0.12);
-  background: rgba(22, 34, 49, 0.74);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--oq-settings-embedded-field-border, rgba(15, 23, 42, 0.08));
+  background: var(--oq-theme-surface-edwc, rgba(255, 255, 255, 0.68));
+  box-shadow: var(--oq-theme-shadow-ziq9, inset 0 1px 0 rgba(255, 255, 255, 0.52));
 }
 
 .oq-settings-mini-field--embedded .oq-settings-mini-copy-head {
@@ -782,125 +767,9 @@
 }
 
 .oq-settings-static-value {
-  color: var(--oq-helper-ink);
+  color: var(--oq-theme-color-1w4r, var(--oq-helper-ink));
   font-size: 1.02rem;
   font-weight: 700;
   line-height: 1.3;
 }
 
-.oq-helper-shell--dark .oq-settings-static-value {
-  color: #f8fafc;
-}
-
-.oq-settings-trend-stats-shell {
-  display: grid;
-  gap: 12px;
-}
-
-.oq-settings-trend-stats-summary {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px 18px;
-  border-radius: var(--oq-helper-radius-lg);
-  border: 1px solid var(--oq-helper-line);
-  background: linear-gradient(180deg, rgba(255, 247, 237, 0.7), rgba(255, 255, 255, 0.96));
-}
-
-.oq-helper-shell--dark .oq-settings-trend-stats-summary {
-  background: linear-gradient(180deg, rgba(66, 32, 14, 0.34), rgba(22, 33, 49, 0.94));
-}
-
-.oq-settings-trend-stats-summary-copy {
-  min-width: 0;
-  display: grid;
-  gap: 4px;
-}
-
-.oq-settings-trend-stats-summary-label {
-  color: var(--oq-helper-faint);
-  font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  line-height: 1.2;
-  text-transform: uppercase;
-}
-
-.oq-settings-trend-stats-summary-value {
-  color: var(--oq-helper-ink);
-  font-size: 1.28rem;
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-}
-
-.oq-helper-shell--dark .oq-settings-trend-stats-summary-value {
-  color: #f8fafc;
-}
-
-.oq-settings-trend-stats-summary-note {
-  margin: 0;
-  color: var(--oq-helper-soft);
-  line-height: 1.5;
-}
-
-.oq-settings-trend-stats-badges {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(110px, 1fr));
-  gap: 10px;
-  flex: 0 0 auto;
-}
-
-.oq-settings-trend-stats-badge,
-.oq-settings-trend-stat {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-  padding: 14px 16px;
-  border-radius: 16px;
-  border: 1px solid var(--oq-helper-line);
-  background: rgba(255, 255, 255, 0.76);
-}
-
-.oq-helper-shell--dark .oq-settings-trend-stats-badge,
-.oq-helper-shell--dark .oq-settings-trend-stat {
-  background: rgba(15, 23, 42, 0.28);
-}
-
-.oq-settings-trend-stats-badge-label,
-.oq-settings-trend-stat-label {
-  color: var(--oq-helper-soft);
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  line-height: 1.2;
-  text-transform: uppercase;
-}
-
-.oq-settings-trend-stats-badge-value {
-  color: var(--oq-helper-ink);
-  font-size: 1rem;
-  line-height: 1.25;
-  letter-spacing: -0.02em;
-  overflow-wrap: anywhere;
-}
-
-.oq-settings-trend-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.oq-settings-trend-stat-value {
-  color: var(--oq-helper-ink);
-  font-size: 1.05rem;
-  line-height: 1.3;
-  letter-spacing: -0.02em;
-  overflow-wrap: anywhere;
-}
-
-.oq-helper-shell--dark .oq-settings-trend-stats-badge-value,
-.oq-helper-shell--dark .oq-settings-trend-stat-value {
-  color: #f8fafc;
-}

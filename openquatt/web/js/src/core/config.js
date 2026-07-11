@@ -10,128 +10,17 @@
   export const STRATEGY_OPTION_CURVE = "Water Temperature Control (heating curve)";
 
   export const QUICK_STEPS = [
-    {
-      id: "generation",
-      kicker: "Stap 1",
-      title: "Kies je Quatt Hybrid",
-      copy: "Geef hier aan welke Quatt Hybrid je hebt. Dan zet OpenQuatt de juiste regeling klaar.",
-      fields: [
-        {
-          title: "Quatt Hybrid-versie",
-          copy: "Kies de versie die bij jouw Quatt hoort.",
-        },
-      ],
-    },
-    {
-      id: "flow-source",
-      kicker: "Stap 2",
-      title: "Flowmeting configureren",
-      copy: "Controleer en activeer de flowbron die bij jouw Quatt-versie en controller hoort.",
-      fields: [
-        {
-          title: "Flowbron",
-          copy: "De Quatt-versie en het hardwareprofiel bepalen automatisch welke flowbron OpenQuatt moet gebruiken.",
-        },
-      ],
-    },
-    {
-      id: "thermostat-source",
-      kicker: "Stap 3",
-      title: "Thermostaatgegevens configureren",
-      copy: "Leg vast waar OpenQuatt de kamertemperatuur en het kamer-setpoint samen vandaan haalt.",
-      fields: [
-        {
-          title: "Thermostaatbron",
-          copy: "Q-edition gebruikt OpenTherm. Listener en Waveshare gebruiken CiC of Home Assistant.",
-        },
-      ],
-    },
-    {
-      id: "boiler",
-      kicker: "Stap 4",
-      title: "CV-ketel of boiler",
-      copy: "Geef aan of OpenQuatt ondersteuning via een CV-ketel of boiler mag gebruiken.",
-      optionalEntity: "boilerCvAssistEnabled",
-      fields: [
-        {
-          title: "CV-ketel / boiler aanwezig",
-          copy: "Kies of er ondersteuning beschikbaar is en vul eventueel het vermogen in.",
-        },
-      ],
-    },
-    {
-      id: "strategy",
-      kicker: "Stap 5",
-      title: "Kies de verwarmingsstrategie",
-      copy: "Kies hier hoe OpenQuatt je verwarming regelt. Daarna lopen we samen de belangrijkste instellingen langs.",
-      fields: [
-        {
-          title: "Verwarmingsstrategie",
-          copy: "Kies of OpenQuatt automatisch op je woning reageert, of werkt met een vaste stooklijn.",
-        },
-      ],
-    },
-    {
-      id: "heating",
-      kicker: "Stap 6",
-      title: "Werk de regeling uit",
-      copy: "Stel nu de gekozen regeling verder in. De inhoud hieronder past zich aan aan je keuze.",
-      fields: [
-        {
-          title: "Instellingen voor jouw regeling",
-          copy: "Je ziet hier alleen de instellingen die echt nodig zijn voor de gekozen regeling.",
-        },
-      ],
-    },
-    {
-      id: "flow",
-      kicker: "Stap 7",
-      title: "Flowregeling en afstelling",
-      copy: "Leg daarna vast hoe de pomp geregeld moet worden en welke waarden daarbij horen. De autotune staat later onder Instellingen → Installatie → Service & commissioning.",
-      fields: [
-        {
-          title: "Flowregeling en tuning",
-          copy: "Kies of OpenQuatt de pomp automatisch regelt, of dat je zelf een vaste pompstand instelt. Stel hier ook de flow-instellingen in.",
-        },
-      ],
-    },
-    {
-      id: "water",
-      kicker: "Stap 8",
-      title: "Watertemperatuur beveiligen",
-      copy: "Controleer de normale bovengrens en de tripgrens voor het watercircuit.",
-      fields: [
-        {
-          title: "Watertemperatuur",
-          copy: "Met deze grenzen voorkom je dat de watertemperatuur te hoog oploopt.",
-        },
-      ],
-    },
-    {
-      id: "silent",
-      kicker: "Stap 9",
-      title: "Stille uren en niveaus",
-      copy: "Stel daarna het stille venster en de compressorlimieten voor dag en nacht in.",
-      fields: [
-        {
-          title: "Stille uren",
-          copy: "Hier bepaal je wanneer het systeem rustiger moet werken.",
-        },
-      ],
-    },
-    {
-      id: "confirm",
-      kicker: "Stap 10",
-      title: "Bevestigen en afronden",
-      copy: "Controleer nog één keer je keuzes. Met afronden markeer je Quick Start als voltooid.",
-      fields: [
-        {
-          title: "Afronden",
-          copy: "Je instellingen zijn al opgeslagen. Deze stap markeert alleen dat Quick Start klaar is.",
-        },
-      ],
-    },
-  ];
+    ["generation", "Kies je Quatt Hybrid", "Geef hier aan welke Quatt Hybrid je hebt. Dan zet OpenQuatt de juiste regeling klaar."],
+    ["flow-source", "Flowmeting configureren", "Controleer en activeer de flowbron die bij jouw Quatt-versie en controller hoort."],
+    ["thermostat-source", "Thermostaatgegevens configureren", "Leg vast waar OpenQuatt de kamertemperatuur en het kamer-setpoint samen vandaan haalt."],
+    ["boiler", "CV-ketel of boiler", "Geef aan of OpenQuatt ondersteuning via een CV-ketel of boiler mag gebruiken.", "boilerCvAssistEnabled"],
+    ["strategy", "Kies de verwarmingsstrategie", "Kies hier hoe OpenQuatt je verwarming regelt. Daarna lopen we samen de belangrijkste instellingen langs."],
+    ["heating", "Werk de regeling uit", "Stel nu de gekozen regeling verder in. De inhoud hieronder past zich aan aan je keuze."],
+    ["flow", "Flowregeling en afstelling", "Leg daarna vast hoe de pomp geregeld moet worden en welke waarden daarbij horen. De autotune staat later onder Instellingen → Installatie → Service & commissioning."],
+    ["water", "Watertemperatuur beveiligen", "Controleer de normale bovengrens en de tripgrens voor het watercircuit."],
+    ["silent", "Stille uren en niveaus", "Stel daarna het stille venster en de compressorlimieten voor dag en nacht in."],
+    ["confirm", "Bevestigen en afronden", "Controleer nog één keer je keuzes. Met afronden markeer je Quick Start als voltooid."],
+  ].map(([id, title, copy, optionalEntity], index) => ({ id, kicker: `Stap ${index + 1}`, title, copy, ...(optionalEntity ? { optionalEntity } : {}) }));
 
   export const ODU_RUNTIME_FREQUENCY_HP_IDS = [1, 2];
   export const ODU_RUNTIME_FREQUENCY_LEVELS = Array.from({ length: 11 }, (_item, index) => index);

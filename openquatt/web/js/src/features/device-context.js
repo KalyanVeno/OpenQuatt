@@ -5,7 +5,7 @@ import { formatDurationFromMinutes } from "../core/formatting.js";
 import { state } from "../core/state.js";
 
   export function getDeviceMeta() {
-    const meta = typeof window !== "undefined" && window.__OQ_DEV_META && typeof window.__OQ_DEV_META === "object"
+    const meta = __OQ_PREVIEW__ && typeof window !== "undefined" && window.__OQ_DEV_META && typeof window.__OQ_DEV_META === "object"
       ? window.__OQ_DEV_META
       : {};
     return meta;
@@ -157,11 +157,6 @@ import { state } from "../core/state.js";
       return "single";
     }
     return "";
-  }
-
-  export function getFirmwareBuildLabel(connection = getFirmwareBuildConnection()) {
-    const topology = getInstallationTopology();
-    return getFirmwareBuildLabelFor(topology, connection);
   }
 
   export function getFirmwareBuildLabelFor(topology = getInstallationTopology(), connection = getFirmwareBuildConnection()) {

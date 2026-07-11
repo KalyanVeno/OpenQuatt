@@ -3,7 +3,7 @@ import { refreshEntities } from "../core/entity-sync.js";
 import { state } from "../core/state.js";
 import { getBasePath } from "../core/url-path.js";
 import { invokeActionMap } from "../core/action-router.js";
-import { updateWebServerLogState } from "../core/webserver-log-state.js";
+import { updateWebServerLogState } from "../core/feature-state.js";
 import { setWebServerLogControls } from "../core/webserver-log-controls.js";
 import { escapeHtml } from "../core/html.js";
 import { render } from "../core/render-scheduler.js";
@@ -14,7 +14,7 @@ import { renderSettingsSystemRow } from "../settings/controls.js";
 export const WEB_SERVER_LOG_MAX_ENTRIES = 250;
 
 export function getWebServerLogDemoEntries() {
-  if (typeof window === "undefined") {
+  if (!__OQ_PREVIEW__ || typeof window === "undefined") {
     return [];
   }
 
@@ -158,18 +158,6 @@ export function getWebServerLoggerLevelValue(entity = getWebServerLoggerLevelEnt
   const value = String(entity?.value ?? entity?.state ?? "").trim();
   const options = getWebServerLoggerLevelOptions(entity);
   return options.includes(value) ? value : (options.includes("INFO") ? "INFO" : options[0] || "");
-}
-
-export function getWebServerLogEntryKey(entry) {
-  if (!entry || typeof entry !== "object") {
-    return "";
-  }
-  if (Number.isFinite(Number(entry.seq))) {
-    return `seq:${Number(entry.seq)}`;
-  }
-  const raw = String(entry.raw ?? entry.text ?? "").trim();
-  const receivedAt = Number(entry.receivedAt ?? entry.ts ?? 0);
-  return raw ? `raw:${raw}:${Math.round(receivedAt / 1000)}` : "";
 }
 
 export function isDuplicateWebServerLogEntry(candidate, existingEntry = null) {

@@ -21,6 +21,8 @@ export const CSS_SOURCE_FILES = [
   "css/src/90-responsive.css",
 ];
 
-export function resolveCssSources(webDir) {
-  return CSS_SOURCE_FILES.map((sourceFile) => path.join(webDir, ...sourceFile.split("/")));
+export function resolveCssSources(webDir, { preview = false } = {}) {
+  return CSS_SOURCE_FILES
+    .filter((sourceFile) => preview || sourceFile !== "css/src/02-devtools.css")
+    .map((sourceFile) => path.join(webDir, ...sourceFile.split("/")));
 }

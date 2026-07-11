@@ -4,7 +4,7 @@ import { render } from "../core/render-scheduler.js";
 import { state } from "../core/state.js";
 import { clearDebugRecordingDevicePollTimer, scheduleDebugRecordingDeviceStatusPoll } from "./debug-recording.js";
 import { stopLoginAuthStatusPolling } from "./security-actions.js";
-import { clearSettingsBackupDraft } from "./settings-backup-client.js";
+import { clearSettingsBackupDraft } from "./storage-history.js";
 
 function closeSystemModal() {
   stopLoginAuthStatusPolling();
