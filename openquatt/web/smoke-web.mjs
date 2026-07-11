@@ -407,6 +407,23 @@ async function checkMockFixtureContracts() {
   }
 }
 
+async function checkPreviewAssetsAvailable() {
+  for (const relativePath of [
+    "js/mock-entity-defs.js",
+    "js/openquatt-preview.js",
+    "css/openquatt-preview.css",
+  ]) {
+    try {
+      await stat(path.join(webDir, ...relativePath.split("/")));
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        throw new Error(`Missing preview asset ${relativePath}. Run: rtk npm run build:web:preview`);
+      }
+      throw error;
+    }
+  }
+}
+
 async function checkEmbeddedAssetContracts() {
   const logoMarkup = await readFile(path.join(webDir, "assets/openquatt-logo.svg"), "utf8");
   const configSource = await readFile(path.join(jsSourceDir, "core/config.js"), "utf8");
@@ -676,6 +693,7 @@ globalThis.createScrollKeeper = createScrollKeeper;`,
 
 async function main() {
   await stat(path.join(webDir, "dev.html"));
+  await checkPreviewAssetsAvailable();
   await checkSourceImports();
   await checkImportCycles();
   await checkImportBoundaries();

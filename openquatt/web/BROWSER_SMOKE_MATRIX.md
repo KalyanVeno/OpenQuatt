@@ -27,5 +27,8 @@ rtk npm run smoke:web
 rtk npm run stats:web
 ```
 
+`smoke:web` rebuilds the ignored preview assets required by `dev.html`; the
+committed production bundles remain check-only in this flow.
+
 The matrix is a release checklist, not a replacement for the automated source,
 bundle, import-boundary, scroll, state, and action contracts in `smoke-web.mjs`.

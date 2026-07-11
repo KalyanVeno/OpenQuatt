@@ -8,10 +8,14 @@ import { resolveCssSources } from "./css-source-list.mjs";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const checkOnly = process.argv.includes("--check");
+const previewOnly = process.argv.includes("--preview");
 
-const unsupportedArguments = process.argv.slice(2).filter((argument) => argument !== "--check");
+const unsupportedArguments = process.argv.slice(2).filter((argument) => !["--check", "--preview"].includes(argument));
 if (unsupportedArguments.length) {
   throw new Error(`Unsupported arguments: ${unsupportedArguments.join(", ")}`);
+}
+if (checkOnly && previewOnly) {
+  throw new Error("--check and --preview cannot be combined");
 }
 
 const bundles = [
@@ -132,6 +136,9 @@ async function bundleIsCurrent(bundle, expected) {
 }
 
 async function buildBundle(bundle) {
+  if (previewOnly && !bundle.transient) {
+    return null;
+  }
   const output = bundle.entryPoint
     ? await renderJavaScriptBundle(bundle)
     : await renderCssBundle(bundle);
