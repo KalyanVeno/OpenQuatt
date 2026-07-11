@@ -516,9 +516,9 @@ import { replaceOuterHtmlIfSignatureChanged } from "../views/view-utils.js";
         checks: ["Lage koelvraag", "Geen abrupte stop", "Rustige regeling"],
       },
       buffer_stop: {
-        label: "Koeling wacht op veilige watermarge",
-        summary: "De watermarge is te klein voor verder koelen. Het systeem wacht tot deze weer veilig is.",
-        checks: ["Watermarge bewaakt", "Koeling tijdelijk gepauzeerd", "Automatisch opnieuw beoordelen"],
+        label: "Water al koud genoeg",
+        summary: "Er is koelvraag, maar het water is al koud genoeg. De warmtepomp hoeft daarom nu niet te starten.",
+        checks: ["Koelvraag blijft actief", "Water is al koud genoeg", "Start volgt automatisch"],
       },
       dew_stop: {
         label: "Dauwpuntstop",
@@ -791,6 +791,18 @@ import { replaceOuterHtmlIfSignatureChanged } from "../views/view-utils.js";
         ],
       };
     }
+    if (reasonCode === "buffer_stop") {
+      return {
+        title: "Koelregeling",
+        verdict: "Water al koud genoeg",
+        summary: "Er is koelvraag, maar de actuele watertemperatuur vraagt nu geen extra koeling.",
+        rows: [
+          { option: "Koelvraag", result: "Blijft actief", code: "coolingDemandRaw", detail: "De kamer blijft om koeling vragen.", tone: "muted" },
+          { option: "Watertemperatuur", result: "Koud genoeg", code: "buffer_stop", detail: "De aanvoer is al koud genoeg voor dit moment.", tone: "selected" },
+          { option: "Warmtepomp", result: "Wacht", code: "keep_current", detail: "De warmtepomp start automatisch zodra opnieuw actieve koeling nodig is.", tone: "muted" },
+        ],
+      };
+    }
     if (["falling_gap", "projected_floor", "dew_stop", "restart_wait", "level1_hold", "oil_return_recovery", "sensor_fallback"].includes(reasonCode)) {
       const cooling = getControlWorkingCoolingContext();
       return {
@@ -869,6 +881,12 @@ import { replaceOuterHtmlIfSignatureChanged } from "../views/view-utils.js";
       expectation = "Na ongeveer 1 minuut stopt de pomp en blijft het systeem standby tot er comfortvraag of bescherming nodig is.";
       primaryReason = "sticky_protection";
       sinceLabel = "Dagelijkse run";
+    } else if (coolingContext.reasonCode === "buffer_stop") {
+      title = "Koeling wacht: water al koud genoeg";
+      copy = "Er is koelvraag, maar het water is al koud genoeg. De warmtepomp hoeft daarom nu niet te starten.";
+      expectation = "De warmtepomp start automatisch zodra opnieuw actieve koeling nodig is.";
+      primaryReason = "buffer_stop";
+      sinceLabel = "Koelvraag actief";
     } else if (coolingProtection) {
       const limiterReason = coolingContext.reasonCode && coolingContext.reasonCode !== "inactive" ? coolingContext.reasonCode : "soft_guard";
       const waitingForRestart = limiterReason === "restart_wait";
@@ -1433,17 +1451,23 @@ import { replaceOuterHtmlIfSignatureChanged } from "../views/view-utils.js";
           ? "Koeling gestopt door dauwpunt"
           : reasonCode === "restart_wait"
           ? "Koeling wacht op veilige herstart"
+          : reasonCode === "buffer_stop"
+          ? "Koeling wacht: water al koud genoeg"
           : coolingProtectionReason ? "Koeling tijdelijk beperkt" : "Koeling op ingesteld maximum",
         summary: reasonCode === "dew_stop"
           ? `${activeCoolingSource} stopt omdat verder koelen te dicht bij het dauwpunt komt.`
           : reasonCode === "restart_wait"
           ? "De koelvraag is nog aanwezig. Het systeem wacht met opnieuw starten tot de veilige marge voldoende is hersteld."
+          : reasonCode === "buffer_stop"
+          ? "Er is koelvraag, maar het water is al koud genoeg. De warmtepomp hoeft daarom nu niet te starten."
           : coolingProtectionReason
           ? "Er is koelvraag, maar het systeem houdt het koelvermogen tijdelijk lager."
           : "Er is koelvraag. Het systeem koelt binnen het actuele softwaremaximum.",
         detail: reason.summary,
         next: reasonCode === "restart_wait"
           ? "De warmtepomp start automatisch opnieuw zodra de veilige marge voldoende en stabiel is."
+          : reasonCode === "buffer_stop"
+          ? "De warmtepomp start automatisch zodra opnieuw actieve koeling nodig is."
           : coolingProtectionReason
           ? "Koeling wordt vrijgegeven zodra de veilige marge stabiel genoeg is."
           : "Koeling blijft binnen dit maximum zolang de instelling en koelvraag gelijk blijven.",
@@ -1528,6 +1552,9 @@ import { replaceOuterHtmlIfSignatureChanged } from "../views/view-utils.js";
     const eventType = String(event?.event_type || "");
     const reason = String(event?.reason || "");
     if (isDecisionCoolingAdjustmentEvent(event)) {
+      return "normal";
+    }
+    if (reason === "buffer_stop") {
       return "normal";
     }
     if (isControlWorkingCoolingProtectionReason(reason)) {
@@ -2731,15 +2758,21 @@ import { replaceOuterHtmlIfSignatureChanged } from "../views/view-utils.js";
     const isCoolingGuard = Boolean(current.coolingProtection);
     const isCoolingCap = Boolean(current.coolingCapped);
     const isCoolingRestartWait = current.primaryReason === "restart_wait";
+    const isCoolingWaterSatisfied = current.primaryReason === "buffer_stop";
     const isSticky = current.primaryReason === "sticky_protection";
-    const guardTitle = isCoolingGuard
+    const guardEyebrow = isCoolingWaterSatisfied ? "Koelregeling" : "Bescherming";
+    const guardTitle = isCoolingWaterSatisfied
+      ? "Water al koud genoeg"
+      : isCoolingGuard
       ? isCoolingRestartWait ? "Wacht op veilige herstart" : "Koeling tijdelijk beperkt"
       : isCoolingCap
       ? "Koeling met ingesteld maximum"
       : isSticky
       ? "Geen comfortvraag actief"
       : "Geen beperking actief";
-    const guardCopy = isCoolingGuard
+    const guardCopy = isCoolingWaterSatisfied
+      ? "Dit is normale regeling. De koelvraag blijft actief, maar de warmtepomp hoeft nu geen extra koude aan het water toe te voegen."
+      : isCoolingGuard
       ? isCoolingRestartWait
         ? "De koelvraag blijft aanwezig. De warmtepomp start opnieuw zodra de veilige marge voldoende is hersteld."
         : "De aanvoer blijft boven de veilige grens. Daarom koelt het systeem tijdelijk minder hard."
@@ -2748,7 +2781,13 @@ import { replaceOuterHtmlIfSignatureChanged } from "../views/view-utils.js";
       : isSticky
       ? "Alleen de pomp draait kort. De warmtepompen blijven uit en er worden geen compressorstarts geteld."
       : "Ontdooien, minimum rusttijd, dauwpunt en waterflow blijven bewaakt. Ze verschijnen hier zodra ze gedrag begrenzen.";
-    const guardPills = isCoolingGuard
+    const guardPills = isCoolingWaterSatisfied
+      ? [
+        ["Koelvraag actief", "info", "snowflake"],
+        ["Water koud genoeg", "normal", "droplet"],
+        ["Automatische herstart", "context", "activity"],
+      ]
+      : isCoolingGuard
       ? [
         ["Dauwpunt bewaakt", "limited", "droplet"],
         [`Max. niveau ${current.cooling.allowedMax}`, "info", "target"],
@@ -2804,7 +2843,7 @@ import { replaceOuterHtmlIfSignatureChanged } from "../views/view-utils.js";
             ${renderControlWorkingSourceCard("CV", current.cvStatus, "—", "—", current.cvStatus === "Actief")}
           </section>
           <section class="oq-working-guard-panel">
-            <span class="oq-working-eyebrow">Bescherming</span>
+            <span class="oq-working-eyebrow">${escapeHtml(guardEyebrow)}</span>
             <h3>${escapeHtml(guardTitle)}</h3>
             <p>${escapeHtml(guardCopy)}</p>
             <div class="oq-working-pill-row">
