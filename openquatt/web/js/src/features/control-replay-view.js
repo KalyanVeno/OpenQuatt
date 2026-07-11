@@ -1836,7 +1836,9 @@ import { replaceOuterHtmlIfSignatureChanged } from "../views/view-utils.js";
         reasonLabel: "Koeling gestart",
         reasonSummary: "De koelrun is gestart en liep binnen de normale regeling.",
         modeLabel: "CM5",
-        minDurationS: 120,
+        // An active run must be visible immediately; only completed micro-runs
+        // are suppressed to keep historical timelines calm.
+        minDurationS: interval.isOpen ? 1 : 120,
       }, selectedWindow, nowMs));
     });
 
