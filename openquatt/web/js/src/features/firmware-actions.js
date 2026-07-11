@@ -1,4 +1,5 @@
 import { hasEntity } from "../core/app-shared.js";
+import { invokeActionMap } from "../core/action-router.js";
 import { ENTITY_DEFS, ENTITY_REFRESH_CONCURRENCY, FIRMWARE_MODAL_KEYS, FIRMWARE_OTA_INSTALL_POLL_INTERVAL_MS, FIRMWARE_OTA_START_QUIET_MS } from "../core/config.js";
 import { buildEntityPath } from "../core/domain-helpers.js";
 import { setEntityBackupValue } from "../core/entity-backup.js";
@@ -486,7 +487,7 @@ import { render } from "../core/render-scheduler.js";
     "open-update-modal": () => {
       state.updateModalOpen = true;
       render();
-      void hydrateFirmwareUpdateModal();
+      return hydrateFirmwareUpdateModal();
     },
     "close-update-modal": () => {
       state.updateModalOpen = false;
@@ -505,8 +506,8 @@ import { render } from "../core/render-scheduler.js";
     },
     "run-firmware-check": () => triggerFirmwareUpdateCheck(),
     "install-firmware-update": () => installFirmwareUpdate(),
-    "install-firmware-connection-switch": () => void installFirmwareConnectionSwitch(),
-    "install-firmware-topology-switch": () => void installFirmwareTopologySwitch(),
+    "install-firmware-connection-switch": () => installFirmwareConnectionSwitch(),
+    "install-firmware-topology-switch": () => installFirmwareTopologySwitch(),
     "toggle-firmware-advanced": () => {
       if (state.firmwareAdvancedOpen || state.firmwareConnectionSwitchOpen || state.firmwareTopologySwitchOpen || state.updateManualUploadOpen || state.updateTestFirmwareOpen) {
         state.firmwareAdvancedOpen = false;
@@ -568,7 +569,7 @@ import { render } from "../core/render-scheduler.js";
       }
       render();
     },
-    "upload-firmware-file": () => void uploadFirmwareUpdate(),
+    "upload-firmware-file": () => uploadFirmwareUpdate(),
     "toggle-firmware-test": () => {
       if (state.updateTestFirmwareOpen) {
         state.updateTestFirmwareOpen = false;
@@ -586,14 +587,9 @@ import { render } from "../core/render-scheduler.js";
       }
       render();
     },
-    "install-firmware-test": () => void installFirmwareTestUpdate(),
+    "install-firmware-test": () => installFirmwareTestUpdate(),
   };
 
   export function handleFirmwareAction(action) {
-    const handler = firmwareActionHandlers[action];
-    if (!handler) {
-      return false;
-    }
-    handler();
-    return true;
+    return invokeActionMap(firmwareActionHandlers, action);
   }

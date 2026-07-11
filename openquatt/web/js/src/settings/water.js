@@ -1,9 +1,9 @@
 import { getEntityNumericValue, hasEntity } from "../core/app-shared.js";
-import { getInputDraftValue, getNumberMeta, parseLooseNumber } from "../core/entity-store.js";
+import { getInputDraftValue } from "../core/control-drafts.js";
+import { getNumberMeta, parseLooseNumber } from "../core/entity-store.js";
 import { renderNumberInputControl } from "../core/number-controls.js";
-import { formatSettingsNumberValue, getSettingsTemperatureValue, renderSettingsSection } from "./controls.js";
+import { formatSettingsNumberValue, getSettingsTemperatureValue, renderSettingsNumberField, renderSettingsSection } from "./controls.js";
 import { escapeHtml } from "../core/html.js";
-import { renderSettingsSchemaGrid } from "./schema.js";
 
   export function getHpWaterRawValue(rawKey, finalKey, offsetKey) {
     const finalValue = getEntityNumericValue(finalKey);
@@ -18,9 +18,9 @@ import { renderSettingsSchemaGrid } from "./schema.js";
   export function renderWaterSettingsFields(className = "oq-settings-grid") {
     const offsetMarkup = renderHpWaterSensorOffsetSettings();
     return `
-      ${renderSettingsSchemaGrid([
-        { type: "number", key: "maxWater", title: "Maximale watertemperatuur", copy: "Normale bovengrens voor de watertemperatuur tijdens bedrijf. OpenQuatt begint enkele graden eerder al terug te regelen en bewaakt een harde trip op 5°C boven deze grens." },
-      ], className)}
+      <div class="${escapeHtml(className)}">
+        ${renderSettingsNumberField("maxWater", "Maximale watertemperatuur", "Normale bovengrens voor de watertemperatuur tijdens bedrijf. OpenQuatt begint enkele graden eerder al terug te regelen en bewaakt een harde trip op 5°C boven deze grens.")}
+      </div>
       ${offsetMarkup}
     `;
   }

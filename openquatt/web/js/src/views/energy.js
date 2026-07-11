@@ -4,7 +4,8 @@ import { setEnergyHistoryRequestQueryProvider } from "../core/energy-history-que
 import { getRenderSignature } from "../core/render-signatures.js";
 import { state } from "../core/state.js";
 import { setViewPatchControls } from "../core/view-patch-controls.js";
-import { refreshEnergyHistoryData } from "../features/storage-history.js";
+import { refreshEnergyHistoryData } from "../features/energy-history-import-export.js";
+import { updateEnergyHistoryState } from "../core/energy-history-state.js";
 import { escapeHtml } from "../core/html.js";
 import { render } from "../core/render-scheduler.js";
 import { replaceOuterHtmlIfSignatureChanged } from "./view-utils.js";
@@ -129,8 +130,7 @@ import { replaceOuterHtmlIfSignatureChanged } from "./view-utils.js";
     if (state.energyHistoryView === nextView) {
       return;
     }
-    state.energyHistoryView = nextView;
-    state.energyHistoryLastFetchAt = 0;
+    updateEnergyHistoryState({ energyHistoryView: nextView, energyHistoryLastFetchAt: 0 });
     render();
     requestEnergyHistoryDataRefresh();
   }
@@ -959,11 +959,13 @@ import { replaceOuterHtmlIfSignatureChanged } from "./view-utils.js";
     const bounds = getEnergyHistoryPeriodBounds(records, normalizedView);
     const normalized = normalizeEnergyHistoryPeriodValue(normalizedView, value);
     const nextValue = clampEnergyHistoryPeriodValue(normalized || bounds.max, bounds);
-    state.energyHistoryPeriodSelection = {
-      ...state.energyHistoryPeriodSelection,
-      [normalizedView]: nextValue,
-    };
-    state.energyHistoryLastFetchAt = 0;
+    updateEnergyHistoryState({
+      energyHistoryPeriodSelection: {
+        ...state.energyHistoryPeriodSelection,
+        [normalizedView]: nextValue,
+      },
+      energyHistoryLastFetchAt: 0,
+    });
     render();
     requestEnergyHistoryDataRefresh();
   }

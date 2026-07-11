@@ -1,4 +1,5 @@
 import { copyTextToClipboard } from "../core/browser-utils.js";
+import { invokeActionMap } from "../core/action-router.js";
 import { ENTITY_DEFS, LOGIN_MODAL_AUTH_STATUS_REFRESH_INTERVAL_MS } from "../core/config.js";
 import { beginDeviceReconnect } from "../core/device-reconnect.js";
 import { buildEntityPath } from "../core/domain-helpers.js";
@@ -481,29 +482,24 @@ import { render } from "../core/render-scheduler.js";
       state.authNotice = "";
       state.authError = "";
       render();
-      void refreshLoginModalAuthStatus({ poll: true });
+      return refreshLoginModalAuthStatus({ poll: true });
     },
     "open-api-security-modal": () => {
       state.systemModal = "api-security";
       state.apiSecurityNotice = "";
       state.apiSecurityError = "";
       render();
-      void refreshApiSecurityStatus({ force: true });
+      return refreshApiSecurityStatus({ force: true });
     },
-    "copy-api-security-key": () => void copyApiSecurityKey(),
-    "enable-api-security": () => void commitEnableApiSecurity(),
-    "rotate-api-security": () => void commitRotateApiSecurity(),
-    "disable-api-security": () => void commitDisableApiSecurity(),
-    "restart-api-security": () => void restartForApiSecurityChange(),
-    "save-web-auth": () => void commitWebAuthChanges(),
-    "disable-web-auth": () => void commitDisableWebAuth(),
+    "copy-api-security-key": () => copyApiSecurityKey(),
+    "enable-api-security": () => commitEnableApiSecurity(),
+    "rotate-api-security": () => commitRotateApiSecurity(),
+    "disable-api-security": () => commitDisableApiSecurity(),
+    "restart-api-security": () => restartForApiSecurityChange(),
+    "save-web-auth": () => commitWebAuthChanges(),
+    "disable-web-auth": () => commitDisableWebAuth(),
   };
 
   export function handleSecurityAction(action) {
-    const handler = securityActionHandlers[action];
-    if (!handler) {
-      return false;
-    }
-    handler();
-    return true;
+    return invokeActionMap(securityActionHandlers, action);
   }

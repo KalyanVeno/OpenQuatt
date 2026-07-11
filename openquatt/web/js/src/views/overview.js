@@ -2,7 +2,7 @@ import { formatOverviewStatValue, getEntityNumericValue, getEntityStateText, has
 import { isCurveMode } from "../core/domain-helpers.js";
 import { formatOpenQuattResumeDateTime, getEntityValue, hasOpenQuattResumeSchedule } from "../core/entity-store.js";
 import { getOverviewControlsRenderSignature, getRenderSignature } from "../core/render-signatures.js";
-import { formatNumericState } from "../core/formatting.js";
+import { formatDurationFromMinutes, formatNumericState } from "../core/formatting.js";
 import { escapeHtml } from "../core/html.js";
 import { DEFAULT_TREND_WINDOW_HOURS, state, TREND_WINDOW_HOURS_OPTIONS } from "../core/state.js";
 import { isTrendHistoryFlashEnabled, normalizeTrendWindowHours, setTrendWindowHours } from "../core/trend-window.js";
@@ -164,22 +164,7 @@ import { isSystemInStandby, replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfCh
     return `${value > 0 ? "+" : ""}${value.toFixed(1)} °C`;
   }
 
-  export function formatOverviewTrendDurationLabel(totalMinutes) {
-    if (!Number.isFinite(totalMinutes) || totalMinutes < 0) {
-      return "—";
-    }
-    const wholeMinutes = Math.floor(totalMinutes);
-    const days = Math.floor(wholeMinutes / 1440);
-    const hours = Math.floor((wholeMinutes % 1440) / 60);
-    const minutes = wholeMinutes % 60;
-    if (days > 0) {
-      return `${days}d ${hours}u`;
-    }
-    if (hours > 0) {
-      return `${hours}u ${minutes}m`;
-    }
-    return `${minutes}m`;
-  }
+  export const formatOverviewTrendDurationLabel = formatDurationFromMinutes;
 
   export function parseOverviewClockMinutes(rawValue) {
     const value = String(rawValue || "").trim();

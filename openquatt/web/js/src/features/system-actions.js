@@ -4,7 +4,7 @@ import { render } from "../core/render-scheduler.js";
 import { state } from "../core/state.js";
 import { clearDebugRecordingDevicePollTimer, scheduleDebugRecordingDeviceStatusPoll } from "./debug-recording.js";
 import { stopLoginAuthStatusPolling } from "./security-actions.js";
-import { clearSettingsBackupDraft } from "./storage-history.js";
+import { clearSettingsBackupDraft } from "./settings-backup-client.js";
 
 function closeSystemModal() {
   stopLoginAuthStatusPolling();
@@ -56,7 +56,7 @@ const systemActionHandlers = {
     commitOpenQuattRegulationPause(state.pauseResumeDraft || "");
   },
   "close-system-modal": () => closeSystemModal(),
-  "confirm-restart": () => void triggerNamedButton("restartAction", {
+  "confirm-restart": () => triggerNamedButton("restartAction", {
     successNotice: "OpenQuatt wordt opnieuw opgestart. Wacht even tot de webinterface weer terugkomt.",
     errorPrefix: "Herstart mislukt",
     reconnectMode: "restart",
@@ -64,10 +64,6 @@ const systemActionHandlers = {
 };
 
 export function handleSystemAction(action, button) {
-  const handler = systemActionHandlers[action];
-  if (!handler) {
-    return false;
-  }
-  handler(button);
-  return true;
+  return invokeActionMap(systemActionHandlers, action, button);
 }
+import { invokeActionMap } from "../core/action-router.js";

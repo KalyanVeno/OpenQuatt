@@ -1,3 +1,4 @@
+import { invokeActionMap } from "../core/action-router.js";
 import { render } from "../core/render-scheduler.js";
 import { state } from "../core/state.js";
 import {
@@ -38,20 +39,15 @@ const quickStartActionHandlers = {
     render();
     void refreshQuickStartStepHydration(state.currentStep);
   },
-  "apply-quickstart-flow-source": () => void applyQuickStartFlowSourceConfiguration(),
-  "refresh-quickstart-flow-signal": () => void refreshQuickStartFlowSignal(),
-  "start-quickstart-flow-test": () => void startQuickStartFlowTest(),
-  "abort-quickstart-flow-test": () => void abortQuickStartFlowTest(),
-  "apply-quickstart-thermostat-source": () => void applyQuickStartThermostatSourceConfiguration(),
+  "apply-quickstart-flow-source": () => applyQuickStartFlowSourceConfiguration(),
+  "refresh-quickstart-flow-signal": () => refreshQuickStartFlowSignal(),
+  "start-quickstart-flow-test": () => startQuickStartFlowTest(),
+  "abort-quickstart-flow-test": () => abortQuickStartFlowTest(),
+  "apply-quickstart-thermostat-source": () => applyQuickStartThermostatSourceConfiguration(),
   "previous-step": () => moveQuickStartStep(-1),
   "next-step": () => moveQuickStartStep(1),
 };
 
 export function handleQuickStartAction(action, button) {
-  const handler = quickStartActionHandlers[action];
-  if (!handler) {
-    return false;
-  }
-  handler(button);
-  return true;
+  return invokeActionMap(quickStartActionHandlers, action, button);
 }

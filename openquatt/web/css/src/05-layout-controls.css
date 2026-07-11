@@ -25,9 +25,9 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid var(--oq-helper-line);
+  border: 1px solid var(--oq-helper-tab-border);
   border-radius: var(--oq-helper-radius-sm);
-  background: var(--oq-helper-card);
+  background: var(--oq-helper-tab-background);
   color: var(--oq-helper-soft);
   cursor: pointer;
   font: inherit;
@@ -35,11 +35,6 @@
   min-height: 40px;
   padding: 0 14px;
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
-}
-
-.oq-helper-shell--dark .oq-helper-app-tab {
-  background: rgba(34, 48, 68, 0.88);
-  border-color: rgba(148, 163, 184, 0.18);
 }
 
 .oq-helper-app-tab-icon {
@@ -55,8 +50,8 @@
 
 .oq-helper-app-tab-badge {
   border-radius: 999px;
-  background: rgba(234, 88, 12, 0.12);
-  color: var(--oq-helper-accent-deep);
+  background: var(--oq-helper-tab-badge-background);
+  color: var(--oq-helper-tab-badge-ink);
   font-size: 0.62rem;
   font-weight: 800;
   line-height: 1;
@@ -65,35 +60,21 @@
   text-transform: uppercase;
 }
 
-.oq-helper-shell--dark .oq-helper-app-tab-badge {
-  background: rgba(249, 115, 22, 0.18);
-  color: #fb923c;
-}
-
 .oq-helper-app-tab:hover {
   border-color: rgba(234, 88, 12, 0.24);
 }
 
 .oq-helper-app-tab.is-active {
   border-color: rgba(234, 88, 12, 0.3);
-  background: var(--oq-helper-accent-soft);
+  background: var(--oq-helper-tab-active-background);
   color: var(--oq-helper-accent-deep);
+  box-shadow: var(--oq-helper-tab-active-shadow);
 }
 
 .oq-helper-app-tab--launch {
   border-color: rgba(234, 88, 12, 0.24);
-  background: linear-gradient(180deg, rgba(255, 247, 237, 0.96), rgba(255, 255, 255, 0.98));
-  color: var(--oq-helper-accent-deep);
-}
-
-.oq-helper-shell--dark .oq-helper-app-tab.is-active {
-  background: rgba(255, 247, 237, 0.96);
-  box-shadow: 0 10px 22px rgba(2, 6, 23, 0.18);
-}
-
-.oq-helper-shell--dark .oq-helper-app-tab--launch {
-  background: linear-gradient(180deg, rgba(66, 32, 14, 0.34), rgba(22, 33, 49, 0.92));
-  color: #f97316;
+  background: var(--oq-helper-tab-launch-background);
+  color: var(--oq-helper-tab-launch-ink);
 }
 
 .oq-helper-panel {
@@ -103,13 +84,17 @@
   padding: 20px;
 }
 
-.oq-helper-panel--aside {
-  padding: 16px;
-  background: linear-gradient(180deg, rgba(249, 250, 251, 0.98), rgba(255, 255, 255, 0.98));
+.oq-helper-surface {
+  box-sizing: border-box;
+  min-width: 0;
+  border: 1px solid var(--oq-helper-line);
+  border-radius: var(--oq-helper-radius-lg);
+  background: var(--oq-helper-card);
 }
 
-.oq-helper-shell--dark .oq-helper-panel--aside {
-  background: linear-gradient(180deg, rgba(21, 31, 46, 0.98), rgba(16, 24, 38, 0.98));
+.oq-helper-panel--aside {
+  padding: 16px;
+  background: var(--oq-helper-aside-background);
 }
 
 .oq-helper-panel--flush {

@@ -7,7 +7,6 @@ import { state } from "../core/state.js";
 import { renderSettingsChoiceOption, renderSettingsFieldCard, renderSettingsMiniNumberField, renderSettingsNumberField, renderSettingsSection, renderSettingsSelectField } from "./controls.js";
 import { formatNumericState } from "../core/formatting.js";
 import { escapeHtml } from "../core/html.js";
-import { renderSettingsSchemaFields, renderSettingsSchemaGrid } from "./schema.js";
 
   export function renderCurveFallbackSuggestionMarkup(helper = false) {
     const suggestion = getCurveFallbackSuggestion();
@@ -33,52 +32,60 @@ import { renderSettingsSchemaFields, renderSettingsSchemaGrid } from "./schema.j
   }
 
   export function renderSettingsCurveInputs() {
-    return renderSettingsSchemaGrid([
-      ...CURVE_POINTS.map((point) => ({
-        type: "number",
-        key: point.key,
-        title: `Aanvoertemp. bij ${point.label}`,
-        copy: `Doelaanvoertemperatuur bij ${point.label} buitentemperatuur.`,
-      })),
-      {
-        type: "number",
-        key: "curveFallbackSupply",
-        title: "Fallback-aanvoertemperatuur zonder buitentemperatuur",
-        copy: "Aanvoertemperatuur die gebruikt wordt als de buitentemperatuursensor niet beschikbaar is.",
-        className: "oq-settings-field--curve-fallback-card",
-        options: { footerMarkup: renderCurveFallbackSuggestionMarkup() },
-      },
-    ], "oq-settings-curve-grid");
+    return `
+      <div class="oq-settings-curve-grid">
+        ${CURVE_POINTS.map((point) => renderSettingsNumberField(point.key, `Aanvoertemp. bij ${point.label}`, `Doelaanvoertemperatuur bij ${point.label} buitentemperatuur.`)).join("")}
+        ${renderSettingsNumberField("curveFallbackSupply", "Fallback-aanvoertemperatuur zonder buitentemperatuur", "Aanvoertemperatuur die gebruikt wordt als de buitentemperatuursensor niet beschikbaar is.", "oq-settings-field--curve-fallback-card", { footerMarkup: renderCurveFallbackSuggestionMarkup() })}
+      </div>
+    `;
   }
 
   export function renderStrategySelectionFields(className = "oq-settings-grid") {
-    return renderSettingsSchemaGrid([
-      { type: "select", key: "strategy", title: "Verwarmingsstrategie", copy: "Kies tussen automatisch regelen met Power House of regelen met een stooklijn." },
-    ], className);
+    return `
+      <div class="${escapeHtml(className)}">
+        ${renderSettingsSelectField("strategy", "Verwarmingsstrategie", "Kies tussen automatisch regelen met Power House of regelen met een stooklijn.")}
+      </div>
+    `;
   }
 
   export function renderFlowSettingsFields(className = "oq-settings-grid") {
-    return renderSettingsSchemaGrid([
-      { type: "select", key: "flowControlMode", title: "Regelmodus", copy: "Kies tussen automatische flowregeling en een vaste pompstand." },
-      { type: "number", key: "manualIpwm", title: "Vaste pompstand", copy: "Deze pompstand wordt gebruikt zolang de regeling op handmatig staat.", visibleWhen: isManualFlowMode },
-      { type: "number", key: "flowSetpoint", title: "Gewenste flow verwarmen", copy: "De flow die OpenQuatt zoveel mogelijk probeert vast te houden buiten koeling.", visibleWhen: () => !isManualFlowMode() },
-      { type: "number", key: "coolingFlowSetpoint", title: "Gewenste flow koelen", copy: "De flow die OpenQuatt gebruikt tijdens actieve koeling.", visibleWhen: () => !isManualFlowMode() },
-    ], className);
+    const autoFields = [
+      renderSettingsNumberField("flowSetpoint", "Gewenste flow verwarmen", "De flow die OpenQuatt zoveel mogelijk probeert vast te houden buiten koeling."),
+      renderSettingsNumberField("coolingFlowSetpoint", "Gewenste flow koelen", "De flow die OpenQuatt gebruikt tijdens actieve koeling."),
+    ].filter(Boolean).join("");
+    return `
+      <div class="${escapeHtml(className)}">
+        ${renderSettingsSelectField("flowControlMode", "Regelmodus", "Kies tussen automatische flowregeling en een vaste pompstand.")}
+        ${isManualFlowMode()
+          ? renderSettingsNumberField("manualIpwm", "Vaste pompstand", "Deze pompstand wordt gebruikt zolang de regeling op handmatig staat.")
+          : autoFields}
+      </div>
+    `;
   }
 
   export function renderFlowTuningFields(className = "oq-settings-grid") {
-    return renderSettingsSchemaGrid([
-      { type: "number", key: "flowKp", title: "Flow PI Kp", copy: "Hoe sterk de regeling direct reageert op een afwijking." },
-      { type: "number", key: "flowKi", title: "Flow PI Ki", copy: "Hoe snel de regeling kleine restfouten wegwerkt." },
-    ], className);
+    const fields = [
+      renderSettingsNumberField("flowKp", "Flow PI Kp", "Hoe sterk de regeling direct reageert op een afwijking."),
+      renderSettingsNumberField("flowKi", "Flow PI Ki", "Hoe snel de regeling kleine restfouten wegwerkt."),
+    ].filter(Boolean);
+    if (!fields.length) {
+      return "";
+    }
+    return `
+      <div class="${escapeHtml(className)}">
+        ${fields.join("")}
+      </div>
+    `;
   }
 
   export function renderPowerHouseBaseFields(className = "oq-settings-grid") {
-    return renderSettingsSchemaGrid([
-      { type: "number", key: "houseOutdoorMax", title: "Maximum heating outdoor temperature", copy: "Bij deze buitentemperatuur is verwarmen meestal niet meer nodig." },
-      { type: "number", key: "housePower", title: "Rated maximum house power", copy: "Hoeveel warmte je woning ongeveer nodig heeft wanneer het -10°C buiten is." },
-      { type: "custom", render: renderPowerHouseResponseProfilesField },
-    ], className);
+    return `
+      <div class="${escapeHtml(className)}">
+        ${renderSettingsNumberField("houseOutdoorMax", "Maximum heating outdoor temperature", "Bij deze buitentemperatuur is verwarmen meestal niet meer nodig.")}
+        ${renderSettingsNumberField("housePower", "Rated maximum house power", "Hoeveel warmte je woning ongeveer nodig heeft wanneer het -10°C buiten is.")}
+        ${renderPowerHouseResponseProfilesField()}
+      </div>
+    `;
   }
 
   export function renderHeatingStrategyExplainCards() {
@@ -86,7 +93,7 @@ import { renderSettingsSchemaFields, renderSettingsSchemaGrid } from "./schema.j
     return `
       <div class="oq-settings-strategy-grid">
         <button
-          class="oq-settings-strategy-card${curveActive ? "" : " is-active"}"
+          class="oq-helper-surface oq-settings-strategy-card${curveActive ? "" : " is-active"}"
           type="button"
           data-oq-action="select-settings-option"
           data-select-key="strategy"
@@ -104,7 +111,7 @@ import { renderSettingsSchemaFields, renderSettingsSchemaGrid } from "./schema.j
           </ul>
         </button>
         <button
-          class="oq-settings-strategy-card${curveActive ? " is-active" : ""}"
+          class="oq-helper-surface oq-settings-strategy-card${curveActive ? " is-active" : ""}"
           type="button"
           data-oq-action="select-settings-option"
           data-select-key="strategy"
@@ -172,7 +179,7 @@ import { renderSettingsSchemaFields, renderSettingsSchemaGrid } from "./schema.j
           const isActive = option.value === currentValue;
           if (option.value === "Custom" && isActive) {
             return `
-              <div class="oq-settings-choice-card oq-settings-choice-card--static oq-settings-choice-card--custom is-active">
+              <div class="oq-helper-surface oq-settings-choice-card oq-settings-choice-card--static oq-settings-choice-card--custom is-active">
                 <span class="oq-settings-choice-title">${escapeHtml(option.label)}</span>
                 <div class="oq-settings-choice-meta">
                   <span class="oq-settings-choice-meta-text">${escapeHtml(option.meta)}</span>
@@ -380,13 +387,13 @@ import { renderSettingsSchemaFields, renderSettingsSchemaGrid } from "./schema.j
   }
 
   export function renderPowerHouseAdvancedField() {
-    const fields = renderSettingsSchemaFields([
-      { type: "number", key: "phKp", title: "Temperatuurreactie", copy: "Bepaalt hoe sterk Power House kamertemperatuurafwijking vertaalt naar extra of minder warmtevraag in W/K. Hogere waarden reageren steviger, lagere waarden rustiger.", options: { unitOverride: "W/K" } },
-      { type: "number", key: "phComfortBelow", title: "Comfort onder setpoint", copy: "Extra comfortmarge onder het setpoint. Hiermee kan Power House iets sneller warmte vragen als de kamertemperatuur merkbaar onder het doel zakt." },
-      { type: "number", key: "phComfortAbove", title: "Comfort boven setpoint", copy: "Bovenmarge rond het setpoint. Hiermee bepaal je hoeveel ruimte er boven het setpoint mag ontstaan voordat warme tegensturing begint." },
-    ]);
+    const fields = [
+      renderSettingsNumberField("phKp", "Temperatuurreactie", "Bepaalt hoe sterk Power House kamertemperatuurafwijking vertaalt naar extra of minder warmtevraag in W/K. Hogere waarden reageren steviger, lagere waarden rustiger.", "", { unitOverride: "W/K" }),
+      renderSettingsNumberField("phComfortBelow", "Comfort onder setpoint", "Extra comfortmarge onder het setpoint. Hiermee kan Power House iets sneller warmte vragen als de kamertemperatuur merkbaar onder het doel zakt."),
+      renderSettingsNumberField("phComfortAbove", "Comfort boven setpoint", "Bovenmarge rond het setpoint. Hiermee bepaal je hoeveel ruimte er boven het setpoint mag ontstaan voordat warme tegensturing begint."),
+    ].filter(Boolean);
 
-    if (!fields) {
+    if (!fields.length) {
       return "";
     }
 
@@ -399,17 +406,19 @@ import { renderSettingsSchemaFields, renderSettingsSchemaGrid } from "./schema.j
         </div>
         ${renderPowerHouseConceptGraphic()}
         <div class="oq-settings-grid">
-          ${fields}
+          ${fields.join("")}
         </div>
       </div>
     `;
   }
 
   export function renderSettingsHeatPumpLimiterCard(title, keyA, keyB) {
-    const fields = renderSettingsSchemaFields([
-      { type: "select", key: keyA, title: "Stand A", copy: "Kies hier welke compressorstand je wilt uitsluiten." },
-      { type: "select", key: keyB, title: "Stand B", copy: "Kies hier nog een compressorstand die je wilt overslaan." },
-    ]);
+    const fields = [
+      renderSettingsSelectField(keyA, "Stand A", "Kies hier welke compressorstand je wilt uitsluiten."),
+      renderSettingsSelectField(keyB, "Stand B", "Kies hier nog een compressorstand die je wilt overslaan."),
+    ]
+      .filter(Boolean)
+      .join("");
 
     if (!fields) {
       return "";

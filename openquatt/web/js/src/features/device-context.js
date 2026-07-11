@@ -1,6 +1,7 @@
 import { hasEntity, isEntityActive } from "../core/app-shared.js";
 import { TOPOLOGY_HINT_KEYS } from "../core/config.js";
 import { getEntityValue } from "../core/entity-store.js";
+import { formatDurationFromMinutes } from "../core/formatting.js";
 import { state } from "../core/state.js";
 
   export function getDeviceMeta() {
@@ -210,22 +211,7 @@ import { state } from "../core/state.js";
     return `${datePart} · ${formatDeviceClock()}`;
   }
 
-  export function formatDurationFromMinutes(totalMinutes) {
-    if (!Number.isFinite(totalMinutes) || totalMinutes < 0) {
-      return "—";
-    }
-    const wholeMinutes = Math.floor(totalMinutes);
-    const days = Math.floor(wholeMinutes / 1440);
-    const hours = Math.floor((wholeMinutes % 1440) / 60);
-    const minutes = wholeMinutes % 60;
-    if (days > 0) {
-      return `${days}d ${hours}u`;
-    }
-    if (hours > 0) {
-      return `${hours}u ${minutes}m`;
-    }
-    return `${minutes}m`;
-  }
+  export { formatDurationFromMinutes };
 
   export function getNumericEntityUnit(entity) {
     return String(entity?.uom ?? entity?.unit_of_measurement ?? "").trim().toLowerCase();

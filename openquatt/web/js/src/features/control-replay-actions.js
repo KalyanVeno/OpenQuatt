@@ -1,3 +1,4 @@
+import { invokeActionMap } from "../core/action-router.js";
 import { normalizeControlReplayTab, normalizeControlReplayWindow, syncUrlAppView } from "../core/navigation.js";
 import { render } from "../core/render-scheduler.js";
 import { state } from "../core/state.js";
@@ -108,10 +109,5 @@ const controlReplayActionHandlers = {
 };
 
 export function handleControlReplayAction(action, button, event) {
-  const handler = controlReplayActionHandlers[action];
-  if (!handler) {
-    return false;
-  }
-  handler({ button, event });
-  return true;
+  return invokeActionMap(controlReplayActionHandlers, action, { button, event });
 }

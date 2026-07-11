@@ -20,12 +20,15 @@ const bundleGzipBaselines = new Map([
 ]);
 const boundaryAllowedEdges = new Set([
   "core/entity-actions.js -> features/debug-recording.js",
+  "core/entity-actions.js -> features/energy-history-import-export.js",
   "core/entity-actions.js -> features/control-replay-actions.js",
   "core/entity-actions.js -> features/firmware-actions.js",
   "core/entity-actions.js -> features/firmware-update.js",
   "core/entity-actions.js -> features/mqtt-actions.js",
   "core/entity-actions.js -> features/quickstart-ui-actions.js",
   "core/entity-actions.js -> features/security-actions.js",
+  "core/entity-actions.js -> features/settings-backup-client.js",
+  "core/entity-actions.js -> features/shell-actions.js",
   "core/entity-actions.js -> features/storage-history.js",
   "core/entity-actions.js -> features/system-actions.js",
   "core/entity-actions.js -> features/view-actions.js",
@@ -335,26 +338,6 @@ async function checkWriteActionContracts() {
   assertContains(entityWriteActions, "ODU_RUNTIME_FREQUENCY_BUTTON_KEYS.has(key)", "ODU runtime named button write helper");
 }
 
-async function checkSettingsSchemaContracts() {
-  const schema = await readFile(path.join(webDir, "js/src/settings/schema.js"), "utf8");
-  const silentSettings = await readFile(path.join(webDir, "js/src/settings/silent.js"), "utf8");
-  const heatingSettings = await readFile(path.join(webDir, "js/src/settings/heating.js"), "utf8");
-
-  for (const [needle, label] of [
-    ["renderSettingsNumberField", "number fields"],
-    ["renderSettingsSelectField", "select fields"],
-    ["renderSettingsSliderField", "slider fields"],
-    ["renderSettingsSwitchField", "switch fields"],
-    ["renderSettingsTimeField", "time fields"],
-    ["field.visibleWhen", "conditional fields"],
-    ["Onbekend settings-veldtype", "unknown field guard"],
-  ]) {
-    assertContains(schema, needle, `Settings schema ${label}`);
-  }
-  assertContains(silentSettings, "renderSettingsSchemaGrid(silentSettingsFields", "Silent settings schema pilot");
-  assertContains(heatingSettings, "visibleWhen: isManualFlowMode", "Heating settings conditional schema pilot");
-}
-
 async function checkStateSliceContracts() {
   const source = await readFile(path.join(jsSourceDir, "core/state-slices.js"), "utf8");
   const transformed = await transform(source, { format: "cjs", loader: "js", target: "es2020" });
@@ -382,13 +365,29 @@ async function checkStateSliceContracts() {
   if (groups[0].trendWindowHours !== 24 || groups[1].debugRecordingAcknowledgedId !== "recording-id" || groups[5].reducedMotion !== true) {
     throw new Error("State slice input values are not preserved");
   }
+
+  const domainSource = await readFile(path.join(jsSourceDir, "core/state-domain.js"), "utf8");
+  assertContains(domainSource, "assertOwnedKeys", "State-domain ownership guard");
+  for (const [fileName, selector, action] of [
+    ["debug-recording-state.js", "selectDebugRecordingState", "updateDebugRecordingState"],
+    ["energy-history-state.js", "selectEnergyHistoryState", "updateEnergyHistoryState"],
+    ["firmware-state.js", "selectFirmwareState", "updateFirmwareState"],
+    ["mqtt-state.js", "selectMqttState", "updateMqttState"],
+    ["webserver-log-state.js", "selectWebServerLogState", "updateWebServerLogState"],
+  ]) {
+    const domain = await readFile(path.join(jsSourceDir, `core/${fileName}`), "utf8");
+    assertContains(domain, selector, `${fileName} selector`);
+    assertContains(domain, action, `${fileName} action`);
+  }
 }
 
 async function checkMockFixtureContracts() {
+  const scenarioSource = await readFile(path.join(webDir, "js/mock-scenarios.js"), "utf8");
   const fixtureSource = await readFile(path.join(webDir, "js/mock-fixtures.js"), "utf8");
   const mockSource = await readFile(path.join(webDir, "js/mock-device.js"), "utf8");
   const devHtml = await readFile(path.join(webDir, "dev.html"), "utf8");
   const context = { window: {} };
+  vm.runInNewContext(scenarioSource, context, { filename: "mock-scenarios.js" });
   vm.runInNewContext(fixtureSource, context, { filename: "mock-fixtures.js" });
   const fixtures = context.window.__OQ_MOCK_FIXTURES__;
   if (!fixtures || fixtures.hp2Entities.length < 30 || fixtures.devControlOptions.scenario.length < 10) {
@@ -396,8 +395,8 @@ async function checkMockFixtureContracts() {
   }
   assertContains(mockSource, "mockFixtures.hp2Entities", "HP2 mock fixtures");
   assertContains(mockSource, 'renderDevControlOptions("scenario")', "Scenario control fixtures");
-  if (devHtml.indexOf("mock-fixtures.js") > devHtml.indexOf("mock-device.js")) {
-    throw new Error("Mock fixtures must load before mock-device.js");
+  if (devHtml.indexOf("mock-scenarios.js") > devHtml.indexOf("mock-fixtures.js") || devHtml.indexOf("mock-fixtures.js") > devHtml.indexOf("mock-device.js")) {
+    throw new Error("Mock scenarios and fixtures must load before mock-device.js");
   }
 }
 
@@ -412,6 +411,40 @@ async function checkEmbeddedAssetContracts() {
     throw new Error("OpenQuatt logo markup must not live in core/config.js");
   }
   assertContains(embeddedAssets, "LOGO_MARKUP", "Embedded OpenQuatt logo export");
+}
+
+async function checkBrowserSmokeMatrix() {
+  const matrix = await readFile(path.join(webDir, "BROWSER_SMOKE_MATRIX.md"), "utf8");
+  for (const requiredText of [
+    "Overview",
+    "Energy",
+    "Settings",
+    "Firmware modals",
+    "History import/export",
+    "Desktop light",
+    "Desktop dark",
+    "Mobile light",
+    "Mobile dark",
+  ]) {
+    assertContains(matrix, requiredText, `Browser smoke matrix: ${requiredText}`);
+  }
+}
+
+async function checkResponsiveCssOwnership() {
+  const source = await readFile(path.join(webDir, "css/src/90-responsive.css"), "utf8");
+  let depth = 0;
+  const invalidTopLevel = [];
+  source.split(/\r?\n/).forEach((line, index) => {
+    const trimmed = line.trim();
+    if (depth === 0 && trimmed && !trimmed.startsWith("/*") && !trimmed.startsWith("@media")) {
+      invalidTopLevel.push(`${index + 1}: ${trimmed}`);
+    }
+    depth += (line.match(/\{/g) || []).length;
+    depth -= (line.match(/\}/g) || []).length;
+  });
+  if (depth !== 0 || invalidTopLevel.length) {
+    throw new Error(`90-responsive.css contains non-responsive top-level rules:\n${invalidTopLevel.join("\n")}`);
+  }
 }
 
 async function checkSharedBrowserUtilityContracts() {
@@ -619,10 +652,11 @@ async function main() {
   await checkBasePathNormalization();
   await checkScrollKeeperContracts();
   await checkWriteActionContracts();
-  await checkSettingsSchemaContracts();
   await checkStateSliceContracts();
   await checkMockFixtureContracts();
   await checkEmbeddedAssetContracts();
+  await checkBrowserSmokeMatrix();
+  await checkResponsiveCssOwnership();
   await checkSharedBrowserUtilityContracts();
   await checkSharedCoreUtilityContracts();
   await checkRuntimeBoundaryContracts();

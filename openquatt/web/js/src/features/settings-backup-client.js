@@ -1,0 +1,17 @@
+export {
+  buildSettingsBackupSnapshot,
+  clearSettingsBackupDraft,
+  exportSettingsBackup,
+  formatSettingsBackupFieldValue,
+  getSettingsBackupFieldLabel,
+  getSettingsBackupFieldStatusLabel,
+  getSettingsBackupFilename,
+  getSettingsBackupSelectionSummary,
+  getSettingsBackupSourceMeta,
+  getSettingsBackupValue,
+  handleSettingsBackupFileSelection,
+  openSettingsBackupImportPicker,
+  parseSettingsBackupPayload,
+  prepareSettingsBackupSnapshot,
+  restoreSettingsBackup,
+} from "./storage-history.js";

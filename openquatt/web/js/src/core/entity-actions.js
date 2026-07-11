@@ -1,26 +1,49 @@
 import { ENTITY_DEFS } from "./config.js";
+import { getInputDraftValue } from "./control-drafts.js";
+import { reportUnknownAction } from "./action-router.js";
 import { handleControlAction } from "./control-actions.js";
 import { isCurveMode } from "./domain-helpers.js";
-import { formatValue, getEntityValue, getInputDraftValue, getNumberMeta, normalizeDateTimeValue, normalizeNumber, normalizeTimeValue, parseLooseNumber } from "./entity-store.js";
+import { formatValue, getEntityValue, getNumberMeta, normalizeDateTimeValue, normalizeNumber, normalizeTimeValue, parseLooseNumber } from "./entity-store.js";
 import { commitDateTime, commitNumber, commitSelect, commitText, commitTime, triggerNamedButton, updateCurveDraftFromPointer } from "./entity-write-actions.js";
 import { handleNamedButtonAction } from "./named-button-actions.js";
 import { state } from "./state.js";
-import { ensureNativeFrontendLoaded, setDevPanelOpen, setInterfacePanelOpen, setStoredSurface, syncSurfaceRuntime } from "./runtime.js";
+import { setInterfacePanelOpen } from "./runtime.js";
 import { handleDebugRecordingAction } from "../features/debug-recording.js";
 import { handleControlReplayAction } from "../features/control-replay-actions.js";
 import { handleFirmwareAction } from "../features/firmware-actions.js";
+import { updateFirmwareState } from "./firmware-state.js";
 import { getFirmwareTestAssetUrls, getFirmwareTestPrNumber, getFirmwareTestTargetModel, resetFirmwareManualUploadSelection, resetFirmwareTestSelection } from "../features/firmware-update.js";
 import { handleMqttAction, syncMqttDraftFromInput } from "../features/mqtt-actions.js";
 import { handleQuickStartAction } from "../features/quickstart-ui-actions.js";
 import { handleSecurityAction, stopLoginAuthStatusPolling } from "../features/security-actions.js";
-import { clearSettingsBackupDraft, handleSettingsBackupFileSelection, handleStorageHistoryAction, normalizeEnergyHistoryExportMode } from "../features/storage-history.js";
+import { normalizeEnergyHistoryExportMode } from "../features/energy-history-import-export.js";
+import { updateEnergyHistoryState } from "./energy-history-state.js";
+import { clearSettingsBackupDraft, handleSettingsBackupFileSelection } from "../features/settings-backup-client.js";
+import { handleStorageHistoryAction } from "../features/storage-history.js";
 import { handleSystemAction } from "../features/system-actions.js";
+import { handleShellAction } from "../features/shell-actions.js";
 import { handleViewAction } from "../features/view-actions.js";
 import { handleWebServerLogAction } from "../features/webserver-logs.js";
 import { handleOduRuntimeFrequencyInputKeyDown } from "../settings/installation.js";
 import { handleEnergyHistoryPointerMove, setEnergyHistoryPeriodValue } from "../views/energy.js";
 import { escapeHtml } from "./html.js";
 import { render } from "./render-scheduler.js";
+
+const actionDelegates = [
+  handleViewAction,
+  handleControlReplayAction,
+  handleQuickStartAction,
+  handleDebugRecordingAction,
+  handleSecurityAction,
+  handleMqttAction,
+  (action) => handleStorageHistoryAction(action, { triggerNamedButton }),
+  handleFirmwareAction,
+  handleControlAction,
+  handleWebServerLogAction,
+  handleSystemAction,
+  handleNamedButtonAction,
+  handleShellAction,
+];
 
   export function handleFocusChange() {
     window.setTimeout(() => {
@@ -56,20 +79,22 @@ import { render } from "./render-scheduler.js";
 
   export function handleInput(event) {
     if (event.target.dataset.oqFirmwareConnectionConfirm) {
-      state.firmwareConnectionSwitchConfirmed = Boolean(event.target.checked);
+      updateFirmwareState({ firmwareConnectionSwitchConfirmed: Boolean(event.target.checked) });
       render();
       return;
     }
 
     if (event.target.dataset.oqFirmwareTopologyConfirm) {
-      state.firmwareTopologySwitchConfirmed = Boolean(event.target.checked);
+      updateFirmwareState({ firmwareTopologySwitchConfirmed: Boolean(event.target.checked) });
       render();
       return;
     }
 
     if (event.target.dataset.oqFirmwareTestConfirm) {
-      state.updateTestFirmwareConfirmed = Boolean(event.target.checked);
-      state.updateTestFirmwareError = "";
+      updateFirmwareState({
+        updateTestFirmwareConfirmed: Boolean(event.target.checked),
+        updateTestFirmwareError: "",
+      });
       const section = event.target.closest(".oq-helper-modal-callout");
       const installButton = section?.querySelector('[data-oq-action="install-firmware-test"]');
       if (installButton) {
@@ -80,10 +105,12 @@ import { render } from "./render-scheduler.js";
     }
 
     if (event.target.dataset.oqFirmwareTestPr) {
-      state.updateTestFirmwarePr = String(event.target.value || "");
-      state.updateTestFirmwareConfirmed = false;
-      state.updateTestFirmwareError = "";
-      state.updateTestFirmwareBuild = null;
+      updateFirmwareState({
+        updateTestFirmwarePr: String(event.target.value || ""),
+        updateTestFirmwareConfirmed: false,
+        updateTestFirmwareError: "",
+        updateTestFirmwareBuild: null,
+      });
       const section = event.target.closest(".oq-helper-modal-callout");
       const confirmInput = section?.querySelector('[data-oq-firmware-test-confirm="true"]');
       if (confirmInput) {
@@ -235,11 +262,13 @@ import { render } from "./render-scheduler.js";
       const file = event.target.files && event.target.files[0] ? event.target.files[0] : null;
       event.target.value = "";
       if (file) {
-        state.firmwareAdvancedOpen = true;
-        state.updateManualUploadOpen = true;
-        state.updateManualUploadFile = file;
-        state.updateManualUploadFileName = file.name || "";
-        state.updateManualUploadError = "";
+        updateFirmwareState({
+          firmwareAdvancedOpen: true,
+          updateManualUploadOpen: true,
+          updateManualUploadFile: file,
+          updateManualUploadFileName: file.name || "",
+          updateManualUploadError: "",
+        });
       } else {
         resetFirmwareManualUploadSelection();
       }
@@ -255,9 +284,11 @@ import { render } from "./render-scheduler.js";
     }
 
     if (event.target.dataset.oqEnergyHistoryExportMode !== undefined) {
-      state.energyHistoryExportMode = normalizeEnergyHistoryExportMode(event.target.value);
-      state.energyHistoryExportError = "";
-      state.energyHistoryExportNotice = "";
+      updateEnergyHistoryState({
+        energyHistoryExportMode: normalizeEnergyHistoryExportMode(event.target.value),
+        energyHistoryExportError: "",
+        energyHistoryExportNotice: "",
+      });
       render();
       return;
     }
@@ -358,14 +389,16 @@ import { render } from "./render-scheduler.js";
           return;
         }
         if (state.updateModalOpen) {
-          state.updateModalOpen = false;
-          state.firmwareAdvancedOpen = false;
-          state.firmwareConnectionSwitchOpen = false;
-          state.firmwareTopologySwitchOpen = false;
-          state.updateManualUploadOpen = false;
-          state.updateTestFirmwareOpen = false;
-          state.firmwareConnectionSwitchConfirmed = false;
-          state.firmwareTopologySwitchConfirmed = false;
+          updateFirmwareState({
+            updateModalOpen: false,
+            firmwareAdvancedOpen: false,
+            firmwareConnectionSwitchOpen: false,
+            firmwareTopologySwitchOpen: false,
+            updateManualUploadOpen: false,
+            updateTestFirmwareOpen: false,
+            firmwareConnectionSwitchConfirmed: false,
+            firmwareTopologySwitchConfirmed: false,
+          });
           resetFirmwareManualUploadSelection();
           resetFirmwareTestSelection();
           shouldRender = true;
@@ -387,114 +420,10 @@ import { render } from "./render-scheduler.js";
     }
 
     const action = button.dataset.oqAction;
-    if (action === "set-mock-boiler" && typeof window.__OQ_SET_MOCK_BOILER__ === "function") {
-      window.__OQ_SET_MOCK_BOILER__(button.dataset.boilerMode || "off");
+    if (actionDelegates.some((delegate) => delegate(action, button, event))) {
       return;
     }
-
-    if (handleViewAction(action, button, event)) {
-      return;
-    }
-
-    if (handleControlReplayAction(action, button, event)) {
-      return;
-    }
-
-    if (handleQuickStartAction(action, button)) {
-      return;
-    }
-
-    if (handleDebugRecordingAction(action, button)) {
-      return;
-    }
-
-    if (handleSecurityAction(action)) {
-      return;
-    }
-
-    if (handleMqttAction(action, button)) {
-      return;
-    }
-
-    if (handleStorageHistoryAction(action, { triggerNamedButton })) {
-      return;
-    }
-
-    if (handleFirmwareAction(action)) {
-      return;
-    }
-
-    if (handleControlAction(action, button)) {
-      return;
-    }
-
-    if (handleWebServerLogAction(action)) {
-      return;
-    }
-
-    if (handleSystemAction(action, button)) {
-      return;
-    }
-
-    if (handleNamedButtonAction(action, button)) {
-      return;
-    }
-
-    if (action === "toggle-interface-panel") {
-      setInterfacePanelOpen(!state.interfacePanelOpen);
-      render();
-      return;
-    }
-
-    if (action === "toggle-dev-panel") {
-      setDevPanelOpen(!state.devPanelOpen);
-      render();
-      return;
-    }
-
-
-    if (action === "select-surface") {
-      const nextNativeOpen = button.dataset.surface === "native";
-      if (state.nativeOpen === nextNativeOpen) {
-        if (state.nativeOpen) {
-          void ensureNativeFrontendLoaded();
-        }
-        return;
-      }
-
-      state.nativeOpen = nextNativeOpen;
-      setStoredSurface(state.nativeOpen ? "native" : "app");
-      state.controlError = "";
-      state.controlNotice = "";
-      state.settingsInfoOpen = "";
-      state.updateModalOpen = false;
-      state.firmwareAdvancedOpen = false;
-      state.firmwareConnectionSwitchOpen = false;
-      state.firmwareTopologySwitchOpen = false;
-      state.updateManualUploadOpen = false;
-      state.updateTestFirmwareOpen = false;
-      state.firmwareConnectionSwitchConfirmed = false;
-      state.firmwareTopologySwitchConfirmed = false;
-      resetFirmwareManualUploadSelection();
-      resetFirmwareTestSelection();
-      stopLoginAuthStatusPolling();
-      state.systemModal = "";
-      if (state.nativeOpen) {
-        void ensureNativeFrontendLoaded();
-      }
-      render();
-      syncSurfaceRuntime();
-      window.requestAnimationFrame(() => {
-        if (state.nativeOpen) {
-          if (state.nativeApp) {
-            state.nativeApp.scrollIntoView({ behavior: "smooth", block: "start" });
-          }
-        } else {
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }
-      });
-      return;
-    }
+    reportUnknownAction(action, button);
 
   }
 

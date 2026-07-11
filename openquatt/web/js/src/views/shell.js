@@ -2,7 +2,7 @@ import { renderAppNav, syncDocumentTheme, syncDocumentTitle } from "../core/app-
 import { LOGO_MARKUP } from "../core/embedded-assets.js";
 import { getSettingsRenderSignature } from "../core/render-signatures.js";
 import { escapeHtml } from "../core/html.js";
-import { renderModalShell } from "../core/modal-shell.js";
+import { renderModalShell, syncModalFocus } from "../core/modal-shell.js";
 import { setRenderCallback } from "../core/render-scheduler.js";
 import { state } from "../core/state.js";
 import { clearLegacyMotionVariables, startMotionLoop, stopMotionLoop } from "../core/motion.js";
@@ -10,6 +10,7 @@ import { bindHeaderDevControls, syncNativeVisibility } from "../core/runtime.js"
 import { renderDeviceReconnectModal, renderUpdateModal } from "../features/firmware-update.js";
 import { getDeviceVersionLabel, getHeaderRenderSignature, renderDevPanel, renderHeaderStatus, renderNativeSurfaceShell, renderSystemModal } from "../features/header-status.js";
 import { getMqttSensorsModalRenderSignature } from "../features/mqtt-actions.js";
+import { updateMqttState } from "../core/mqtt-state.js";
 import { captureQuickStartScrollState, queueQuickStartScrollRestore, renderQuickStartModal } from "../features/quickstart.js";
 import { captureCm100CommissioningScrollState, captureHistoryStorageModalScrollState, captureServiceTaskModalScrollState, captureWebServerLogScrollState, queueCm100CommissioningScrollRestore, queueHistoryStorageModalScrollRestore, queueServiceTaskModalScrollRestore, queueWebServerLogScrollRestore, syncWebServerLogStream } from "../features/webserver-logs.js";
 import { renderSettingsGroupContent, renderSettingsGroupNav } from "../settings/core.js";
@@ -200,11 +201,12 @@ export function renderSettingsView() {
         ${renderDevPanel()}
         ${renderNativeSurfaceShell()}
       `;
+      syncModalFocus(state.root);
       state.renderedAppView = "native";
       state.renderedSettingsGroup = "";
       state.settingsRenderSignature = "";
       state.headerRenderSignature = getHeaderRenderSignature();
-      state.mqttSensorsModalRenderSignature = "";
+      updateMqttState({ mqttSensorsModalRenderSignature: "" });
       stopMotionLoop();
       syncNativeVisibility();
       syncWebServerLogStream();
@@ -252,11 +254,14 @@ export function renderSettingsView() {
       ${renderSystemModal()}
       ${renderDeviceReconnectModal()}
     `;
+    syncModalFocus(state.root);
     state.renderedAppView = state.appView;
     state.renderedSettingsGroup = state.appView === "settings" ? state.settingsGroup : "";
     state.settingsRenderSignature = state.appView === "settings" ? getSettingsRenderSignature() : "";
     state.headerRenderSignature = getHeaderRenderSignature();
-    state.mqttSensorsModalRenderSignature = state.systemModal === "mqtt-sensors" ? getMqttSensorsModalRenderSignature() : "";
+    updateMqttState({
+      mqttSensorsModalRenderSignature: state.systemModal === "mqtt-sensors" ? getMqttSensorsModalRenderSignature() : "",
+    });
     clearLegacyMotionVariables();
     syncTechTooltipLayers();
     syncWebServerLogStream();

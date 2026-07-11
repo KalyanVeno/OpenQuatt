@@ -1,4 +1,6 @@
 import { copyTextToClipboard } from "../core/browser-utils.js";
+import { invokeActionMap } from "../core/action-router.js";
+import { updateMqttState } from "../core/mqtt-state.js";
 import { getEntitySignatureFragment } from "../core/render-signatures.js";
 import { state } from "../core/state.js";
 import { shouldRefreshSupplementaryStatus } from "../core/supplementary-refresh.js";
@@ -69,13 +71,15 @@ import { render } from "../core/render-scheduler.js";
 
   export function syncMqttDraftsFromStatus() {
     const status = state.mqttStatus || {};
-    state.mqttDraftEnabled = status.enabled === true;
-    state.mqttDraftBroker = String(status.broker || "");
-    state.mqttDraftPort = String(status.port || 1883);
-    state.mqttDraftUsername = String(status.username || "");
-    state.mqttDraftPassword = "";
-    state.mqttDraftClearPassword = false;
-    state.mqttDraftDirty = false;
+    updateMqttState({
+      mqttDraftEnabled: status.enabled === true,
+      mqttDraftBroker: String(status.broker || ""),
+      mqttDraftPort: String(status.port || 1883),
+      mqttDraftUsername: String(status.username || ""),
+      mqttDraftPassword: "",
+      mqttDraftClearPassword: false,
+      mqttDraftDirty: false,
+    });
   }
 
   export function syncMqttDraftFromInput(input) {
@@ -84,9 +88,7 @@ import { render } from "../core/render-scheduler.js";
       return false;
     }
 
-    state.mqttNotice = "";
-    state.mqttError = "";
-    state.mqttDraftDirty = true;
+    updateMqttState({ mqttNotice: "", mqttError: "", mqttDraftDirty: true });
     if (mqttField === "enabled") {
       state.mqttDraftEnabled = Boolean(input.checked);
     } else if (mqttField === "broker") {
@@ -389,7 +391,7 @@ import { render } from "../core/render-scheduler.js";
       state.mqttNotice = "";
       state.mqttError = "";
       render();
-      void refreshMqttStatus({ force: true });
+      return refreshMqttStatus({ force: true });
     },
     "open-mqtt-sensors-modal": () => {
       state.systemModal = "mqtt-sensors";
@@ -400,7 +402,7 @@ import { render } from "../core/render-scheduler.js";
       state.mqttInputToggleBusyKey = "";
       state.mqttRetainedToggleBusyKey = "";
       render();
-      void refreshMqttStatus({ force: true }).then((changed) => {
+      return refreshMqttStatus({ force: true }).then((changed) => {
         if (changed && state.systemModal === "mqtt-sensors") {
           render();
         }
@@ -414,24 +416,19 @@ import { render } from "../core/render-scheduler.js";
     },
     "toggle-mqtt-input": (button) => {
       const topicKey = button.dataset?.oqMqttTopicKey || "cooling_dew_point";
-      void commitMqttInputEnabled(topicKey, !isMqttInputEnabled(topicKey));
+      return commitMqttInputEnabled(topicKey, !isMqttInputEnabled(topicKey));
     },
     "toggle-mqtt-retained": (button) => {
       const topicKey = button.dataset?.oqMqttTopicKey || "";
       if (topicKey) {
-        void commitMqttInputAcceptRetained(topicKey, !isMqttInputAcceptRetained(topicKey));
+        return commitMqttInputAcceptRetained(topicKey, !isMqttInputAcceptRetained(topicKey));
       }
     },
-    "copy-mqtt-topic": (button) => void copyMqttTopic(button.dataset?.oqMqttTopicKey || "cooling_dew_point"),
-    "copy-mqtt-dew-topic": (button) => void copyMqttTopic(button.dataset?.oqMqttTopicKey || "cooling_dew_point"),
-    "save-mqtt-config": () => void commitMqttConfig(),
+    "copy-mqtt-topic": (button) => copyMqttTopic(button.dataset?.oqMqttTopicKey || "cooling_dew_point"),
+    "copy-mqtt-dew-topic": (button) => copyMqttTopic(button.dataset?.oqMqttTopicKey || "cooling_dew_point"),
+    "save-mqtt-config": () => commitMqttConfig(),
   };
 
   export function handleMqttAction(action, button) {
-    const handler = mqttActionHandlers[action];
-    if (!handler) {
-      return false;
-    }
-    handler(button);
-    return true;
+    return invokeActionMap(mqttActionHandlers, action, button);
   }

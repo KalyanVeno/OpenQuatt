@@ -2,10 +2,13 @@ import { copyTextToClipboard } from "../core/browser-utils.js";
 import { refreshEntities } from "../core/entity-sync.js";
 import { state } from "../core/state.js";
 import { getBasePath } from "../core/url-path.js";
+import { invokeActionMap } from "../core/action-router.js";
+import { updateWebServerLogState } from "../core/webserver-log-state.js";
 import { setWebServerLogControls } from "../core/webserver-log-controls.js";
 import { escapeHtml } from "../core/html.js";
 import { render } from "../core/render-scheduler.js";
 import { createScrollKeeper } from "../core/scroll-keeper.js";
+import { renderModalShell } from "../core/modal-shell.js";
 import { renderSettingsSystemRow } from "../settings/controls.js";
 
 export const WEB_SERVER_LOG_MAX_ENTRIES = 250;
@@ -436,10 +439,9 @@ export function hasWebServerLogEntry(candidate, entries = state.webServerLogEntr
 
 export function openWebServerLogsModal() {
   if (isWebServerLogDemoMode() && state.webServerLogEntries.length === 0) {
-    state.webServerLogEntries = seedWebServerLogDemoEntries();
+    updateWebServerLogState({ webServerLogEntries: seedWebServerLogDemoEntries() });
   }
-  state.webServerLogCopyMessage = "";
-  state.webServerLogCopyError = "";
+  updateWebServerLogState({ webServerLogCopyMessage: "", webServerLogCopyError: "" });
   state.systemModal = "webserver-logs";
   render();
   void refreshEntities(["webServerLogHistoryEnabled", "debugLevel"], "all", { forceFast: true }).then(() => {
@@ -457,17 +459,19 @@ export function openWebServerLogsModal() {
 }
 
 export function clearWebServerLogOutput() {
-  state.webServerLogEntries = [];
-  state.webServerLogError = "";
-  state.webServerLogHistoryError = "";
-  state.webServerLogHistoryLoading = false;
-  state.webServerLogHistoryLoaded = false;
+  updateWebServerLogState({
+    webServerLogEntries: [],
+    webServerLogError: "",
+    webServerLogHistoryError: "",
+    webServerLogHistoryLoading: false,
+    webServerLogHistoryLoaded: false,
+    webServerLogCopyMessage: "",
+    webServerLogCopyError: "",
+    webServerLogHistoryRequestToken: state.webServerLogHistoryRequestToken + 1,
+    webServerLogRecentTail: [],
+    webServerLogRecentAnchorAt: 0,
+  });
   webServerLogScrollKeeper.invalidate();
-  state.webServerLogCopyMessage = "";
-  state.webServerLogCopyError = "";
-  state.webServerLogHistoryRequestToken += 1;
-  state.webServerLogRecentTail = [];
-  state.webServerLogRecentAnchorAt = 0;
   if (state.systemModal === "webserver-logs") {
     render();
   }
@@ -476,8 +480,7 @@ export function clearWebServerLogOutput() {
 export function resetWebServerLogRecoveryState() {
   const scrollState = captureWebServerLogScrollState();
   closeWebServerLogStream();
-  state.webServerLogEnabled = null;
-  state.webServerLogConnected = false;
+  updateWebServerLogState({ webServerLogEnabled: null, webServerLogConnected: false });
   clearWebServerLogOutput();
   if (state.systemModal === "webserver-logs") {
     void refreshWebServerLogHistory({ scrollState });
@@ -914,47 +917,38 @@ export async function copyWebServerLogOutput() {
 const webServerLogActionHandlers = {
   "open-webserver-log-modal": () => openWebServerLogsModal(),
   "clear-webserver-log-output": () => clearWebServerLogOutput(),
-  "copy-webserver-log-output": () => void copyWebServerLogOutput(),
+  "copy-webserver-log-output": () => copyWebServerLogOutput(),
 };
 
 export function handleWebServerLogAction(action) {
-  const handler = webServerLogActionHandlers[action];
-  if (!handler) {
-    return false;
-  }
-  handler();
-  return true;
+  return invokeActionMap(webServerLogActionHandlers, action);
 }
 
 export function renderWebServerLogsModal() {
   const demoMode = isWebServerLogDemoMode();
-  return `
-    <div class="oq-helper-modal-backdrop${state.overviewTheme === "dark" ? " oq-helper-modal-backdrop--dark" : ""}" data-oq-modal="system">
-      <section class="oq-helper-modal oq-helper-modal--wide oq-helper-modal--scrollable oq-webserver-log-modal" role="dialog" aria-modal="true" aria-labelledby="oq-webserver-log-modal-title">
-        <div class="oq-helper-modal-head">
-          <div>
-            <p class="oq-helper-modal-kicker">Diagnostiek</p>
-            <h2 class="oq-helper-modal-title" id="oq-webserver-log-modal-title">OpenQuatt log</h2>
-          </div>
-            <button class="oq-helper-modal-close" type="button" data-oq-action="close-system-modal" aria-label="Sluit logboek">&times;</button>
-        </div>
-        <p class="oq-helper-modal-copy">${demoMode
-          ? "Hier zie je voorbeeldmeldingen uit de lokale preview."
-          : "Hier zie je recente meldingen van OpenQuatt. Handig als je wilt terugzoeken wat er net gebeurde."
-        }</p>
+  return renderModalShell({
+    id: "system",
+    titleId: "oq-webserver-log-modal-title",
+    kicker: "Diagnostiek",
+    title: "OpenQuatt log",
+    copy: demoMode
+      ? "Hier zie je voorbeeldmeldingen uit de lokale preview."
+      : "Hier zie je recente meldingen van OpenQuatt. Handig als je wilt terugzoeken wat er net gebeurde.",
+    className: "oq-helper-modal--wide oq-helper-modal--scrollable oq-webserver-log-modal",
+    closeAction: "close-system-modal",
+    closeLabel: "Sluit logboek",
+    body: `
         ${renderWebServerLogHistoryControls()}
         ${renderWebServerLogStatusBanner()}
         <div class="oq-webserver-log-panel" data-oq-webserver-log-scroller>
           <div class="oq-webserver-log-output" data-oq-webserver-log-output data-web-server-log-empty="${state.webServerLogEntries.length === 0 ? "true" : "false"}">
             ${renderWebServerLogEntries()}
           </div>
-        </div>
-        <div class="oq-helper-modal-actions">
-          <button class="oq-helper-button oq-helper-button--ghost" type="button" data-oq-action="copy-webserver-log-output" ${state.webServerLogEntries.length === 0 ? "disabled" : ""}>Kopieer log</button>
-          <button class="oq-helper-button oq-helper-button--ghost" type="button" data-oq-action="clear-webserver-log-output">Legen</button>
-          <button class="oq-helper-button oq-helper-button--primary" type="button" data-oq-action="close-system-modal">Gereed</button>
-        </div>
-      </section>
-    </div>
-  `;
+        </div>`,
+    actions: `
+      <button class="oq-helper-button oq-helper-button--ghost" type="button" data-oq-action="copy-webserver-log-output" ${state.webServerLogEntries.length === 0 ? "disabled" : ""}>Kopieer log</button>
+      <button class="oq-helper-button oq-helper-button--ghost" type="button" data-oq-action="clear-webserver-log-output">Legen</button>
+      <button class="oq-helper-button oq-helper-button--primary" type="button" data-oq-action="close-system-modal">Gereed</button>
+    `,
+  });
 }

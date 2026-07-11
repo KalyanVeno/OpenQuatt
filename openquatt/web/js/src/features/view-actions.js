@@ -1,4 +1,5 @@
 import { isTrendHistoryEnabled } from "../core/app-shared.js";
+import { invokeActionMap } from "../core/action-router.js";
 import { SETTINGS_GROUPS } from "../core/config.js";
 import { syncEntities } from "../core/entity-sync.js";
 import { setAppView } from "../core/navigation.js";
@@ -105,10 +106,5 @@ const viewActionHandlers = {
 };
 
 export function handleViewAction(action, button, event) {
-  const handler = viewActionHandlers[action];
-  if (!handler) {
-    return false;
-  }
-  handler(button, event);
-  return true;
+  return invokeActionMap(viewActionHandlers, action, button, event);
 }

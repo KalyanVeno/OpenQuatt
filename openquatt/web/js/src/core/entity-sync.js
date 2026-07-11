@@ -3,6 +3,7 @@ import { BULK_POLL_INTERVAL_MS, CIC_COMPATIBILITY_KEYS, CIC_POLLING_DIAGNOSTIC_K
 import { buildEntityPath, isCurveMode } from "./domain-helpers.js";
 import { getEntityValue, parseLooseNumber } from "./entity-store.js";
 import { state } from "./state.js";
+import { updateWebServerLogState } from "./webserver-log-state.js";
 import { getDefaultAppView, getUrlAppView, setAppView } from "./navigation.js";
 import { isFirmwareOtaQuietActive } from "./firmware-quiet.js";
 import { getInstallationMonitoringModel, syncInstallationMonitoringDetailsState } from "./installation-monitoring.js";
@@ -570,8 +571,7 @@ import { render } from "./render-scheduler.js";
       } else {
         closeWebServerLogStream();
         clearWebServerLogOutput();
-        state.webServerLogEnabled = null;
-        state.webServerLogConnected = false;
+        updateWebServerLogState({ webServerLogEnabled: null, webServerLogConnected: false });
       }
       clearOptionalMissingEntities();
     }

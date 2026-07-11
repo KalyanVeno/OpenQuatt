@@ -1,3 +1,4 @@
+import { invokeActionMap } from "./action-router.js";
 import { getCurveFallbackSuggestion, getEntityValue } from "./entity-store.js";
 import { commitNumber, commitSelect, commitSwitch, triggerButton } from "./entity-write-actions.js";
 
@@ -34,10 +35,5 @@ const controlActionHandlers = {
 };
 
 export function handleControlAction(action, button) {
-  const handler = controlActionHandlers[action];
-  if (!handler) {
-    return false;
-  }
-  handler(button);
-  return true;
+  return invokeActionMap(controlActionHandlers, action, button);
 }
