@@ -1,7 +1,7 @@
 import { formatOverviewStatValue, getDerivedEfficiencyValue, getEntityNumericValue, getEntityStateText, hasEntity, isEfficiencyKey } from "../core/app-shared.js";
 import { OVERVIEW_ENERGY_COLUMN_CONFIGS } from "../core/config.js";
 import { setEnergyHistoryRequestQueryProvider } from "../core/energy-history-query.js";
-import { ENERGY_HISTORY_VALUE_KEYS, ENERGY_HISTORY_WEEKDAY_LABELS, addEnergyHistoryDays, addEnergyHistoryMonths, formatEnergyHistoryDateLabel, formatEnergyHistoryWeekLabel, getEnergyHistoryDateFromParts, getEnergyHistoryDateInputValue, getEnergyHistoryDateKeyFromDate, getEnergyHistoryDaysInMonth, getEnergyHistoryIsoWeekInfo, getEnergyHistoryMonthKeyFromDate, getEnergyHistoryRecordWh, getEnergyHistoryWeekStart, getEnergyHistoryWeekStartKeyFromDate, parseEnergyHistoryCurrentLine, parseEnergyHistoryDateInputValue, parseEnergyHistoryDateKey, parseEnergyHistoryHourLine, parseEnergyHistoryLine, parseEnergyHistoryMonthInputValue, parseEnergyHistoryMonthKey, parseEnergyHistoryWeekValue } from "../core/energy-history-domain.js";
+import { ENERGY_HISTORY_VALUE_KEYS, ENERGY_HISTORY_WEEKDAY_LABELS, addEnergyHistoryDays, addEnergyHistoryMonths, formatEnergyHistoryDateLabel, formatEnergyHistoryWeekLabel, getEnergyHistoryDateFromParts, getEnergyHistoryDateInputValue, getEnergyHistoryDateKeyFromDate, getEnergyHistoryDaysInMonth, getEnergyHistoryIsoWeekInfo, getEnergyHistoryMonthKeyFromDate, getEnergyHistoryRecordWh, getEnergyHistoryWeekStart, getEnergyHistoryWeekStartKeyFromDate, parseEnergyHistoryCurrentLine, parseEnergyHistoryDateInputValue, parseEnergyHistoryDateKey, parseEnergyHistoryHourLine, parseEnergyHistoryLine, parseEnergyHistoryMetadata, parseEnergyHistoryMonthInputValue, parseEnergyHistoryMonthKey, parseEnergyHistoryWeekValue } from "../core/energy-history-domain.js";
 export * from "../core/energy-history-domain.js";
 import { getRenderSignature } from "../core/render-signatures.js";
 import { state } from "../core/state.js";
@@ -146,54 +146,7 @@ import { replaceOuterHtmlIfSignatureChanged } from "./view-utils.js";
   }
 
   export function getEnergyHistoryMetadataFromRaw() {
-    const raw = String(state.energyHistoryRaw || "");
-    const metadata = {
-      storedDayCount: 0,
-      oldestDateKey: null,
-      newestDateKey: null,
-      hourStoredDayCount: 0,
-      hourOldestDateKey: null,
-      hourNewestDateKey: null,
-      hourRequestedRetentionDays: 0,
-      hourSlotCount: 0,
-      hourPartitionAvailable: false,
-      hourRecordCount: 0,
-      hourWriteCount: 0,
-      hourStorageKb: 0,
-      hourLastWriteTimestampS: 0,
-      dayPartitionAvailable: false,
-      dayStorageKb: 0,
-      dayWriteCount: 0,
-      dayLastWriteTimestampS: 0,
-    };
-    raw.split(/\r?\n/).forEach((line) => {
-      if (!line.startsWith("@bounds|") && !line.startsWith("@day_retention|") && !line.startsWith("@hour_retention|")) {
-        return;
-      }
-      const parts = line.split("|");
-      if (line.startsWith("@bounds|")) {
-        metadata.storedDayCount = Number(parts[1]) || 0;
-        metadata.oldestDateKey = Number(parts[2]) || null;
-        metadata.newestDateKey = Number(parts[3]) || null;
-        metadata.hourStoredDayCount = Number(parts[4]) || 0;
-        metadata.hourOldestDateKey = Number(parts[5]) || null;
-        metadata.hourNewestDateKey = Number(parts[6]) || null;
-      } else if (line.startsWith("@day_retention|")) {
-        metadata.dayPartitionAvailable = Number(parts[1]) === 1;
-        metadata.dayStorageKb = Number(parts[2]) || 0;
-        metadata.dayWriteCount = Number(parts[3]) || 0;
-        metadata.dayLastWriteTimestampS = Number(parts[4]) || 0;
-      } else if (line.startsWith("@hour_retention|")) {
-        metadata.hourRequestedRetentionDays = Number(parts[1]) || 0;
-        metadata.hourSlotCount = Number(parts[2]) || 0;
-        metadata.hourPartitionAvailable = Number(parts[3]) === 1;
-        metadata.hourRecordCount = Number(parts[4]) || 0;
-        metadata.hourWriteCount = Number(parts[5]) || 0;
-        metadata.hourStorageKb = Number(parts[6]) || 0;
-        metadata.hourLastWriteTimestampS = Number(parts[7]) || 0;
-      }
-    });
-    return metadata;
+    return parseEnergyHistoryMetadata(state.energyHistoryRaw);
   }
 
   export function getEnergyHistoryCurrentDateKeyFromRaw() {

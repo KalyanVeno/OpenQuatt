@@ -5,6 +5,7 @@ import vm from "node:vm";
 import { gzipSync } from "node:zlib";
 import { build, transform } from "esbuild";
 import { resolveCssSources } from "./css-source-list.mjs";
+import { WEB_BUNDLE_BUDGETS } from "./web-budgets.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const webDir = path.dirname(__filename);
@@ -13,11 +14,6 @@ const jsSourceDir = path.join(webDir, "js", "src");
 const cssSources = resolveCssSources(webDir);
 
 const allowedBareImports = new Set(["virtual:embedded-assets"]);
-const bundleBudgetHeadroomBytes = 5 * 1024;
-const bundleGzipBaselines = new Map([
-  ["js/openquatt-app.js", 199828],
-  ["css/openquatt-app.css", 40717],
-]);
 const boundaryAllowedEdges = new Set([
   "core/entity-actions.js -> features/debug-recording.js",
   "core/entity-actions.js -> features/control-replay-actions.js",
@@ -41,7 +37,6 @@ const boundaryAllowedEdges = new Set([
   "core/entity-write-actions.js -> features/webserver-logs.js",
   "core/render-signatures.js -> features/security-actions.js",
   "core/runtime.js -> features/debug-recording.js",
-  "settings/storage.js -> views/energy.js",
   "views/overview.js -> settings/cooling.js",
   "views/shell.js -> settings/core.js",
 ]);
@@ -284,12 +279,11 @@ async function checkCssBundleFresh() {
 
 async function checkBundleGzipBudgets() {
   const errors = [];
-  for (const [relativePath, baselineBytes] of bundleGzipBaselines.entries()) {
-    const maxBytes = baselineBytes + bundleBudgetHeadroomBytes;
-    const bytes = await readFile(path.join(webDir, relativePath));
+  for (const budget of WEB_BUNDLE_BUDGETS) {
+    const bytes = await readFile(path.join(webDir, budget.file));
     const gzipBytes = gzipSync(bytes).length;
-    if (gzipBytes > maxBytes) {
-      errors.push(`${relativePath} gzip ${gzipBytes} B exceeds budget ${maxBytes} B`);
+    if (gzipBytes > budget.gzip) {
+      errors.push(`${budget.file} gzip ${gzipBytes} B exceeds budget ${budget.gzip} B`);
     }
   }
   if (errors.length) {
@@ -380,16 +374,16 @@ async function checkStateSliceContracts() {
 
 async function checkMockFixtureContracts() {
   const scenarioSource = await readFile(path.join(webDir, "js/mock-scenarios.js"), "utf8");
-  const entityDefinitionSource = await readFile(path.join(webDir, "js/mock-entity-defs.js"), "utf8");
   const fixtureSource = await readFile(path.join(webDir, "js/mock-fixtures.js"), "utf8");
   const mockSource = await readFile(path.join(webDir, "js/mock-device.js"), "utf8");
   const buildSource = await readFile(path.join(webDir, "build-assets.mjs"), "utf8");
+  const configSource = await readFile(path.join(jsSourceDir, "core/config.js"), "utf8");
+  const configModule = await import(`data:text/javascript;base64,${Buffer.from(configSource).toString("base64")}`);
   const devHtml = await readFile(path.join(webDir, "dev.html"), "utf8");
-  const context = { window: {} };
+  const entityDefinitions = Object.values(configModule.ENTITY_DEFS).map(({ domain, name }) => [domain, name]);
+  const context = { window: { __OQ_MOCK_ENTITY_DEFS__: Object.freeze(entityDefinitions) } };
   vm.runInNewContext(scenarioSource, context, { filename: "mock-scenarios.js" });
-  vm.runInNewContext(entityDefinitionSource, context, { filename: "mock-entity-defs.js" });
   vm.runInNewContext(fixtureSource, context, { filename: "mock-fixtures.js" });
-  const entityDefinitions = context.window.__OQ_MOCK_ENTITY_DEFS__;
   const fixtures = context.window.__OQ_MOCK_FIXTURES__;
   if (!entityDefinitions || entityDefinitions.length < 300) {
     throw new Error("Generated mock entity definitions are incomplete");

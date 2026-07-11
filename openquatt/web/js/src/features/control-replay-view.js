@@ -60,7 +60,7 @@ import { replaceOuterHtmlIfSignatureChanged } from "../views/view-utils.js";
     return mode === "Verwarmen"
       || mode === "Koelen"
       || isEntityActive(panel.keys.defrost)
-      || (Number.isFinite(compressorLevel) && compressorLevel > 0);
+      || (mode === "Onbekend" && Number.isFinite(compressorLevel) && compressorLevel > 0);
   }
 
   const CONTROL_WORKING_COOLING_LIMITER_REASONS = Object.freeze({

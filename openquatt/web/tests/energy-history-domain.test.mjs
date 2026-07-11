@@ -8,6 +8,7 @@ import {
   parseEnergyHistoryDateKey,
   parseEnergyHistoryHourLine,
   parseEnergyHistoryLine,
+  parseEnergyHistoryMetadata,
 } from "../js/src/core/energy-history-domain.js";
 
 test("energy history date parsing rejects impossible calendar dates", () => {
@@ -37,4 +38,16 @@ test("energy history hour parser validates hour and formats its range", () => {
   assert.equal(record?.sortKey, 2024022923);
   assert.equal(record?.tooltipLabel, "23:00 - 00:00");
   assert.equal(parseEnergyHistoryHourLine("@hour|3|20240229|24|10|9|1|30|2|4|34"), null);
+});
+
+test("energy history metadata parser reads retention records", () => {
+  const metadata = parseEnergyHistoryMetadata([
+    "@bounds|14|20240201|20240214|3|20240212|20240214",
+    "@day_retention|1|96|8|1707900000",
+    "@hour_retention|7|168|1|72|12|48|1707901000",
+  ].join("\n"));
+  assert.equal(metadata.storedDayCount, 14);
+  assert.equal(metadata.hourPartitionAvailable, true);
+  assert.equal(metadata.hourRecordCount, 72);
+  assert.equal(metadata.dayStorageKb, 96);
 });

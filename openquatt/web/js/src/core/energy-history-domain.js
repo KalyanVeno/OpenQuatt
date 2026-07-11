@@ -10,6 +10,53 @@ export const ENERGY_HISTORY_VALUE_KEYS = [
 
 export const ENERGY_HISTORY_WEEKDAY_LABELS = ["Zo", "Ma", "Di", "Wo", "Do", "Vr", "Za"];
 
+export function parseEnergyHistoryMetadata(rawValue) {
+  const metadata = {
+    storedDayCount: 0,
+    oldestDateKey: null,
+    newestDateKey: null,
+    hourStoredDayCount: 0,
+    hourOldestDateKey: null,
+    hourNewestDateKey: null,
+    hourRequestedRetentionDays: 0,
+    hourSlotCount: 0,
+    hourPartitionAvailable: false,
+    hourRecordCount: 0,
+    hourWriteCount: 0,
+    hourStorageKb: 0,
+    hourLastWriteTimestampS: 0,
+    dayPartitionAvailable: false,
+    dayStorageKb: 0,
+    dayWriteCount: 0,
+    dayLastWriteTimestampS: 0,
+  };
+  String(rawValue || "").split(/\r?\n/).forEach((line) => {
+    const parts = line.split("|");
+    if (line.startsWith("@bounds|")) {
+      metadata.storedDayCount = Number(parts[1]) || 0;
+      metadata.oldestDateKey = Number(parts[2]) || null;
+      metadata.newestDateKey = Number(parts[3]) || null;
+      metadata.hourStoredDayCount = Number(parts[4]) || 0;
+      metadata.hourOldestDateKey = Number(parts[5]) || null;
+      metadata.hourNewestDateKey = Number(parts[6]) || null;
+    } else if (line.startsWith("@day_retention|")) {
+      metadata.dayPartitionAvailable = Number(parts[1]) === 1;
+      metadata.dayStorageKb = Number(parts[2]) || 0;
+      metadata.dayWriteCount = Number(parts[3]) || 0;
+      metadata.dayLastWriteTimestampS = Number(parts[4]) || 0;
+    } else if (line.startsWith("@hour_retention|")) {
+      metadata.hourRequestedRetentionDays = Number(parts[1]) || 0;
+      metadata.hourSlotCount = Number(parts[2]) || 0;
+      metadata.hourPartitionAvailable = Number(parts[3]) === 1;
+      metadata.hourRecordCount = Number(parts[4]) || 0;
+      metadata.hourWriteCount = Number(parts[5]) || 0;
+      metadata.hourStorageKb = Number(parts[6]) || 0;
+      metadata.hourLastWriteTimestampS = Number(parts[7]) || 0;
+    }
+  });
+  return metadata;
+}
+
 export function getEnergyHistoryDateKeyFromDate(date) {
   return (date.getFullYear() * 10000) + ((date.getMonth() + 1) * 100) + date.getDate();
 }

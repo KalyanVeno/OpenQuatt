@@ -2,14 +2,11 @@ import { gzipSync } from "node:zlib";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { WEB_BUNDLE_BUDGETS } from "./web-budgets.mjs";
 
 const webDir = path.dirname(fileURLToPath(import.meta.url));
 const sourceRoots = [path.join(webDir, "js", "src"), path.join(webDir, "css", "src")];
 const mojibakePattern = /â€|Ã.|Â(?:\s|\u00a0)/u;
-const budgets = [
-  { file: "js/openquatt-app.js", raw: 792_000, gzip: 213_000 },
-  { file: "css/openquatt-app.css", raw: 255_000, gzip: 42_000 },
-];
 
 async function collectFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -30,7 +27,7 @@ for (const sourceFile of sourceFiles) {
 }
 
 const budgetFailures = [];
-for (const budget of budgets) {
+for (const budget of WEB_BUNDLE_BUDGETS) {
   const contents = await readFile(path.join(webDir, budget.file));
   const sizes = { raw: contents.byteLength, gzip: gzipSync(contents).byteLength };
   for (const kind of ["raw", "gzip"]) {
@@ -48,4 +45,4 @@ if (encodingFailures.length || budgetFailures.length) {
   throw new Error(`Web quality check failed:\n- ${failures.join("\n- ")}`);
 }
 
-console.log(`Web quality ok: ${sourceFiles.length} source files and ${budgets.length} bundle budgets`);
+console.log(`Web quality ok: ${sourceFiles.length} source files and ${WEB_BUNDLE_BUDGETS.length} bundle budgets`);
