@@ -24,51 +24,6 @@
   }
 }
 
-.oq-overview-meter {
-  margin-top: 14px;
-}
-
-.oq-overview-meter-track {
-  height: 14px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: var(--oq-overview-meter-track);
-}
-
-.oq-overview-meter-fill {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #1d4ed8, #60a5fa);
-}
-
-.oq-overview-hp--orange .oq-overview-meter-fill {
-  background: linear-gradient(90deg, #f59e0b, #ef4444);
-}
-
-.oq-overview-meter-meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 8px;
-  color: var(--oq-overview-muted);
-  font-size: 0.9rem;
-}
-
-.oq-overview-meter-meta strong {
-  color: var(--oq-overview-title);
-}
-
-esp-app.oq-native-app {
-  display: block;
-  width: min(1440px, calc(100vw - 32px));
-  margin: 0 auto 28px;
-}
-
-esp-app.oq-native-app.oq-native-app--collapsed {
-  display: none;
-}
-
 @media (max-width: 980px) {
   .oq-helper-logo-lockup {
     flex-direction: column;

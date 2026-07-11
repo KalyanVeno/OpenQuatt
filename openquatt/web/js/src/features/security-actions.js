@@ -473,3 +473,37 @@ import { render } from "../core/render-scheduler.js";
       render();
     }
   }
+
+  const securityActionHandlers = {
+    "open-login-modal": () => {
+      state.systemModal = "login";
+      syncAuthDraftsFromStatus();
+      state.authNotice = "";
+      state.authError = "";
+      render();
+      void refreshLoginModalAuthStatus({ poll: true });
+    },
+    "open-api-security-modal": () => {
+      state.systemModal = "api-security";
+      state.apiSecurityNotice = "";
+      state.apiSecurityError = "";
+      render();
+      void refreshApiSecurityStatus({ force: true });
+    },
+    "copy-api-security-key": () => void copyApiSecurityKey(),
+    "enable-api-security": () => void commitEnableApiSecurity(),
+    "rotate-api-security": () => void commitRotateApiSecurity(),
+    "disable-api-security": () => void commitDisableApiSecurity(),
+    "restart-api-security": () => void restartForApiSecurityChange(),
+    "save-web-auth": () => void commitWebAuthChanges(),
+    "disable-web-auth": () => void commitDisableWebAuth(),
+  };
+
+  export function handleSecurityAction(action) {
+    const handler = securityActionHandlers[action];
+    if (!handler) {
+      return false;
+    }
+    handler();
+    return true;
+  }

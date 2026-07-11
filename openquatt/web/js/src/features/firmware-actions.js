@@ -481,3 +481,119 @@ import { render } from "../core/render-scheduler.js";
       render();
     }
   }
+
+  const firmwareActionHandlers = {
+    "open-update-modal": () => {
+      state.updateModalOpen = true;
+      render();
+      void hydrateFirmwareUpdateModal();
+    },
+    "close-update-modal": () => {
+      state.updateModalOpen = false;
+      state.updateInstallCompleted = false;
+      state.updateInstallCompletedVersion = "";
+      state.firmwareAdvancedOpen = false;
+      state.firmwareConnectionSwitchOpen = false;
+      state.firmwareTopologySwitchOpen = false;
+      state.updateManualUploadOpen = false;
+      state.updateTestFirmwareOpen = false;
+      state.firmwareConnectionSwitchConfirmed = false;
+      state.firmwareTopologySwitchConfirmed = false;
+      resetFirmwareManualUploadSelection();
+      resetFirmwareTestSelection();
+      render();
+    },
+    "run-firmware-check": () => triggerFirmwareUpdateCheck(),
+    "install-firmware-update": () => installFirmwareUpdate(),
+    "install-firmware-connection-switch": () => void installFirmwareConnectionSwitch(),
+    "install-firmware-topology-switch": () => void installFirmwareTopologySwitch(),
+    "toggle-firmware-advanced": () => {
+      if (state.firmwareAdvancedOpen || state.firmwareConnectionSwitchOpen || state.firmwareTopologySwitchOpen || state.updateManualUploadOpen || state.updateTestFirmwareOpen) {
+        state.firmwareAdvancedOpen = false;
+        state.firmwareConnectionSwitchOpen = false;
+        state.firmwareConnectionSwitchConfirmed = false;
+        state.firmwareTopologySwitchOpen = false;
+        state.firmwareTopologySwitchConfirmed = false;
+        state.updateManualUploadOpen = false;
+        state.updateTestFirmwareOpen = false;
+        resetFirmwareManualUploadSelection();
+        resetFirmwareTestSelection();
+      } else {
+        state.firmwareAdvancedOpen = true;
+      }
+      render();
+    },
+    "toggle-firmware-connection-switch": () => {
+      state.firmwareConnectionSwitchOpen = !state.firmwareConnectionSwitchOpen;
+      state.firmwareConnectionSwitchConfirmed = false;
+      if (state.firmwareConnectionSwitchOpen) {
+        state.firmwareAdvancedOpen = true;
+        state.firmwareTopologySwitchOpen = false;
+        state.firmwareTopologySwitchConfirmed = false;
+        state.updateManualUploadOpen = false;
+        state.updateTestFirmwareOpen = false;
+        resetFirmwareManualUploadSelection();
+        resetFirmwareTestSelection();
+      }
+      render();
+    },
+    "toggle-firmware-topology-switch": () => {
+      state.firmwareTopologySwitchOpen = !state.firmwareTopologySwitchOpen;
+      state.firmwareTopologySwitchConfirmed = false;
+      if (state.firmwareTopologySwitchOpen) {
+        state.firmwareAdvancedOpen = true;
+        state.firmwareConnectionSwitchOpen = false;
+        state.firmwareConnectionSwitchConfirmed = false;
+        state.updateManualUploadOpen = false;
+        state.updateTestFirmwareOpen = false;
+        resetFirmwareManualUploadSelection();
+        resetFirmwareTestSelection();
+      }
+      render();
+    },
+    "toggle-firmware-upload": () => {
+      if (state.updateManualUploadOpen) {
+        state.updateManualUploadOpen = false;
+        resetFirmwareManualUploadSelection();
+      } else {
+        state.firmwareAdvancedOpen = true;
+        state.updateManualUploadOpen = true;
+        state.firmwareConnectionSwitchOpen = false;
+        state.firmwareConnectionSwitchConfirmed = false;
+        state.firmwareTopologySwitchOpen = false;
+        state.firmwareTopologySwitchConfirmed = false;
+        state.updateTestFirmwareOpen = false;
+        resetFirmwareTestSelection();
+        state.updateManualUploadError = "";
+      }
+      render();
+    },
+    "upload-firmware-file": () => void uploadFirmwareUpdate(),
+    "toggle-firmware-test": () => {
+      if (state.updateTestFirmwareOpen) {
+        state.updateTestFirmwareOpen = false;
+        resetFirmwareTestSelection();
+      } else {
+        state.firmwareAdvancedOpen = true;
+        state.updateTestFirmwareOpen = true;
+        state.updateManualUploadOpen = false;
+        state.firmwareConnectionSwitchOpen = false;
+        state.firmwareConnectionSwitchConfirmed = false;
+        state.firmwareTopologySwitchOpen = false;
+        state.firmwareTopologySwitchConfirmed = false;
+        resetFirmwareManualUploadSelection();
+        state.updateTestFirmwareError = "";
+      }
+      render();
+    },
+    "install-firmware-test": () => void installFirmwareTestUpdate(),
+  };
+
+  export function handleFirmwareAction(action) {
+    const handler = firmwareActionHandlers[action];
+    if (!handler) {
+      return false;
+    }
+    handler();
+    return true;
+  }

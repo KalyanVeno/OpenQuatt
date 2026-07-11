@@ -5,6 +5,10 @@
   const DEBUG_RECORDING_BUFFER_BYTES = 1024 * 1024;
   const DEBUG_RECORDING_SAMPLE_BYTES = 516;
   const DEBUG_RECORDING_SAMPLE_CAPACITY = Math.floor(DEBUG_RECORDING_BUFFER_BYTES / DEBUG_RECORDING_SAMPLE_BYTES);
+  const mockFixtures = window.__OQ_MOCK_FIXTURES__;
+  if (!mockFixtures) {
+    throw new Error("OpenQuatt mock fixtures ontbreken.");
+  }
   const entities = new Map();
   let devControlsRoot = null;
   const state = {
@@ -196,58 +200,8 @@
     return !isCoolingScenario(name) && !isSummerIdleScenario(name) && name !== "idle";
   }
 
-  const HP2_ENTITIES = [
-    ["select", "HP2 - Excluded compressor level A", { value: "None", state: "None", option: ["None", "L1 (H30/C30)", "L2 (H39/C36)", "L3 (H49/C42)", "L4 (H55/C47)", "L5 (H61/C52)", "L6 (H67/C56)", "L7 (H72/C61)", "L8 (H79/C66)", "L9 (H85/C71)", "L10 (H90/C74)"] }],
-    ["select", "HP2 - Excluded compressor level B", { value: "None", state: "None", option: ["None", "L1 (H30/C30)", "L2 (H39/C36)", "L3 (H49/C42)", "L4 (H55/C47)", "L5 (H61/C52)", "L6 (H67/C56)", "L7 (H72/C61)", "L8 (H79/C66)", "L9 (H85/C71)", "L10 (H90/C74)"] }],
-    ["sensor", "HP2 - Power Input", { value: 0, uom: "W" }],
-    ["sensor", "HP2 - Heat Power", { value: 0, uom: "W" }],
-    ["sensor", "HP2 - Cooling Power", { value: 0, uom: "W" }],
-    ["sensor", "HP2 - COP", { value: 0, uom: "" }],
-    ["sensor", "HP2 compressor level", { value: 0, uom: "" }],
-    ["sensor", "HP2 - Compressor frequency", { value: 0, uom: "Hz" }],
-    ["sensor", "HP2 - Compressor starts 2h", { value: 3 }],
-    ["sensor", "HP2 - Compressor starts 6h", { value: 9 }],
-    ["sensor", "HP2 - Compressor starts 24h", { value: 24 }],
-    ["sensor", "HP2 - Compressor starts 72h", { value: 40 }],
-    ["sensor", "HP2 - Compressor last start age", { value: 18, uom: "min" }],
-    ["sensor", "HP2 - Fan speed", { value: 0, uom: "rpm" }],
-    ["sensor", "HP2 - Flow", { value: 0, uom: "L/h" }],
-    ["sensor", "HP2 - Evaporator coil temperature", { value: 0, uom: "\u00B0C" }],
-    ["sensor", "HP2 - Inner coil temperature", { value: 0, uom: "\u00B0C" }],
-    ["sensor", "HP2 - Outside temperature", { value: 0, uom: "\u00B0C" }],
-    ["sensor", "HP2 - Condenser pressure", { value: 0, uom: "bar" }],
-    ["sensor", "HP2 - Gas discharge temperature", { value: 0, uom: "\u00B0C" }],
-    ["sensor", "HP2 - Evaporator pressure", { value: 0, uom: "bar" }],
-    ["sensor", "HP2 - Gas return temperature", { value: 0, uom: "\u00B0C" }],
-    ["sensor", "HP2 - Suction superheat", { value: 3.4, uom: "K" }],
-    ["sensor", "HP2 - Discharge superheat", { value: 12.8, uom: "K" }],
-    ["text_sensor", "HP2 - Suction superheat status", { value: "OK" }],
-    ["sensor", "HP2 - EEV steps", { value: 0, uom: "p" }],
-    ["sensor", "HP2 - Water in temperature", { value: 25.4, uom: "°C" }],
-    ["sensor", "HP2 - Water out temperature", { value: 29.1, uom: "°C" }],
-    ["sensor", "HP2 - Water in temperature raw", { value: 25.4, uom: "\u00B0C" }],
-    ["sensor", "HP2 - Water out temperature raw", { value: 29.1, uom: "\u00B0C" }],
-    ["text_sensor", "HP2 - Working Mode Label", { state: "Standby", value: "Standby" }],
-    ["text_sensor", "HP2 - Active Failures List", { state: "None", value: "None" }],
-    ["binary_sensor", "HP2 - Defrost", { value: false }],
-    ["binary_sensor", "HP2 - 4-Way valve", { value: false }],
-    ["binary_sensor", "HP2 - Bottom plate heater", { value: true }],
-    ["binary_sensor", "HP2 - Crankcase heater", { value: true }],
-  ];
-
-  const COMPRESSOR_LEVEL_OPTIONS = [
-    "None",
-    "L1 (H30/C30)",
-    "L2 (H39/C36)",
-    "L3 (H49/C42)",
-    "L4 (H55/C47)",
-    "L5 (H61/C52)",
-    "L6 (H67/C56)",
-    "L7 (H72/C61)",
-    "L8 (H79/C66)",
-    "L9 (H85/C71)",
-    "L10 (H90/C74)",
-  ];
+  const HP2_ENTITIES = mockFixtures.hp2Entities;
+  const COMPRESSOR_LEVEL_OPTIONS = mockFixtures.compressorLevelOptions;
   const ODU_RUNTIME_FREQUENCY_LEVELS = Array.from({ length: 11 }, (_item, index) => index);
   const ODU_RUNTIME_FREQUENCY_MODES = ["cooling", "heating"];
 
@@ -4582,6 +4536,14 @@
     };
   }
 
+  function renderDevControlOptions(controlKey) {
+    const options = mockFixtures.devControlOptions[controlKey] || [];
+    return options
+      .filter((option) => !option.duoOnly || state.installation === "duo")
+      .map((option) => `<option value="${option.value}">${option.label}</option>`)
+      .join("");
+  }
+
   function renderDevControls() {
     return `
       <section class="oq-helper-hub-block oq-helper-hub-dev" data-oq-dev-controls>
@@ -4590,58 +4552,37 @@
           <label class="oq-helper-hub-dev-row">
             <span class="oq-helper-hub-dev-label">Installatie</span>
             <select class="oq-helper-hub-dev-select" data-oq-dev-control="installation">
-              <option value="single">Quatt Single</option>
-              <option value="duo">Quatt Duo</option>
+              ${renderDevControlOptions("installation")}
             </select>
           </label>
           <label class="oq-helper-hub-dev-row">
             <span class="oq-helper-hub-dev-label">Hardware</span>
             <select class="oq-helper-hub-dev-select" data-oq-dev-control="hardware">
-              <option value="heatpump_controller_q">Q-edition</option>
-              <option value="heatpump_listener">Listener</option>
-              <option value="waveshare">Waveshare</option>
+              ${renderDevControlOptions("hardware")}
             </select>
           </label>
           <label class="oq-helper-hub-dev-row">
             <span class="oq-helper-hub-dev-label">Verbinding</span>
             <select class="oq-helper-hub-dev-select" data-oq-dev-control="connection">
-              <option value="wifi">Wi-Fi</option>
-              <option value="eth">Ethernet</option>
+              ${renderDevControlOptions("connection")}
             </select>
           </label>
           <label class="oq-helper-hub-dev-row">
             <span class="oq-helper-hub-dev-label">Scenario</span>
             <select class="oq-helper-hub-dev-select" data-oq-dev-control="scenario">
-              <option value="idle">Standby</option>
-              <option value="heating">Winter - 1 warmtepomp</option>
-              ${state.installation === "duo" ? '<option value="dual">Winter - duo-bedrijf</option>' : ""}
-              ${state.installation === "duo" ? '<option value="heating_stop_reasons">Winter - verwarmstops vergeleken</option>' : ""}
-              ${state.installation === "duo" ? '<option value="start_blocked">Winter - start wacht</option>' : ""}
-              <option value="flow_hold">Waterflow - voor/naloop</option>
-              <option value="summer_idle">Zomer - pompbescherming</option>
-              <option value="cooling">Zomer - koeling vrijgegeven</option>
-              <option value="cooling_limited">Zomer - koeling veilig begrensd</option>
-              <option value="cooling_stop_reasons">Zomer - koelstops vergeleken</option>
-              <option value="cooling_limiter_log">Zomer - limiter herhaalt</option>
-              <option value="defrost">Winter - ontdooien</option>
+              ${renderDevControlOptions("scenario")}
             </select>
           </label>
           <label class="oq-helper-hub-dev-row">
             <span class="oq-helper-hub-dev-label">CV-ketel</span>
             <select class="oq-helper-hub-dev-select" data-oq-dev-control="boiler">
-              <option value="off">Uit</option>
-              <option value="on">Aan</option>
+              ${renderDevControlOptions("boiler")}
             </select>
           </label>
           <label class="oq-helper-hub-dev-row">
             <span class="oq-helper-hub-dev-label">Diagnose</span>
             <select class="oq-helper-hub-dev-select" data-oq-dev-control="diagnostics">
-              <option value="clear">Geen bijzonderheden</option>
-              <option value="cycling">Pendelen actief</option>
-              <option value="cycling-recovered">Pendelen hersteld, melding open</option>
-              <option value="hydraulics">Hydrauliek</option>
-              <option value="connections">Verbindingen</option>
-              <option value="hp-fault">Warmtepompstoring</option>
+              ${renderDevControlOptions("diagnostics")}
             </select>
           </label>
         </div>

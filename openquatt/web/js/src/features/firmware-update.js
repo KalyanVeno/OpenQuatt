@@ -5,6 +5,7 @@ import { refreshEntities } from "../core/entity-sync.js";
 import { beginDeviceReconnect, getDeviceReconnectCopy, getDeviceReconnectStatusCopy, getDeviceReconnectStatusLabel, getDeviceReconnectTitle } from "../core/device-reconnect.js";
 import { startEntityPolling, stopEntityPolling } from "../core/entity-polling-controls.js";
 import { isFirmwareOtaQuietActive } from "../core/firmware-quiet.js";
+import { renderModalShell } from "../core/modal-shell.js";
 import { state } from "../core/state.js";
 import { getDeviceMeta, getFirmwareAlternateConnection, getFirmwareAlternateTopology, getFirmwareBuildConnection, getFirmwareBuildLabelFor, getFirmwareConnectionLabel, getFirmwareDeviceLabel, getFirmwareHardwareProfile, getFirmwareTopologyLabel, getInstallationTopology, normalizeFirmwareConnection, normalizeInstallationTopologyLabel } from "./device-context.js";
 import { closeWebServerLogStream } from "./webserver-logs.js";
@@ -654,26 +655,25 @@ import { render } from "../core/render-scheduler.js";
     if (!state.deviceReconnectMode) {
       return "";
     }
-    return `
-      <div class="oq-helper-modal-backdrop${state.overviewTheme === "dark" ? " oq-helper-modal-backdrop--dark" : ""}" data-oq-modal="reconnect">
-        <section class="oq-helper-modal oq-helper-modal--reconnect" role="status" aria-live="polite" aria-labelledby="oq-reconnect-modal-title">
-          <div class="oq-helper-modal-head">
-            <div>
-              <p class="oq-helper-modal-kicker">Systeem</p>
-              <h2 class="oq-helper-modal-title" id="oq-reconnect-modal-title">${escapeHtml(getDeviceReconnectTitle())}</h2>
-            </div>
+    return renderModalShell({
+      modalId: "reconnect",
+      titleId: "oq-reconnect-modal-title",
+      kicker: "Systeem",
+      title: getDeviceReconnectTitle(),
+      modalClass: "oq-helper-modal--reconnect",
+      role: "status",
+      ariaLive: "polite",
+      bodyMarkup: `
+        <p class="oq-helper-modal-copy">${escapeHtml(getDeviceReconnectCopy())}</p>
+        <div class="oq-helper-reconnect-status">
+          <span class="oq-helper-reconnect-spinner" aria-hidden="true"></span>
+          <div>
+            <strong>${escapeHtml(getDeviceReconnectStatusLabel())}</strong>
+            <span>${escapeHtml(getDeviceReconnectStatusCopy())}</span>
           </div>
-          <p class="oq-helper-modal-copy">${escapeHtml(getDeviceReconnectCopy())}</p>
-          <div class="oq-helper-reconnect-status">
-            <span class="oq-helper-reconnect-spinner" aria-hidden="true"></span>
-            <div>
-              <strong>${escapeHtml(getDeviceReconnectStatusLabel())}</strong>
-              <span>${escapeHtml(getDeviceReconnectStatusCopy())}</span>
-            </div>
-          </div>
-        </section>
-      </div>
-    `;
+        </div>
+      `,
+    });
   }
 
   export function primeFirmwareUpdateState(channel = getFirmwareChannelLabel()) {

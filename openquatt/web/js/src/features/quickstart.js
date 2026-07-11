@@ -2,9 +2,9 @@ import { getEntityNumericValue, getEntityStateText, hasEntity, isEntityActive } 
 import { QUICK_STEPS } from "../core/config.js";
 import { isCurveMode } from "../core/domain-helpers.js";
 import { formatValue, getEntityValue, toTimeInputValue } from "../core/entity-store.js";
+import { createScrollKeeper } from "../core/scroll-keeper.js";
 import { state } from "../core/state.js";
 import { getDeviceMeta, getInstallationTopology } from "./device-context.js";
-import { isWebServerLogScrollerNearBottom } from "./webserver-logs.js";
 import { formatSettingsOptionLabel, renderSettingsFieldCard, renderSettingsInfoToggle } from "../settings/controls.js";
 import { renderCurveGraph, renderFlowSettingsFields, renderHeatingCurveProfileField, renderHeatingStrategyExplainCards, renderPowerHouseAdvancedField, renderPowerHouseBaseFields, renderSettingsCurveInputs, renderStrategySelectionFields } from "../settings/heating.js";
 import { renderBoilerCvFields, renderHpGenerationField } from "../settings/installation.js";
@@ -506,60 +506,18 @@ import { escapeHtml } from "../core/html.js";
     return state.root.querySelector("[data-oq-quickstart-scroller]");
   }
 
-  export function captureQuickStartScrollState() {
-    const scroller = getQuickStartModalScrollerElement();
-    if (!scroller) {
-      return null;
-    }
+  const quickStartScrollKeeper = createScrollKeeper({
+    getScroller: getQuickStartModalScrollerElement,
+    getToken: () => state.quickStartScrollRestoreToken,
+    setToken: (token) => { state.quickStartScrollRestoreToken = token; },
+    isActive: () => state.quickStartModalOpen,
+    getIdentity: (scroller) => String(scroller.dataset.oqQuickstartStep || ""),
+    preserveGrowth: true,
+    stickToBottom: true,
+  });
 
-    return {
-      stepId: String(scroller.dataset.oqQuickstartStep || ""),
-      scrollHeight: scroller.scrollHeight,
-      scrollTop: scroller.scrollTop,
-      stickToBottom: isWebServerLogScrollerNearBottom(scroller),
-    };
-  }
-
-  export function restoreQuickStartScrollState(scrollState) {
-    if (!scrollState) {
-      return;
-    }
-
-    const scroller = getQuickStartModalScrollerElement();
-    if (!scroller || String(scroller.dataset.oqQuickstartStep || "") !== scrollState.stepId) {
-      return;
-    }
-
-    if (scrollState.stickToBottom) {
-      scroller.scrollTop = scroller.scrollHeight;
-      return;
-    }
-
-    const restoredScrollTop = scrollState.scrollTop + (scroller.scrollHeight - scrollState.scrollHeight);
-    scroller.scrollTop = Math.max(0, restoredScrollTop);
-  }
-
-  export function queueQuickStartScrollRestore(scrollState, defer = true) {
-    if (!scrollState) {
-      return;
-    }
-
-    const restoreToken = Number(state.quickStartScrollRestoreToken || 0) + 1;
-    state.quickStartScrollRestoreToken = restoreToken;
-    const applyScrollState = () => {
-      if (state.quickStartScrollRestoreToken !== restoreToken || !state.quickStartModalOpen) {
-        return;
-      }
-      restoreQuickStartScrollState(scrollState);
-    };
-
-    if (defer) {
-      window.requestAnimationFrame(applyScrollState);
-      return;
-    }
-
-    applyScrollState();
-  }
+  export const captureQuickStartScrollState = quickStartScrollKeeper.capture;
+  export const queueQuickStartScrollRestore = quickStartScrollKeeper.queue;
 
   export function renderStrategyWorkspace() {
     return `

@@ -1,7 +1,8 @@
 import { getEntityStateText, hasEntity, isEntityActive } from "../core/app-shared.js";
 import { formatValue } from "../core/entity-store.js";
-import { formatSettingsOptionLabel, renderSettingsFieldCard, renderSettingsNumberField, renderSettingsOptionCardsField, renderSettingsSection, renderSettingsSliderField, renderSettingsSwitchField } from "./controls.js";
+import { formatSettingsOptionLabel, renderSettingsFieldCard, renderSettingsOptionCardsField, renderSettingsSection } from "./controls.js";
 import { escapeHtml } from "../core/html.js";
+import { renderSettingsSchemaFields } from "./schema.js";
 
   export function renderSettingsCoolingFact(label, value) {
     return `
@@ -42,29 +43,32 @@ import { escapeHtml } from "../core/html.js";
 
   export function renderSettingsCoolingSection() {
     const roomRequestRequired = !hasEntity("coolingRoomRequestRequired") || isEntityActive("coolingRoomRequestRequired");
-    const tuningFields = [
-      renderSettingsNumberField("coolingMinimumSupplyTemp", "Minimale koel-aanvoer", "Ondergrens voor het koeldoel. OpenQuatt gebruikt de hoogste waarde van deze instelling en de dauwpuntveilige grens."),
-      renderSettingsSliderField("coolingDemandMax", "Maximale koelsterkte", "Bepaalt hoe krachtig OpenQuatt mag koelen. Lager geeft langere, rustigere runs; hoger geeft meer koelvermogen bij warm weer.", "", {
-        minLabel: "Rustig",
-        maxLabel: "Krachtig",
-        valueLabel: `${formatValue("coolingDemandMax")} max`,
-      }),
-      renderSettingsNumberField("coolingRestartDelta", "Herstartmarge watertemperatuur", "Na het bereiken van het koel-aanvoerdoel start de watercyclus pas opnieuw zodra de aanvoer deze marge boven het doel ligt."),
-      renderSettingsNumberField("coolingSafetyMargin", "Dauwpunt veiligheidsmarge", "Extra marge boven het geselecteerde dauwpunt voor de minimale veilige watertemperatuur."),
-    ].filter(Boolean);
-    const roomRequestFields = [
-      hasEntity("coolingRoomRequestRequired") ? renderSettingsSwitchField(
-        "coolingRoomRequestRequired",
-        "Koelvraag via kamerthermostaat",
-        "Aan: OpenQuatt wacht op echte koelvraag vanuit de kamer. Uit: koeltoestemming geldt direct als koelvraag.",
-        "Koelvraag start en stopt met de marges hieronder.",
-        "Koeltoestemming geldt direct als koelvraag. De start- en stopmarge worden nu niet gebruikt.",
-        "oq-settings-field--span-2",
-      ) : "",
-      roomRequestRequired ? renderSettingsNumberField("coolingRequestOnDelta", "Koelvraag start boven setpoint", "Koelvraag wordt actief zodra de kamer warmer is dan setpoint plus deze marge.") : "",
-      roomRequestRequired ? renderSettingsNumberField("coolingRequestOffDelta", "Koelvraag stopt boven setpoint", "Koelvraag valt weer af zodra de kamer koeler is dan setpoint plus deze marge.") : "",
-    ].filter(Boolean);
-    const hasRoomRequestSettings = roomRequestFields.length > 0;
+    const tuningFields = renderSettingsSchemaFields([
+      { type: "number", key: "coolingMinimumSupplyTemp", title: "Minimale koel-aanvoer", copy: "Ondergrens voor het koeldoel. OpenQuatt gebruikt de hoogste waarde van deze instelling en de dauwpuntveilige grens." },
+      {
+        type: "slider",
+        key: "coolingDemandMax",
+        title: "Maximale koelsterkte",
+        copy: "Bepaalt hoe krachtig OpenQuatt mag koelen. Lager geeft langere, rustigere runs; hoger geeft meer koelvermogen bij warm weer.",
+        options: { minLabel: "Rustig", maxLabel: "Krachtig", valueLabel: `${formatValue("coolingDemandMax")} max` },
+      },
+      { type: "number", key: "coolingRestartDelta", title: "Herstartmarge watertemperatuur", copy: "Na het bereiken van het koel-aanvoerdoel start de watercyclus pas opnieuw zodra de aanvoer deze marge boven het doel ligt." },
+      { type: "number", key: "coolingSafetyMargin", title: "Dauwpunt veiligheidsmarge", copy: "Extra marge boven het geselecteerde dauwpunt voor de minimale veilige watertemperatuur." },
+    ]);
+    const roomRequestFields = renderSettingsSchemaFields([
+      {
+        type: "switch",
+        key: "coolingRoomRequestRequired",
+        title: "Koelvraag via kamerthermostaat",
+        copy: "Aan: OpenQuatt wacht op echte koelvraag vanuit de kamer. Uit: koeltoestemming geldt direct als koelvraag.",
+        enabledCopy: "Koelvraag start en stopt met de marges hieronder.",
+        disabledCopy: "Koeltoestemming geldt direct als koelvraag. De start- en stopmarge worden nu niet gebruikt.",
+        className: "oq-settings-field--span-2",
+      },
+      { type: "number", key: "coolingRequestOnDelta", title: "Koelvraag start boven setpoint", copy: "Koelvraag wordt actief zodra de kamer warmer is dan setpoint plus deze marge.", visibleWhen: () => roomRequestRequired },
+      { type: "number", key: "coolingRequestOffDelta", title: "Koelvraag stopt boven setpoint", copy: "Koelvraag valt weer af zodra de kamer koeler is dan setpoint plus deze marge.", visibleWhen: () => roomRequestRequired },
+    ]);
+    const hasRoomRequestSettings = Boolean(roomRequestFields);
     const hasFallbackSettings = hasEntity("coolingWithoutDewPointMode");
     const guardStatusFacts = [
       hasEntity("coolingGuardMode") ? renderSettingsCoolingFact("Route", formatSettingsOptionLabel(getEntityStateText("coolingGuardMode", "Onbekend"))) : "",
@@ -87,7 +91,7 @@ import { escapeHtml } from "../core/html.js";
     const activeCoolingGuardMode = getEntityStateText("coolingGuardMode", "");
     const openFallbackDetails = activeCoolingGuardMode.toLowerCase().includes("fallback");
 
-    if (!tuningFields.length && !hasRoomRequestSettings && !hasFallbackSettings && !guardStatusPanel && !hasFallbackDetails) {
+    if (!tuningFields && !hasRoomRequestSettings && !hasFallbackSettings && !guardStatusPanel && !hasFallbackDetails) {
       return "";
     }
 
@@ -104,9 +108,9 @@ import { escapeHtml } from "../core/html.js";
       "Koelingsinstellingen",
       "Stel hier in wanneer koelvraag ontstaat, hoe koud het water mag worden en hoeveel het water mag opwarmen voor herstart.",
       `
-        ${tuningFields.length ? `
+        ${tuningFields ? `
           <div class="oq-settings-grid">
-            ${tuningFields.join("")}
+            ${tuningFields}
           </div>
         ` : ""}
         ${hasRoomRequestSettings ? `
@@ -117,7 +121,7 @@ import { escapeHtml } from "../core/html.js";
               <p>Bepaalt of koelen pas start bij kamervraag, of dat koeltoestemming direct als koelvraag telt.</p>
             </div>
             <div class="oq-settings-grid">
-              ${roomRequestFields.join("")}
+              ${roomRequestFields}
             </div>
           </div>
         ` : ""}

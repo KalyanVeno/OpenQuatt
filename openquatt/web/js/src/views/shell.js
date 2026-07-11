@@ -1,7 +1,8 @@
 import { renderAppNav, syncDocumentTheme, syncDocumentTitle } from "../core/app-shared.js";
-import { LOGO_MARKUP } from "../core/config.js";
+import { LOGO_MARKUP } from "../core/embedded-assets.js";
 import { getSettingsRenderSignature } from "../core/render-signatures.js";
 import { escapeHtml } from "../core/html.js";
+import { renderModalShell } from "../core/modal-shell.js";
 import { setRenderCallback } from "../core/render-scheduler.js";
 import { state } from "../core/state.js";
 import { clearLegacyMotionVariables, startMotionLoop, stopMotionLoop } from "../core/motion.js";
@@ -29,26 +30,26 @@ export function renderSettingsView() {
   }
 
   export function renderInitialLoadingView() {
-    return `
-      <div class="oq-helper-modal-backdrop${state.overviewTheme === "dark" ? " oq-helper-modal-backdrop--dark" : ""} oq-helper-modal-backdrop--loading" data-oq-modal="initial-load">
-        <section class="oq-helper-modal oq-helper-modal--reconnect oq-helper-modal--loading" role="status" aria-live="polite" aria-labelledby="oq-loading-modal-title">
-          <div class="oq-helper-modal-head">
-            <div>
-              <p class="oq-helper-modal-kicker">OpenQuatt</p>
-              <h2 class="oq-helper-modal-title" id="oq-loading-modal-title">OpenQuatt laden</h2>
-            </div>
+    return renderModalShell({
+      modalId: "initial-load",
+      titleId: "oq-loading-modal-title",
+      kicker: "OpenQuatt",
+      title: "OpenQuatt laden",
+      backdropClass: "oq-helper-modal-backdrop--loading",
+      modalClass: "oq-helper-modal--reconnect oq-helper-modal--loading",
+      role: "status",
+      ariaLive: "polite",
+      bodyMarkup: `
+        <p class="oq-helper-modal-copy">We wachten tot de zichtbare gegevens compleet zijn, zodat de interface niet half gevuld verschijnt. Dit kan enkele seconden duren.</p>
+        <div class="oq-helper-reconnect-status oq-helper-loading-status">
+          <span class="oq-helper-reconnect-spinner" aria-hidden="true"></span>
+          <div>
+            <strong>Eerste synchronisatie</strong>
+            <span>De velden op dit scherm worden compleet klaargezet.</span>
           </div>
-          <p class="oq-helper-modal-copy">We wachten tot de zichtbare gegevens compleet zijn, zodat de interface niet half gevuld verschijnt. Dit kan enkele seconden duren.</p>
-          <div class="oq-helper-reconnect-status oq-helper-loading-status">
-            <span class="oq-helper-reconnect-spinner" aria-hidden="true"></span>
-            <div>
-              <strong>Eerste synchronisatie</strong>
-              <span>De velden op dit scherm worden compleet klaargezet.</span>
-            </div>
-          </div>
-        </section>
-      </div>
-    `;
+        </div>
+      `,
+    });
   }
 
   export function renderCurrentAppView() {

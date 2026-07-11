@@ -1566,3 +1566,83 @@ import { render } from "../core/render-scheduler.js";
     refreshTrendHistoryMetadata,
     shouldRefreshSettingsStorageForCurrentSurface,
   });
+
+  const storageHistoryActionHandlers = {
+    "flush-trend-history": ({ triggerNamedButton }) => {
+      void triggerNamedButton("trendHistoryFlush", {
+        successNotice: "Diagnosegeschiedenis is opgeslagen.",
+        errorPrefix: "Diagnosegeschiedenis kon niet worden opgeslagen",
+        refreshKeys: getSettingsStorageRefreshKeys(),
+        refreshDelayMs: 500,
+      }).then(() => {
+        refreshSettingsStorageStateSoon(undefined, { forceTrendHistory: true });
+      });
+    },
+    "save-lifetime-energy-history": ({ triggerNamedButton }) => {
+      void triggerNamedButton("lifetimeEnergyHistoryCapture", {
+        successNotice: "Energiehistorie is opgeslagen.",
+        errorPrefix: "Energiehistorie kon niet worden opgeslagen",
+        refreshKeys: getSettingsStorageRefreshKeys(),
+        refreshDelayMs: 500,
+      }).then(() => {
+        state.energyHistoryRaw = "";
+        state.energyHistorySignature = "";
+        state.energyHistoryLastFetchAt = 0;
+        refreshSettingsStorageStateSoon();
+        if (state.appView === "results") {
+          void refreshEnergyHistoryData({ force: true }).then(() => render());
+        }
+      });
+    },
+    "clear-lifetime-energy-history": ({ triggerNamedButton }) => {
+      if (!window.confirm("Energiehistorie wissen?\n\nAlle bewaarde dagtotalen worden verwijderd. Dit heeft geen invloed op de werking van je warmtepomp.")) {
+        return;
+      }
+      void triggerNamedButton("lifetimeEnergyHistoryClear", {
+        successNotice: "Energiehistorie is gewist.",
+        errorPrefix: "Energiehistorie kon niet worden gewist",
+        refreshKeys: getSettingsStorageRefreshKeys(),
+        refreshDelayMs: 500,
+      }).then(() => {
+        state.energyHistoryRaw = "";
+        state.energyHistorySignature = "";
+        state.energyHistoryLastFetchAt = 0;
+        refreshSettingsStorageStateSoon();
+        if (state.appView === "results") {
+          void refreshEnergyHistoryData({ force: true }).then(() => render());
+        }
+      });
+    },
+    "select-energy-history-import-file": () => openEnergyHistoryImportFilePicker(),
+    "clear-energy-history-import-file": () => {
+      resetEnergyHistoryImportState();
+      render();
+    },
+    "import-energy-history-file": () => void importEnergyHistoryRecords(),
+    "export-energy-history": () => void exportEnergyHistoryRecords(),
+    "open-history-storage-modal": () => {
+      state.systemModal = "history-storage";
+      render();
+      void refreshSettingsStorageState({ forceMissing: true, forceTrendHistory: true, forceEnergyHistory: true }).finally(() => {
+        if (state.systemModal === "history-storage") {
+          render();
+        }
+      });
+      refreshSettingsStorageStateSoon([1000, 3000, 7000]);
+    },
+    "download-settings-backup": () => void exportSettingsBackup(),
+    "open-settings-backup-import": () => {
+      state.systemModal = "settings-backup-import";
+      render();
+    },
+    "confirm-settings-backup-restore": () => void restoreSettingsBackup(),
+  };
+
+  export function handleStorageHistoryAction(action, dependencies) {
+    const handler = storageHistoryActionHandlers[action];
+    if (!handler) {
+      return false;
+    }
+    handler(dependencies);
+    return true;
+  }

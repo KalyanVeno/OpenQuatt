@@ -3,7 +3,7 @@ import { getEntitySignatureFragment } from "../core/render-signatures.js";
 import { state } from "../core/state.js";
 import { shouldRefreshSupplementaryStatus } from "../core/supplementary-refresh.js";
 import { isIntegrationsSettingsGroupActive } from "../core/surface-state.js";
-import { getMqttInputTopic } from "./mqtt.js";
+import { getMqttInputTopic, isMqttInputAcceptRetained, isMqttInputEnabled } from "./mqtt.js";
 import { render } from "../core/render-scheduler.js";
 
   export function getMqttStatusSignature(status = state.mqttStatus || {}) {
@@ -379,4 +379,59 @@ import { render } from "../core/render-scheduler.js";
       state.mqttBusy = false;
       render();
     }
+  }
+
+  const mqttActionHandlers = {
+    "open-mqtt-modal": () => {
+      state.systemModal = "mqtt";
+      syncMqttDraftsFromStatus();
+      state.mqttDraftDirty = false;
+      state.mqttNotice = "";
+      state.mqttError = "";
+      render();
+      void refreshMqttStatus({ force: true });
+    },
+    "open-mqtt-sensors-modal": () => {
+      state.systemModal = "mqtt-sensors";
+      state.mqttNotice = "";
+      state.mqttError = "";
+      state.mqttCopiedTopicKey = "";
+      state.mqttExpandedTopicKey = "";
+      state.mqttInputToggleBusyKey = "";
+      state.mqttRetainedToggleBusyKey = "";
+      render();
+      void refreshMqttStatus({ force: true }).then((changed) => {
+        if (changed && state.systemModal === "mqtt-sensors") {
+          render();
+        }
+      });
+    },
+    "toggle-mqtt-sensor-topic": (button) => {
+      const topicKey = button.dataset?.oqMqttTopicKey || "cooling_dew_point";
+      state.mqttExpandedTopicKey = state.mqttExpandedTopicKey === topicKey ? "" : topicKey;
+      state.mqttError = "";
+      render();
+    },
+    "toggle-mqtt-input": (button) => {
+      const topicKey = button.dataset?.oqMqttTopicKey || "cooling_dew_point";
+      void commitMqttInputEnabled(topicKey, !isMqttInputEnabled(topicKey));
+    },
+    "toggle-mqtt-retained": (button) => {
+      const topicKey = button.dataset?.oqMqttTopicKey || "";
+      if (topicKey) {
+        void commitMqttInputAcceptRetained(topicKey, !isMqttInputAcceptRetained(topicKey));
+      }
+    },
+    "copy-mqtt-topic": (button) => void copyMqttTopic(button.dataset?.oqMqttTopicKey || "cooling_dew_point"),
+    "copy-mqtt-dew-topic": (button) => void copyMqttTopic(button.dataset?.oqMqttTopicKey || "cooling_dew_point"),
+    "save-mqtt-config": () => void commitMqttConfig(),
+  };
+
+  export function handleMqttAction(action, button) {
+    const handler = mqttActionHandlers[action];
+    if (!handler) {
+      return false;
+    }
+    handler(button);
+    return true;
   }

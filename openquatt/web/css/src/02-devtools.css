@@ -455,6 +455,16 @@
   background: linear-gradient(180deg, rgba(74, 33, 18, 0.72), rgba(52, 24, 15, 0.84));
 }
 
+esp-app.oq-native-app {
+  display: block;
+  width: min(1440px, calc(100vw - 32px));
+  margin: 0 auto 28px;
+}
+
+esp-app.oq-native-app.oq-native-app--collapsed {
+  display: none;
+}
+
 .oq-native-surface-shell {
   margin-bottom: 16px;
 }

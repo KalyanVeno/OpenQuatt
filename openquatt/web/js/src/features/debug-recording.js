@@ -929,6 +929,32 @@ export async function copyDebugRecordingBundle() {
   }
 }
 
+const debugRecordingActionHandlers = {
+  "open-debug-recording-modal": () => {
+    state.systemModal = "debug-recording";
+    state.debugRecordingError = "";
+    state.debugRecordingNotice = "";
+    render();
+    void refreshDebugRecordingDeviceStatus();
+  },
+  "start-debug-recording": (button) => void startDebugRecording(button.dataset.debugMinutes || 15),
+  "start-rolling-debug-recording": () => void startRollingDebugRecording(),
+  "select-debug-recording-duration": (button) => setDebugRecordingSelectedMinutes(button.dataset.debugMinutes || 15),
+  "stop-debug-recording": () => void stopDebugRecording(),
+  "freeze-debug-recording": () => void freezeDebugRecording(),
+  "download-debug-recording": () => void downloadDebugRecordingBundle(),
+  "copy-debug-recording": () => void copyDebugRecordingBundle(),
+};
+
+export function handleDebugRecordingAction(action, button) {
+  const handler = debugRecordingActionHandlers[action];
+  if (!handler) {
+    return false;
+  }
+  handler(button);
+  return true;
+}
+
 export function renderDebugRecordingModal() {
   const active = state.debugRecordingActive;
   const rolling = isDebugRecordingRolling();

@@ -5,6 +5,7 @@ import { getBasePath } from "../core/url-path.js";
 import { setWebServerLogControls } from "../core/webserver-log-controls.js";
 import { escapeHtml } from "../core/html.js";
 import { render } from "../core/render-scheduler.js";
+import { createScrollKeeper } from "../core/scroll-keeper.js";
 import { renderSettingsSystemRow } from "../settings/controls.js";
 
 export const WEB_SERVER_LOG_MAX_ENTRIES = 250;
@@ -263,59 +264,17 @@ export function scrollWebServerLogToBottom() {
   scroller.scrollTop = scroller.scrollHeight;
 }
 
-export function captureWebServerLogScrollState() {
-  const scroller = getWebServerLogScrollerElement();
-  if (!scroller) {
-    return null;
-  }
+const webServerLogScrollKeeper = createScrollKeeper({
+  getScroller: getWebServerLogScrollerElement,
+  getToken: () => state.webServerLogScrollRestoreToken,
+  setToken: (token) => { state.webServerLogScrollRestoreToken = token; },
+  isActive: () => state.systemModal === "webserver-logs",
+  preserveGrowth: true,
+  stickToBottom: true,
+});
 
-  return {
-    scrollHeight: scroller.scrollHeight,
-    scrollTop: scroller.scrollTop,
-    stickToBottom: isWebServerLogScrollerNearBottom(scroller),
-  };
-}
-
-export function restoreWebServerLogScrollState(scrollState) {
-  if (!scrollState) {
-    return;
-  }
-
-  const scroller = getWebServerLogScrollerElement();
-  if (!scroller) {
-    return;
-  }
-
-  if (scrollState.stickToBottom) {
-    scroller.scrollTop = scroller.scrollHeight;
-    return;
-  }
-
-  const restoredScrollTop = scrollState.scrollTop + (scroller.scrollHeight - scrollState.scrollHeight);
-  scroller.scrollTop = Math.max(0, restoredScrollTop);
-}
-
-export function queueWebServerLogScrollRestore(scrollState, defer = true) {
-  if (!scrollState) {
-    return;
-  }
-
-  const restoreToken = Number(state.webServerLogScrollRestoreToken || 0) + 1;
-  state.webServerLogScrollRestoreToken = restoreToken;
-  const applyScrollState = () => {
-    if (state.webServerLogScrollRestoreToken !== restoreToken || state.systemModal !== "webserver-logs") {
-      return;
-    }
-    restoreWebServerLogScrollState(scrollState);
-  };
-
-  if (defer) {
-    window.requestAnimationFrame(applyScrollState);
-    return;
-  }
-
-  applyScrollState();
-}
+export const captureWebServerLogScrollState = webServerLogScrollKeeper.capture;
+export const queueWebServerLogScrollRestore = webServerLogScrollKeeper.queue;
 
 export function getCm100CommissioningModalScrollerElement() {
   if (!state.root) {
@@ -324,59 +283,17 @@ export function getCm100CommissioningModalScrollerElement() {
   return state.root.querySelector("[data-oq-cm100-commissioning-scroller]");
 }
 
-export function captureCm100CommissioningScrollState() {
-  const scroller = getCm100CommissioningModalScrollerElement();
-  if (!scroller) {
-    return null;
-  }
+const cm100CommissioningScrollKeeper = createScrollKeeper({
+  getScroller: getCm100CommissioningModalScrollerElement,
+  getToken: () => state.cm100CommissioningScrollRestoreToken,
+  setToken: (token) => { state.cm100CommissioningScrollRestoreToken = token; },
+  isActive: () => state.systemModal === "cm100-commissioning",
+  preserveGrowth: true,
+  stickToBottom: true,
+});
 
-  return {
-    scrollHeight: scroller.scrollHeight,
-    scrollTop: scroller.scrollTop,
-    stickToBottom: isWebServerLogScrollerNearBottom(scroller),
-  };
-}
-
-export function restoreCm100CommissioningScrollState(scrollState) {
-  if (!scrollState) {
-    return;
-  }
-
-  const scroller = getCm100CommissioningModalScrollerElement();
-  if (!scroller) {
-    return;
-  }
-
-  if (scrollState.stickToBottom) {
-    scroller.scrollTop = scroller.scrollHeight;
-    return;
-  }
-
-  const restoredScrollTop = scrollState.scrollTop + (scroller.scrollHeight - scrollState.scrollHeight);
-  scroller.scrollTop = Math.max(0, restoredScrollTop);
-}
-
-export function queueCm100CommissioningScrollRestore(scrollState, defer = true) {
-  if (!scrollState) {
-    return;
-  }
-
-  const restoreToken = Number(state.cm100CommissioningScrollRestoreToken || 0) + 1;
-  state.cm100CommissioningScrollRestoreToken = restoreToken;
-  const applyScrollState = () => {
-    if (state.cm100CommissioningScrollRestoreToken !== restoreToken || state.systemModal !== "cm100-commissioning") {
-      return;
-    }
-    restoreCm100CommissioningScrollState(scrollState);
-  };
-
-  if (defer) {
-    window.requestAnimationFrame(applyScrollState);
-    return;
-  }
-
-  applyScrollState();
-}
+export const captureCm100CommissioningScrollState = cm100CommissioningScrollKeeper.capture;
+export const queueCm100CommissioningScrollRestore = cm100CommissioningScrollKeeper.queue;
 
 export function getServiceTaskModalScrollerElement() {
   if (!state.root) {
@@ -385,52 +302,15 @@ export function getServiceTaskModalScrollerElement() {
   return state.root.querySelector("[data-oq-service-task-scroller]");
 }
 
-export function captureServiceTaskModalScrollState() {
-  const scroller = getServiceTaskModalScrollerElement();
-  if (!scroller) {
-    return null;
-  }
+const serviceTaskModalScrollKeeper = createScrollKeeper({
+  getScroller: getServiceTaskModalScrollerElement,
+  getToken: () => state.serviceTaskModalScrollRestoreToken,
+  setToken: (token) => { state.serviceTaskModalScrollRestoreToken = token; },
+  isActive: () => String(state.systemModal || "").startsWith("service-task-"),
+});
 
-  return {
-    scrollTop: scroller.scrollTop,
-  };
-}
-
-export function restoreServiceTaskModalScrollState(scrollState) {
-  if (!scrollState) {
-    return;
-  }
-
-  const scroller = getServiceTaskModalScrollerElement();
-  if (!scroller) {
-    return;
-  }
-
-  scroller.scrollTop = Math.max(0, scrollState.scrollTop);
-}
-
-export function queueServiceTaskModalScrollRestore(scrollState, defer = true) {
-  if (!scrollState) {
-    return;
-  }
-
-  const restoreToken = Number(state.serviceTaskModalScrollRestoreToken || 0) + 1;
-  state.serviceTaskModalScrollRestoreToken = restoreToken;
-  const applyScrollState = () => {
-    if (state.serviceTaskModalScrollRestoreToken !== restoreToken ||
-        !String(state.systemModal || "").startsWith("service-task-")) {
-      return;
-    }
-    restoreServiceTaskModalScrollState(scrollState);
-  };
-
-  if (defer) {
-    window.requestAnimationFrame(applyScrollState);
-    return;
-  }
-
-  applyScrollState();
-}
+export const captureServiceTaskModalScrollState = serviceTaskModalScrollKeeper.capture;
+export const queueServiceTaskModalScrollRestore = serviceTaskModalScrollKeeper.queue;
 
 export function getHistoryStorageModalScrollerElement() {
   if (!state.root) {
@@ -439,51 +319,15 @@ export function getHistoryStorageModalScrollerElement() {
   return state.root.querySelector("[data-oq-history-storage-scroller]");
 }
 
-export function captureHistoryStorageModalScrollState() {
-  const scroller = getHistoryStorageModalScrollerElement();
-  if (!scroller) {
-    return null;
-  }
+const historyStorageModalScrollKeeper = createScrollKeeper({
+  getScroller: getHistoryStorageModalScrollerElement,
+  getToken: () => state.historyStorageModalScrollRestoreToken,
+  setToken: (token) => { state.historyStorageModalScrollRestoreToken = token; },
+  isActive: () => state.systemModal === "history-storage",
+});
 
-  return {
-    scrollTop: scroller.scrollTop,
-  };
-}
-
-export function restoreHistoryStorageModalScrollState(scrollState) {
-  if (!scrollState) {
-    return;
-  }
-
-  const scroller = getHistoryStorageModalScrollerElement();
-  if (!scroller) {
-    return;
-  }
-
-  scroller.scrollTop = Math.max(0, scrollState.scrollTop);
-}
-
-export function queueHistoryStorageModalScrollRestore(scrollState, defer = true) {
-  if (!scrollState) {
-    return;
-  }
-
-  const restoreToken = Number(state.historyStorageModalScrollRestoreToken || 0) + 1;
-  state.historyStorageModalScrollRestoreToken = restoreToken;
-  const applyScrollState = () => {
-    if (state.historyStorageModalScrollRestoreToken !== restoreToken || state.systemModal !== "history-storage") {
-      return;
-    }
-    restoreHistoryStorageModalScrollState(scrollState);
-  };
-
-  if (defer) {
-    window.requestAnimationFrame(applyScrollState);
-    return;
-  }
-
-  applyScrollState();
-}
+export const captureHistoryStorageModalScrollState = historyStorageModalScrollKeeper.capture;
+export const queueHistoryStorageModalScrollRestore = historyStorageModalScrollKeeper.queue;
 
 export async function refreshWebServerLogHistory(options = {}) {
   if (state.nativeOpen || typeof window.fetch !== "function") {
@@ -618,7 +462,7 @@ export function clearWebServerLogOutput() {
   state.webServerLogHistoryError = "";
   state.webServerLogHistoryLoading = false;
   state.webServerLogHistoryLoaded = false;
-  state.webServerLogScrollRestoreToken = Number(state.webServerLogScrollRestoreToken || 0) + 1;
+  webServerLogScrollKeeper.invalidate();
   state.webServerLogCopyMessage = "";
   state.webServerLogCopyError = "";
   state.webServerLogHistoryRequestToken += 1;
@@ -905,14 +749,6 @@ export function getWebServerLogScrollerElement() {
   return state.root.querySelector("[data-oq-webserver-log-scroller]");
 }
 
-export function isWebServerLogScrollerNearBottom(scroller) {
-  if (!scroller) {
-    return false;
-  }
-  const remaining = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
-  return remaining < 48;
-}
-
 export function appendWebServerLogEntriesToDom(entries, output) {
   if (!output || entries.length === 0) {
     return;
@@ -1073,6 +909,21 @@ export async function copyWebServerLogOutput() {
   if (state.systemModal === "webserver-logs") {
     render();
   }
+}
+
+const webServerLogActionHandlers = {
+  "open-webserver-log-modal": () => openWebServerLogsModal(),
+  "clear-webserver-log-output": () => clearWebServerLogOutput(),
+  "copy-webserver-log-output": () => void copyWebServerLogOutput(),
+};
+
+export function handleWebServerLogAction(action) {
+  const handler = webServerLogActionHandlers[action];
+  if (!handler) {
+    return false;
+  }
+  handler();
+  return true;
 }
 
 export function renderWebServerLogsModal() {
