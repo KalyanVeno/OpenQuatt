@@ -533,7 +533,7 @@ import { renderModalShell } from "../core/modal-shell.js";
       primary: decisionLogHistoryEnabled ? decisionEventsLabel : "Alleen sinds herstart",
       note: decisionMetadata.lastFlushEpochS ? `Laatst opgeslagen: ${formatSettingsStorageTimestamp(decisionMetadata.lastFlushEpochS)}` : "Nog niet opgeslagen",
       items: [
-        { label: "Gebeurtenissen", value: decisionEventsLabel },
+        { label: "Aantal", value: formatSettingsStorageCount(decisionMetadata.storedEvents) },
         { label: "Opslagruimte", value: formatSettingsStorageKb(Number(decisionMetadata.storageBytes || 0) / 1024) },
         { label: "Opslagacties", value: formatSettingsStorageCount(decisionMetadata.writeCount) },
         { label: "Laatst opgeslagen", value: formatSettingsStorageTimestamp(decisionMetadata.lastFlushEpochS) },
