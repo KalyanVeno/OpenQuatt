@@ -1026,6 +1026,11 @@ import { replaceOuterHtmlIfSignatureChanged } from "../views/view-utils.js";
     return payload?.ok && Array.isArray(payload.events) ? payload.events : [];
   }
 
+  function getDecisionLogBuckets() {
+    const payload = state.decisionLog;
+    return payload?.ok && Array.isArray(payload.buckets) ? payload.buckets : [];
+  }
+
   function getDecisionEventEpochMs(event) {
     const epochS = Number(event?.epoch_s);
     if (Number.isFinite(epochS) && epochS > 0) {
@@ -2157,9 +2162,6 @@ import { replaceOuterHtmlIfSignatureChanged } from "../views/view-utils.js";
 
   function getControlWorkingDecisionLogItems() {
     const events = getDecisionLogEvents();
-    if (!events.length) {
-      return [];
-    }
     const selectedWindow = getControlWorkingSelectedWindow();
     const nowMs = Date.now();
     const enrichedEvents = enrichControlWorkingDecisionLogEvents(events);
@@ -2167,7 +2169,8 @@ import { replaceOuterHtmlIfSignatureChanged } from "../views/view-utils.js";
       .map((event) => mapDecisionEventToControlWorkingItem(event, selectedWindow, nowMs))
       .filter(Boolean);
     const derivedItems = buildControlWorkingDerivedItems(enrichedEvents, selectedWindow, nowMs);
-    return [...eventItems, ...derivedItems]
+    const bucketItems = buildControlWorkingBucketSummaryItems(enrichedEvents, selectedWindow, nowMs);
+    return [...eventItems, ...derivedItems, ...bucketItems]
       .sort((left, right) => {
         const startDelta = getControlWorkingItemMinuteRange(right).start - getControlWorkingItemMinuteRange(left).start;
         if (startDelta !== 0) {
@@ -2176,6 +2179,84 @@ import { replaceOuterHtmlIfSignatureChanged } from "../views/view-utils.js";
         const weights = { event: 0, span: 1, aggregate: 2 };
         return (weights[left.kind] ?? 3) - (weights[right.kind] ?? 3);
       });
+  }
+
+  function buildControlWorkingBucketSummaryItems(events, selectedWindow, nowMs) {
+    const bootEpochS = Number(state.decisionLog?.meta?.boot_epoch_s);
+    if (!Number.isFinite(bootEpochS) || bootEpochS <= 0) {
+      return [];
+    }
+    const lastFlushEpochS = Number(state.decisionLog?.meta?.flash_last_flush_epoch_s);
+    const addCount = (parts, count, singular, plural = singular) => {
+      const amount = Math.max(0, Number(count) || 0);
+      if (amount > 0) {
+        parts.push(`${amount}× ${amount === 1 ? singular : plural}`);
+      }
+    };
+
+    return getDecisionLogBuckets().map((bucket, index) => {
+      const startEpochS = Number(bucket?.hour_start_epoch_s);
+      if (!Number.isFinite(startEpochS) || startEpochS <= 0 || startEpochS >= bootEpochS) {
+        return null;
+      }
+      const parts = [];
+      addCount(parts, bucket.starts_hp1, "HP1 gestart");
+      addCount(parts, bucket.starts_hp2, "HP2 gestart");
+      addCount(parts, bucket.stops_hp1, "HP1 gestopt");
+      addCount(parts, bucket.stops_hp2, "HP2 gestopt");
+      addCount(parts, bucket.topology_single_count, "naar één warmtepomp geschakeld");
+      addCount(parts, bucket.topology_duo_count, "naar twee warmtepompen geschakeld");
+      addCount(parts, bucket.cv_assist_start_count, "CV-ondersteuning gestart");
+      addCount(parts, bucket.cv_assist_stop_count, "CV-ondersteuning gestopt");
+      addCount(parts, bucket.dewpoint_stop_count, "koelstop door dauwpunt");
+      addCount(parts, bucket.sticky_run_count, "pompprotectierun");
+      addCount(parts, bucket.defrost_seen_count_hp1, "ontdooiing HP1");
+      addCount(parts, bucket.defrost_seen_count_hp2, "ontdooiing HP2");
+      addCount(parts, bucket.attention_count, "aandachtspunt");
+      if (!parts.length) {
+        return null;
+      }
+
+      const hourEndEpochS = startEpochS + 3600;
+      const snapshotEndEpochS = Number.isFinite(lastFlushEpochS) && lastFlushEpochS >= startEpochS && lastFlushEpochS < hourEndEpochS
+        ? lastFlushEpochS
+        : Math.min(hourEndEpochS, bootEpochS);
+      const range = getControlWorkingVisibleEpochRange(startEpochS * 1000, snapshotEndEpochS * 1000, selectedWindow, nowMs);
+      if (!range) {
+        return null;
+      }
+      const visibleParts = parts.slice(0, 4);
+      if (parts.length > visibleParts.length) {
+        visibleParts.push(`${parts.length - visibleParts.length} andere tellingen`);
+      }
+      const sources = [];
+      if (Number(bucket.starts_hp1) || Number(bucket.stops_hp1) || Number(bucket.defrost_seen_count_hp1)) sources.push("HP1");
+      if (Number(bucket.starts_hp2) || Number(bucket.stops_hp2) || Number(bucket.defrost_seen_count_hp2)) sources.push("HP2");
+      if (Number(bucket.cv_assist_start_count) || Number(bucket.cv_assist_stop_count)) sources.push("CV-ketel");
+
+      return {
+        id: `fw-bucket-${startEpochS}-${index}`,
+        kind: "aggregate",
+        severity: Number(bucket.attention_count) > 0 ? "attention" : "normal",
+        time: getControlWorkingIntervalTimeLabel(range.start, range.end, false),
+        duration: formatDecisionDuration(range.durationS),
+        title: "Bewaarde uursamenvatting",
+        summary: visibleParts.join(" · "),
+        detailTitle: "Wat is hiervan bewaard?",
+        detail: "Na een herstart blijven de aantallen uit dit uur beschikbaar. De exacte seconden en volgorde van deze gebeurtenissen zijn niet meer bekend.",
+        next: "Nieuwe controllerkeuzes worden weer als afzonderlijke momenten vastgelegd.",
+        source: sources.join(" + ") || "Systeem",
+        reasonCode: "hour_summary",
+        reasonLabel: "Uursamenvatting",
+        reasonSummary: "Compact bewaard vóór de herstart.",
+        modeLabel: "",
+        modeTransitionLabel: "",
+        graphStart: Math.max(0, Math.min(1440, range.start)),
+        graphEnd: Math.max(0, Math.min(1440, range.end)),
+        checks: parts,
+        derivedFromDecisionLog: true,
+      };
+    }).filter(Boolean);
   }
 
   function getControlWorkingItems(heatPumpPanels) {
