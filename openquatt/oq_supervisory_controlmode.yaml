@@ -1372,7 +1372,9 @@ interval:
           const int desired = resolve_desired_cm();
           const char* desired_cm = cm_code_to_id(desired);
           id(oq_control_mode_code) = desired;
-          if (desired == 5 || (desired == 1 && id(oq_cm1_next_after) == 5)) {
+          const bool cooling_preflow =
+              desired == 1 && (cooling_req || id(oq_cm1_next_after) == 5);
+          if (desired == 5 || cooling_preflow) {
             id(oq_cooling_energy_session_active) = true;
           } else if (desired != 1 || id(oq_cm1_next_after) != 0) {
             // Keep the cooling session latched only during CM1 postflow to CM0.
