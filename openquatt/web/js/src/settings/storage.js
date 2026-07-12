@@ -534,9 +534,9 @@ import { renderModalShell } from "../core/modal-shell.js";
       note: decisionMetadata.lastFlushEpochS ? `Laatst opgeslagen: ${formatSettingsStorageTimestamp(decisionMetadata.lastFlushEpochS)}` : "Nog niet opgeslagen",
       items: [
         { label: "Aantal", value: formatSettingsStorageCount(decisionMetadata.storedEvents) },
-        { label: "Opslagruimte", value: formatSettingsStorageKb(Number(decisionMetadata.storageBytes || 0) / 1024) },
-        { label: "Opslagacties", value: formatSettingsStorageCount(decisionMetadata.writeCount) },
-        { label: "Laatst opgeslagen", value: formatSettingsStorageTimestamp(decisionMetadata.lastFlushEpochS) },
+        { label: "Ruimte", value: formatSettingsStorageKb(Number(decisionMetadata.storageBytes || 0) / 1024) },
+        { label: "Schrijfacties", value: formatSettingsStorageCount(decisionMetadata.writeCount) },
+        { label: "Laatste opslag", value: formatSettingsStorageTimestamp(decisionMetadata.lastFlushEpochS) },
       ],
     };
     const energyDetails = [
