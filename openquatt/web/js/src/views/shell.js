@@ -21,20 +21,12 @@ import { renderDiagnosisView, syncOverviewTrendInteractions } from "./overview.j
 
 function captureFocusedSettingsField() {
   const active = document.activeElement;
-  if (!state.root || state.appView !== "settings" || !active || !state.root.contains(active)) {
+  if (state.appView !== "settings" || !state.root?.contains(active) || !active?.dataset?.oqField) {
     return null;
   }
-
-  const field = String(active.dataset?.oqField || "");
-  if (!field) {
-    return null;
-  }
-
   return {
-    field,
+    field: active.dataset.oqField,
     settingsGroup: state.settingsGroup,
-    selectionStart: typeof active.selectionStart === "number" ? active.selectionStart : null,
-    selectionEnd: typeof active.selectionEnd === "number" ? active.selectionEnd : null,
   };
 }
 
@@ -50,13 +42,6 @@ function restoreFocusedSettingsField(focusState) {
   }
 
   input.focus({ preventScroll: true });
-  if (focusState.selectionStart !== null && typeof input.setSelectionRange === "function") {
-    try {
-      input.setSelectionRange(focusState.selectionStart, focusState.selectionEnd);
-    } catch {
-      // Number inputs do not expose a text selection range in every browser.
-    }
-  }
 }
 
 export function renderSettingsView() {
