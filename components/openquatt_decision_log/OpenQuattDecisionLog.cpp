@@ -258,7 +258,7 @@ void OpenQuattDecisionLog::dump_config() {
                 this->buckets_external_ ? "psram" : (this->buckets_ != nullptr ? "internal fallback" : "disabled"));
   ESP_LOGCONFIG(TAG, "  Record sizes: event=%zu bucket=%zu", sizeof(DecisionEvent), sizeof(HourBucket));
   ESP_LOGCONFIG(TAG, "  Flash archive: %s (%u/%u events, offset=0x%X, size=%u bytes)",
-                this->flash_partition_available_() ? (this->flash_switch_enabled_() ? "enabled" : "disabled") : "unavailable",
+                this->flash_archive_available_() ? (this->flash_switch_enabled_() ? "enabled" : "disabled") : "unavailable",
                 static_cast<unsigned>(this->flash_stored_event_count_), static_cast<unsigned>(FLASH_EVENT_CAPACITY),
                 static_cast<unsigned>(FLASH_PARTITION_OFFSET), static_cast<unsigned>(FLASH_TOTAL_BYTES));
 }
@@ -541,6 +541,10 @@ bool OpenQuattDecisionLog::flash_partition_available_() const {
          this->flash_partition_->size >= FLASH_PARTITION_OFFSET + FLASH_TOTAL_BYTES;
 }
 
+bool OpenQuattDecisionLog::flash_archive_available_() const {
+  return this->flash_partition_available_() && this->flash_index_ != nullptr;
+}
+
 void OpenQuattDecisionLog::reset_flash_metadata_() {
   this->flash_index_count_ = 0;
   this->next_flash_sequence_ = 0;
@@ -668,13 +672,16 @@ bool OpenQuattDecisionLog::scan_flash_archive_() {
   portEXIT_CRITICAL(&this->mux_);
   this->next_flash_sequence_ = any_valid ? highest_sequence + 1U : 0U;
   this->last_persisted_event_seq_ = highest_event_seq;
+  if (any_valid && highest_event_seq >= this->next_seq_) {
+    this->next_seq_ = highest_event_seq + 1U;
+  }
   this->rebuild_flash_metadata_();
   this->flash_archive_scanned_ = true;
   return any_valid;
 }
 
 bool OpenQuattDecisionLog::write_flash_events_(const DecisionEvent *events, size_t event_count) {
-  if (!this->flash_switch_enabled_() || !this->flash_partition_available_() || events == nullptr ||
+  if (!this->flash_switch_enabled_() || !this->flash_archive_available_() || events == nullptr ||
       event_count == 0 || event_count > FLASH_EVENTS_PER_SLOT) {
     return false;
   }
@@ -730,17 +737,25 @@ bool OpenQuattDecisionLog::write_flash_events_(const DecisionEvent *events, size
 }
 
 bool OpenQuattDecisionLog::flush_pending_events_() {
-  if (!this->flash_switch_enabled_() || !this->time_is_valid_()) {
+  if (!this->flash_switch_enabled_() || !this->flash_archive_available_() || !this->time_is_valid_()) {
     return false;
   }
   std::array<DecisionEvent, FLASH_EVENTS_PER_SLOT> pending{};
   size_t pending_count = 0;
   bool wrote = false;
+  const uint64_t boot_epoch_s = this->boot_epoch_s_();
   for (size_t index = 0; index < this->event_count_; ++index) {
     DecisionEvent event{};
-    if (!this->copy_event_(index, &event) || event.seq <= this->last_persisted_event_seq_ ||
-        !epoch_is_sane(event.epoch_s)) {
+    if (!this->copy_event_(index, &event) || event.seq <= this->last_persisted_event_seq_) {
       continue;
+    }
+    if (!epoch_is_sane(event.epoch_s)) {
+      const uint64_t derived_epoch_s = boot_epoch_s + event.uptime_s;
+      if (boot_epoch_s == 0 || derived_epoch_s > UINT32_MAX ||
+          !epoch_is_sane(static_cast<uint32_t>(derived_epoch_s))) {
+        continue;
+      }
+      event.epoch_s = static_cast<uint32_t>(derived_epoch_s);
     }
     pending[pending_count++] = event;
     if (pending_count == pending.size()) {
@@ -814,7 +829,7 @@ void OpenQuattDecisionLog::initialize_current_hour_() {
 void OpenQuattDecisionLog::set_flash_enabled(bool enabled) {
   this->flash_enabled_ = enabled;
   if (enabled) {
-    const uint32_t current_watermark = this->last_persisted_event_seq_;
+    const uint32_t current_watermark = this->next_seq_ > 0 ? this->next_seq_ - 1U : this->last_persisted_event_seq_;
     this->scan_flash_archive_();
     this->last_persisted_event_seq_ = std::max(this->last_persisted_event_seq_, current_watermark);
   } else if (this->next_seq_ > 0) {
@@ -1027,7 +1042,7 @@ void OpenQuattDecisionLog::write_decision_log(httpd_req_t *req) const {
             writer.write_literal(R"(,"bucket_capacity":)") && writer.write_size(this->bucket_capacity_) &&
             writer.write_literal(R"(,"bucket_requested":)") && writer.write_size(this->bucket_capacity_requested_) &&
             writer.write_literal(R"(,"event_archive":)") &&
-            writer.write_string(this->flash_partition_available_() ? "flash" : "unavailable") &&
+            writer.write_string(this->flash_archive_available_() ? "flash" : "unavailable") &&
             writer.write_literal(R"(,"flash_enabled":)") &&
             writer.write_literal(this->flash_switch_enabled_() ? "true" : "false") &&
             writer.write_literal(R"(},"meta":{)") &&
@@ -1135,7 +1150,7 @@ void OpenQuattDecisionLog::write_metadata(httpd_req_t *req) const {
   bool ok = writer.write_literal(R"({"ok":true,"enabled":)") &&
             writer.write_literal(this->flash_switch_enabled_() ? "true" : "false") &&
             writer.write_literal(R"(,"available":)") &&
-            writer.write_literal(this->flash_partition_available_() ? "true" : "false") &&
+            writer.write_literal(this->flash_archive_available_() ? "true" : "false") &&
             writer.write_literal(R"(,"stored_events":)") && writer.write_uint32(this->flash_stored_event_count_) &&
             writer.write_literal(R"(,"capacity_events":)") && writer.write_size(FLASH_EVENT_CAPACITY) &&
             writer.write_literal(R"(,"retention_days":7)") &&

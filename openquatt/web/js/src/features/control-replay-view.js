@@ -1824,7 +1824,9 @@ import { replaceOuterHtmlIfSignatureChanged } from "../views/view-utils.js";
       .forEach((event) => {
         const eventType = String(event?.event_type || "");
         const contextCm = Number(event?._oq_context_cm ?? event?.cm);
-        if (eventType === "source_start") {
+        if (eventType === "boot_marker") {
+          Object.keys(open).forEach((key) => closeInterval(key, event));
+        } else if (eventType === "source_start") {
           sourceKeys(event.subject).forEach((key) => openInterval(key, event));
           if (contextCm === 5) {
             openInterval("cooling", event);
@@ -2074,6 +2076,16 @@ import { replaceOuterHtmlIfSignatureChanged } from "../views/view-utils.js";
       const subject = String(event?.subject || "").toUpperCase();
       const reason = String(event?.reason || "");
       const cm = Number(event?.cm) || 0;
+      if (eventType === "boot_marker") {
+        activeSourceCm.HP1 = 0;
+        activeSourceCm.HP2 = 0;
+        defrostOpen.HP1 = false;
+        defrostOpen.HP2 = false;
+        activeTopologyCm = 0;
+        activeFlowCm = 0;
+        previousModeCm = 0;
+        pendingCoolingStopReason = "";
+      }
       let contextCm = cm;
       let hidden = false;
       let activeCoolingSource = "";

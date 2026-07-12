@@ -307,6 +307,7 @@ class OpenQuattDecisionLog : public Component {
   bool copy_flash_info_(size_t index, FlashBlockInfo *out) const;
   bool flash_switch_enabled_() const;
   bool flash_partition_available_() const;
+  bool flash_archive_available_() const;
   bool scan_flash_archive_();
   bool read_flash_block_(uint32_t slot_index, uint32_t expected_sequence, FlashBlockInfo *info,
                          FlashEventRecord *events) const;
