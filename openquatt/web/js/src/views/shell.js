@@ -19,6 +19,46 @@ import { renderControlReplayView } from "../features/control-replay-view.js";
 import { renderOverviewView, syncTechTooltipLayers } from "./heatpump.js";
 import { renderDiagnosisView, syncOverviewTrendInteractions } from "./overview.js";
 
+function captureFocusedSettingsField() {
+  const active = document.activeElement;
+  if (!state.root || state.appView !== "settings" || !active || !state.root.contains(active)) {
+    return null;
+  }
+
+  const field = String(active.dataset?.oqField || "");
+  if (!field) {
+    return null;
+  }
+
+  return {
+    field,
+    settingsGroup: state.settingsGroup,
+    selectionStart: typeof active.selectionStart === "number" ? active.selectionStart : null,
+    selectionEnd: typeof active.selectionEnd === "number" ? active.selectionEnd : null,
+  };
+}
+
+function restoreFocusedSettingsField(focusState) {
+  if (!focusState || state.appView !== "settings" || state.settingsGroup !== focusState.settingsGroup || !state.root) {
+    return;
+  }
+
+  const input = Array.from(state.root.querySelectorAll("[data-oq-field]"))
+    .find((element) => element.dataset.oqField === focusState.field);
+  if (!input || input.disabled) {
+    return;
+  }
+
+  input.focus({ preventScroll: true });
+  if (focusState.selectionStart !== null && typeof input.setSelectionRange === "function") {
+    try {
+      input.setSelectionRange(focusState.selectionStart, focusState.selectionEnd);
+    } catch {
+      // Number inputs do not expose a text selection range in every browser.
+    }
+  }
+}
+
 export function renderSettingsView() {
     return `
       <section class="oq-helper-panel">
@@ -180,6 +220,8 @@ export function renderSettingsView() {
       return;
     }
 
+    const focusedSettingsField = captureFocusedSettingsField();
+
     const webServerLogScrollState = state.systemModal === "webserver-logs"
       ? captureWebServerLogScrollState()
       : null;
@@ -256,6 +298,7 @@ export function renderSettingsView() {
       ${renderDeviceReconnectModal()}
     `;
     syncModalFocus(state.root);
+    restoreFocusedSettingsField(focusedSettingsField);
     state.renderedAppView = state.appView;
     state.renderedSettingsGroup = state.appView === "settings" ? state.settingsGroup : "";
     state.settingsRenderSignature = state.appView === "settings" ? getSettingsRenderSignature() : "";
