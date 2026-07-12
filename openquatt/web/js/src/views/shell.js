@@ -27,6 +27,8 @@ function captureFocusedSettingsField() {
   return {
     field: active.dataset.oqField,
     settingsGroup: state.settingsGroup,
+    modal: active.closest("[data-oq-modal]")?.dataset.oqModal || "",
+    selection: [active.selectionStart, active.selectionEnd],
   };
 }
 
@@ -35,13 +37,20 @@ function restoreFocusedSettingsField(focusState) {
     return;
   }
 
-  const input = Array.from(state.root.querySelectorAll("[data-oq-field]"))
+  const scope = focusState.modal
+    ? Array.from(state.root.querySelectorAll("[data-oq-modal]"))
+      .find((element) => element.dataset.oqModal === focusState.modal)
+    : state.root;
+  const input = Array.from(scope?.querySelectorAll("[data-oq-field]") || [])
     .find((element) => element.dataset.oqField === focusState.field);
   if (!input || input.disabled) {
     return;
   }
 
   input.focus({ preventScroll: true });
+  if (focusState.selection[0] !== null) {
+    input.setSelectionRange?.(...focusState.selection);
+  }
 }
 
 export function renderSettingsView() {
