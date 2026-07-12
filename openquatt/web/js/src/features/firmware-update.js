@@ -85,6 +85,50 @@ import { render } from "../core/render-scheduler.js";
     };
   }
 
+  export function getFirmwareBuildSwitchModel(targetTopology, targetConnection) {
+    const hardware = getFirmwareHardwareProfile();
+    const currentTopology = getInstallationTopology();
+    const currentConnection = getFirmwareBuildConnection();
+    const topology = normalizeInstallationTopologyLabel(targetTopology);
+    const connection = normalizeFirmwareConnection(targetConnection);
+    const topologyChanges = topology && topology !== currentTopology;
+    const connectionChanges = connection && connection !== currentConnection;
+    const targetOption = topologyChanges && connectionChanges
+      ? "alternate topology and connection"
+      : topologyChanges
+        ? "alternate topology"
+        : connectionChanges
+          ? "alternate connection"
+          : "current build";
+    const valid = hardware === "heatpump_controller_q"
+      && ["single", "duo"].includes(currentTopology)
+      && ["single", "duo"].includes(topology)
+      && ["wifi", "eth"].includes(currentConnection)
+      && ["wifi", "eth"].includes(connection);
+    const targetEntityAvailable = hasEntity("firmwareUpdateTarget");
+    const targetOptionAvailable = hasFirmwareUpdateTargetOption(targetOption);
+    const installActionAvailable = hasEntity("installFirmwareUpdateTarget");
+
+    return {
+      available: valid,
+      canSwitch: valid
+        && targetOption !== "current build"
+        && targetEntityAvailable
+        && targetOptionAvailable
+        && installActionAvailable,
+      targetEntityAvailable,
+      targetOptionAvailable,
+      installActionAvailable,
+      currentTopology,
+      currentConnection,
+      targetTopology: topology,
+      targetConnection: connection,
+      targetOption,
+      currentBuildLabel: getFirmwareBuildLabelFor(currentTopology, currentConnection),
+      targetBuildLabel: getFirmwareBuildLabelFor(topology, connection),
+    };
+  }
+
   export function getFirmwareTestPrNumber(value = state.updateTestFirmwarePr) {
     const normalized = String(value || "").trim().replace(/^#?pr[-\s]*/i, "").replace(/^#/, "");
     return /^\d{1,6}$/.test(normalized) ? normalized : "";
@@ -339,7 +383,7 @@ import { render } from "../core/render-scheduler.js";
           ? "Testfirmware is geplaatst. Het device start opnieuw op en komt daarna vanzelf terug."
           : state.updateInstallMode === "connection-switch"
           ? "Firmware is geplaatst. Het device start opnieuw op en komt daarna via de gekozen verbinding terug."
-          : state.updateInstallMode === "topology-switch"
+          : state.updateInstallMode === "topology-switch" || state.updateInstallMode === "build-switch"
           ? "Firmware is geplaatst. Het device start opnieuw op en komt daarna met de gekozen opstelling terug."
           : "Firmware is geplaatst. Het device start nu opnieuw op en komt daarna vanzelf terug.",
       };
@@ -353,7 +397,7 @@ import { render } from "../core/render-scheduler.js";
           ? `Testfirmware wordt nu door ${getFirmwareDeviceLabel()} gedownload en geïnstalleerd.`
           : state.updateInstallMode === "connection-switch"
           ? `De ${getFirmwareConnectionLabel(state.updateInstallTargetConnection)}-build wordt nu naar ${getFirmwareDeviceLabel()} verzonden.`
-          : state.updateInstallMode === "topology-switch"
+          : state.updateInstallMode === "topology-switch" || state.updateInstallMode === "build-switch"
           ? `De ${getFirmwareBuildLabelFor(state.updateInstallTargetTopology, state.updateInstallTargetConnection)}-build wordt nu naar ${getFirmwareDeviceLabel()} verzonden.`
           : `Firmware wordt nu naar ${getFirmwareDeviceLabel()} verzonden.`,
       };
@@ -366,7 +410,7 @@ import { render } from "../core/render-scheduler.js";
         ? `Testfirmware-installatie is gestart voor ${getFirmwareDeviceLabel()}.`
         : state.updateInstallMode === "connection-switch"
         ? `Verbindingswissel naar ${getFirmwareConnectionLabel(state.updateInstallTargetConnection)} is gestart.`
-        : state.updateInstallMode === "topology-switch"
+        : state.updateInstallMode === "topology-switch" || state.updateInstallMode === "build-switch"
         ? `Opstellingswissel naar ${getFirmwareTopologyLabel(state.updateInstallTargetTopology)} is gestart.`
         : `OTA-update is gestart voor ${getFirmwareDeviceLabel()}.`,
     };
@@ -746,6 +790,19 @@ import { render } from "../core/render-scheduler.js";
           if (
             expectedTopology
             && getInstallationTopology() === expectedTopology
+            && !isFirmwareProgressActive()
+            && !isFirmwareUpdateInstalling()
+          ) {
+            return true;
+          }
+        } else if (state.updateInstallMode === "build-switch") {
+          const expectedTopology = normalizeInstallationTopologyLabel(state.updateInstallTargetTopology);
+          const expectedConnection = normalizeFirmwareConnection(state.updateInstallTargetConnection);
+          if (
+            expectedTopology
+            && expectedConnection
+            && getInstallationTopology() === expectedTopology
+            && getFirmwareBuildConnection() === expectedConnection
             && !isFirmwareProgressActive()
             && !isFirmwareUpdateInstalling()
           ) {

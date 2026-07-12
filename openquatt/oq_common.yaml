@@ -202,6 +202,7 @@ script:
           const std::string target = id(oq_firmware_update_target).current_option();
           const bool alternate_connection_update_target = target == "alternate connection";
           const bool alternate_topology_update_target = target == "alternate topology";
+          const bool alternate_build_update_target = target == "alternate topology and connection";
           const bool dev_channel = channel == "dev";
 
           const char *source_url = dev_channel ? "${dev_release_manifest_url}" : "${main_release_manifest_url}";
@@ -209,7 +210,11 @@ script:
             dev_channel ? "${alternate_dev_release_manifest_url}" : "${alternate_main_release_manifest_url}";
           const char *alternate_topology_url =
             dev_channel ? "${alternate_topology_dev_release_manifest_url}" : "${alternate_topology_main_release_manifest_url}";
-          if (alternate_connection_update_target && alternate_connection_url[0] != '\0') {
+          const char *alternate_build_url =
+            dev_channel ? "${alternate_build_dev_release_manifest_url}" : "${alternate_build_main_release_manifest_url}";
+          if (alternate_build_update_target && alternate_build_url[0] != '\0') {
+            source_url = alternate_build_url;
+          } else if (alternate_connection_update_target && alternate_connection_url[0] != '\0') {
             source_url = alternate_connection_url;
           } else if (alternate_topology_update_target && alternate_topology_url[0] != '\0') {
             source_url = alternate_topology_url;
@@ -254,6 +259,11 @@ script:
                 connection = "${alternate_connection}";
               } else if (target == "alternate topology" && std::string("${alternate_topology}") != "") {
                 topology = "${alternate_topology}";
+              } else if (target == "alternate topology and connection"
+                         && std::string("${alternate_connection}") != ""
+                         && std::string("${alternate_topology}") != "") {
+                connection = "${alternate_connection}";
+                topology = "${alternate_topology}";
               }
               const std::string expected_file =
                   "openquatt-" + hardware_slug + "-" + topology + "-" + connection + ".firmware.ota.bin";
@@ -289,6 +299,11 @@ script:
               if (target == "alternate connection" && std::string("${alternate_connection}") != "") {
                 connection = "${alternate_connection}";
               } else if (target == "alternate topology" && std::string("${alternate_topology}") != "") {
+                topology = "${alternate_topology}";
+              } else if (target == "alternate topology and connection"
+                         && std::string("${alternate_connection}") != ""
+                         && std::string("${alternate_topology}") != "") {
+                connection = "${alternate_connection}";
                 topology = "${alternate_topology}";
               }
               const std::string expected_file =
@@ -449,11 +464,16 @@ select:
               id(oq_firmware_update_target).current_option() == "alternate connection";
             const bool alternate_topology_update_target =
               id(oq_firmware_update_target).current_option() == "alternate topology";
+            const bool alternate_build_update_target =
+              id(oq_firmware_update_target).current_option() == "alternate topology and connection";
             if (x == "dev") {
               const char *source_url = "${dev_release_manifest_url}";
               const char *alternate_connection_url = "${alternate_dev_release_manifest_url}";
               const char *alternate_topology_url = "${alternate_topology_dev_release_manifest_url}";
-              if (alternate_connection_update_target && alternate_connection_url[0] != '\0') {
+              const char *alternate_build_url = "${alternate_build_dev_release_manifest_url}";
+              if (alternate_build_update_target && alternate_build_url[0] != '\0') {
+                source_url = alternate_build_url;
+              } else if (alternate_connection_update_target && alternate_connection_url[0] != '\0') {
                 source_url = alternate_connection_url;
               } else if (alternate_topology_update_target && alternate_topology_url[0] != '\0') {
                 source_url = alternate_topology_url;
@@ -463,7 +483,10 @@ select:
               const char *source_url = "${main_release_manifest_url}";
               const char *alternate_connection_url = "${alternate_main_release_manifest_url}";
               const char *alternate_topology_url = "${alternate_topology_main_release_manifest_url}";
-              if (alternate_connection_update_target && alternate_connection_url[0] != '\0') {
+              const char *alternate_build_url = "${alternate_build_main_release_manifest_url}";
+              if (alternate_build_update_target && alternate_build_url[0] != '\0') {
+                source_url = alternate_build_url;
+              } else if (alternate_connection_update_target && alternate_connection_url[0] != '\0') {
                 source_url = alternate_connection_url;
               } else if (alternate_topology_update_target && alternate_topology_url[0] != '\0') {
                 source_url = alternate_topology_url;
@@ -499,7 +522,7 @@ select:
     entity_category: config
     optimistic: true
     restore_value: false
-    options: ["current build", "alternate connection", "alternate topology"]
+    options: ["current build", "alternate connection", "alternate topology", "alternate topology and connection"]
     initial_option: "current build"
     on_value:
       then:
@@ -507,11 +530,15 @@ select:
             // Switch between the current-build manifest and alternate target manifests.
             const bool alternate_connection_update_target = x == "alternate connection";
             const bool alternate_topology_update_target = x == "alternate topology";
+            const bool alternate_build_update_target = x == "alternate topology and connection";
             if (id(oq_firmware_update_channel).current_option() == "dev") {
               const char *source_url = "${dev_release_manifest_url}";
               const char *alternate_connection_url = "${alternate_dev_release_manifest_url}";
               const char *alternate_topology_url = "${alternate_topology_dev_release_manifest_url}";
-              if (alternate_connection_update_target && alternate_connection_url[0] != '\0') {
+              const char *alternate_build_url = "${alternate_build_dev_release_manifest_url}";
+              if (alternate_build_update_target && alternate_build_url[0] != '\0') {
+                source_url = alternate_build_url;
+              } else if (alternate_connection_update_target && alternate_connection_url[0] != '\0') {
                 source_url = alternate_connection_url;
               } else if (alternate_topology_update_target && alternate_topology_url[0] != '\0') {
                 source_url = alternate_topology_url;
@@ -521,7 +548,10 @@ select:
               const char *source_url = "${main_release_manifest_url}";
               const char *alternate_connection_url = "${alternate_main_release_manifest_url}";
               const char *alternate_topology_url = "${alternate_topology_main_release_manifest_url}";
-              if (alternate_connection_update_target && alternate_connection_url[0] != '\0') {
+              const char *alternate_build_url = "${alternate_build_main_release_manifest_url}";
+              if (alternate_build_update_target && alternate_build_url[0] != '\0') {
+                source_url = alternate_build_url;
+              } else if (alternate_connection_update_target && alternate_connection_url[0] != '\0') {
                 source_url = alternate_connection_url;
               } else if (alternate_topology_update_target && alternate_topology_url[0] != '\0') {
                 source_url = alternate_topology_url;
