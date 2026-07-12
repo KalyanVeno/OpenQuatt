@@ -1,6 +1,7 @@
 #include "OpenQuattDecisionLog.h"
 
 #include <algorithm>
+#include <array>
 #include <cinttypes>
 #include <cstdio>
 #include <cstdlib>
@@ -188,7 +189,12 @@ class OpenQuattDecisionLogRequestHandler : public AsyncWebHandler {
     httpd_resp_set_status(req, HTTPD_200);
     httpd_resp_set_type(req, "application/json; charset=utf-8");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
-    this->parent_->write_decision_log(req);
+    const std::string meta_arg = request->arg("meta");
+    if (meta_arg == "1" || meta_arg == "true") {
+      this->parent_->write_metadata(req);
+    } else {
+      this->parent_->write_decision_log(req);
+    }
   }
 
  protected:
@@ -203,6 +209,14 @@ float OpenQuattDecisionLog::get_setup_priority() const { return setup_priority::
 
 void OpenQuattDecisionLog::setup() {
   this->allocate_buffers_();
+  this->flash_partition_ = esp_partition_find_first(
+      ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "openquatt_data");
+  if (!this->flash_partition_available_()) {
+    ESP_LOGW(TAG, "Decision-log flash region unavailable");
+  }
+  this->flash_enabled_ = this->flash_switch_ != nullptr && this->flash_switch_->state;
+  this->scan_flash_archive_();
+  this->initialize_current_hour_();
   if (web_server_base::global_web_server_base == nullptr) {
     ESP_LOGW(TAG, "web_server_base is not available; decision log endpoint disabled");
   } else {
@@ -211,6 +225,30 @@ void OpenQuattDecisionLog::setup() {
   this->emit(EVENT_BOOT_MARKER, SUBJECT_SYSTEM, REASON_UNKNOWN, SEVERITY_NORMAL, 0, STATE_UNKNOWN, STATE_ACTIVE);
 }
 
+void OpenQuattDecisionLog::loop() {
+  if (!this->time_is_valid_()) {
+    return;
+  }
+
+  const uint32_t epoch_hour = (this->current_epoch_s_() / 3600UL) * 3600UL;
+  if (this->tracked_hour_start_epoch_s_ == 0) {
+    this->tracked_hour_start_epoch_s_ = epoch_hour;
+    this->initialize_current_hour_();
+    return;
+  }
+  if (epoch_hour == this->tracked_hour_start_epoch_s_) {
+    return;
+  }
+
+  if (this->flash_switch_enabled_()) {
+    this->flush_bucket_for_epoch_hour_(this->tracked_hour_start_epoch_s_);
+  }
+  this->tracked_hour_start_epoch_s_ = epoch_hour;
+  this->initialize_current_hour_();
+}
+
+void OpenQuattDecisionLog::on_shutdown() { this->force_flush(); }
+
 void OpenQuattDecisionLog::dump_config() {
   ESP_LOGCONFIG(TAG, "OpenQuatt decision log:");
   ESP_LOGCONFIG(TAG, "  Events: %zu/%zu requested (%s)", this->event_capacity_, this->event_capacity_requested_,
@@ -218,6 +256,10 @@ void OpenQuattDecisionLog::dump_config() {
   ESP_LOGCONFIG(TAG, "  Hour buckets: %zu/%zu requested (%s)", this->bucket_capacity_, this->bucket_capacity_requested_,
                 this->buckets_external_ ? "psram" : (this->buckets_ != nullptr ? "internal fallback" : "disabled"));
   ESP_LOGCONFIG(TAG, "  Record sizes: event=%zu bucket=%zu", sizeof(DecisionEvent), sizeof(HourBucket));
+  ESP_LOGCONFIG(TAG, "  Flash archive: %s (%u/%u hours, offset=0x%X, size=%u bytes)",
+                this->flash_partition_available_() ? (this->flash_switch_enabled_() ? "enabled" : "disabled") : "unavailable",
+                static_cast<unsigned>(this->flash_stored_hour_count_), static_cast<unsigned>(FLASH_SLOT_COUNT),
+                static_cast<unsigned>(FLASH_PARTITION_OFFSET), static_cast<unsigned>(FLASH_TOTAL_BYTES));
 }
 
 bool OpenQuattDecisionLog::time_is_valid_() const {
@@ -259,10 +301,15 @@ void OpenQuattDecisionLog::release_buffers_() {
     free(this->buckets_);  // NOLINT(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc)
     this->buckets_ = nullptr;
   }
+  if (this->flash_index_ != nullptr) {
+    free(this->flash_index_);  // NOLINT(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc)
+    this->flash_index_ = nullptr;
+  }
   this->event_capacity_ = 0;
   this->bucket_capacity_ = 0;
   this->events_external_ = false;
   this->buckets_external_ = false;
+  this->flash_index_count_ = 0;
 }
 
 void OpenQuattDecisionLog::allocate_buffers_() {
@@ -286,6 +333,11 @@ void OpenQuattDecisionLog::allocate_buffers_() {
     this->buckets_ = allocate_internal<HourBucket>(this->bucket_capacity_fallback_);
     this->bucket_capacity_ = this->buckets_ != nullptr ? this->bucket_capacity_fallback_ : 0;
     this->buckets_external_ = false;
+  }
+
+  this->flash_index_ = allocate_external<FlashBlockInfo>(FLASH_SLOT_COUNT);
+  if (this->flash_index_ == nullptr) {
+    ESP_LOGW(TAG, "Failed to allocate decision-log flash index in PSRAM");
   }
 }
 
@@ -340,17 +392,34 @@ void OpenQuattDecisionLog::push_event_locked_(const DecisionEvent &event) {
   }
 }
 
-HourBucket *OpenQuattDecisionLog::current_bucket_locked_(uint64_t uptime_s) {
+HourBucket *OpenQuattDecisionLog::current_bucket_locked_(uint64_t uptime_s, uint32_t epoch_s, bool *created) {
+  if (created != nullptr) {
+    *created = false;
+  }
   if (this->buckets_ == nullptr || this->bucket_capacity_ == 0) {
     return nullptr;
   }
-  const uint64_t hour_start = (uptime_s / 3600ULL) * 3600ULL;
-  const size_t index = static_cast<size_t>((uptime_s / 3600ULL) % this->bucket_capacity_);
+  const bool has_epoch = epoch_is_sane(epoch_s);
+  const uint32_t epoch_hour = has_epoch ? (epoch_s / 3600UL) * 3600UL : 0;
+  const uint64_t uptime_hour = (uptime_s / 3600ULL) * 3600ULL;
+  const size_t index = has_epoch
+      ? static_cast<size_t>((epoch_hour / 3600UL) % this->bucket_capacity_)
+      : static_cast<size_t>((uptime_s / 3600ULL) % this->bucket_capacity_);
   HourBucket *bucket = &this->buckets_[index];
-  if (!bucket->valid || bucket->hour_start_uptime_s != hour_start) {
+  if (!bucket->valid || (has_epoch ? bucket->hour_start_epoch_s != epoch_hour
+                                   : bucket->hour_start_uptime_s != uptime_hour)) {
     std::memset(bucket, 0, sizeof(*bucket));
-    bucket->hour_start_uptime_s = hour_start;
+    if (has_epoch) {
+      const uint32_t elapsed_in_hour_s = epoch_s - epoch_hour;
+      bucket->hour_start_uptime_s = uptime_s >= elapsed_in_hour_s ? uptime_s - elapsed_in_hour_s : 0;
+      bucket->hour_start_epoch_s = epoch_hour;
+    } else {
+      bucket->hour_start_uptime_s = uptime_hour;
+    }
     bucket->valid = true;
+    if (created != nullptr) {
+      *created = true;
+    }
   }
   return bucket;
 }
@@ -360,7 +429,7 @@ uint16_t OpenQuattDecisionLog::increment_u16_(uint16_t value) {
 }
 
 void OpenQuattDecisionLog::update_bucket_locked_(const DecisionEvent &event) {
-  HourBucket *bucket = this->current_bucket_locked_(event.uptime_s);
+  HourBucket *bucket = this->current_bucket_locked_(event.uptime_s, event.epoch_s);
   if (bucket == nullptr) {
     return;
   }
@@ -415,6 +484,308 @@ void OpenQuattDecisionLog::update_bucket_locked_(const DecisionEvent &event) {
   }
 }
 
+uint32_t OpenQuattDecisionLog::fnv1a_hash_(const uint8_t *data, size_t len) {
+  uint32_t hash = 2166136261u;
+  for (size_t index = 0; index < len; ++index) {
+    hash ^= data[index];
+    hash *= 16777619u;
+  }
+  return hash;
+}
+
+OpenQuattDecisionLog::FlashHourPayload OpenQuattDecisionLog::pack_flash_payload_(const HourBucket &bucket) {
+  FlashHourPayload payload{};
+  payload.hour_start_epoch_s = bucket.hour_start_epoch_s;
+  payload.starts_hp1 = bucket.starts_hp1;
+  payload.starts_hp2 = bucket.starts_hp2;
+  payload.stops_hp1 = bucket.stops_hp1;
+  payload.stops_hp2 = bucket.stops_hp2;
+  payload.topology_single_count = bucket.topology_single_count;
+  payload.topology_duo_count = bucket.topology_duo_count;
+  payload.cv_assist_start_count = bucket.cv_assist_start_count;
+  payload.cv_assist_stop_count = bucket.cv_assist_stop_count;
+  payload.cooling_limited_count = bucket.cooling_limited_count;
+  payload.cooling_released_count = bucket.cooling_released_count;
+  payload.dewpoint_stop_count = bucket.dewpoint_stop_count;
+  payload.sticky_run_count = bucket.sticky_run_count;
+  payload.defrost_seen_count_hp1 = bucket.defrost_seen_count_hp1;
+  payload.defrost_seen_count_hp2 = bucket.defrost_seen_count_hp2;
+  payload.defrost_hold_count_hp1 = bucket.defrost_hold_count_hp1;
+  payload.defrost_hold_count_hp2 = bucket.defrost_hold_count_hp2;
+  payload.defrost_boost_count_hp1 = bucket.defrost_boost_count_hp1;
+  payload.defrost_boost_count_hp2 = bucket.defrost_boost_count_hp2;
+  payload.attention_count = bucket.attention_count;
+  return payload;
+}
+
+HourBucket OpenQuattDecisionLog::unpack_flash_payload_(const FlashHourPayload &payload) {
+  HourBucket bucket{};
+  bucket.hour_start_epoch_s = payload.hour_start_epoch_s;
+  bucket.starts_hp1 = payload.starts_hp1;
+  bucket.starts_hp2 = payload.starts_hp2;
+  bucket.stops_hp1 = payload.stops_hp1;
+  bucket.stops_hp2 = payload.stops_hp2;
+  bucket.topology_single_count = payload.topology_single_count;
+  bucket.topology_duo_count = payload.topology_duo_count;
+  bucket.cv_assist_start_count = payload.cv_assist_start_count;
+  bucket.cv_assist_stop_count = payload.cv_assist_stop_count;
+  bucket.cooling_limited_count = payload.cooling_limited_count;
+  bucket.cooling_released_count = payload.cooling_released_count;
+  bucket.dewpoint_stop_count = payload.dewpoint_stop_count;
+  bucket.sticky_run_count = payload.sticky_run_count;
+  bucket.defrost_seen_count_hp1 = payload.defrost_seen_count_hp1;
+  bucket.defrost_seen_count_hp2 = payload.defrost_seen_count_hp2;
+  bucket.defrost_hold_count_hp1 = payload.defrost_hold_count_hp1;
+  bucket.defrost_hold_count_hp2 = payload.defrost_hold_count_hp2;
+  bucket.defrost_boost_count_hp1 = payload.defrost_boost_count_hp1;
+  bucket.defrost_boost_count_hp2 = payload.defrost_boost_count_hp2;
+  bucket.attention_count = payload.attention_count;
+  bucket.valid = true;
+  return bucket;
+}
+
+bool OpenQuattDecisionLog::flash_switch_enabled_() const {
+  return this->flash_switch_ != nullptr ? this->flash_switch_->state : this->flash_enabled_;
+}
+
+bool OpenQuattDecisionLog::flash_partition_available_() const {
+  return this->flash_partition_ != nullptr &&
+         this->flash_partition_->size >= FLASH_PARTITION_OFFSET + FLASH_TOTAL_BYTES;
+}
+
+void OpenQuattDecisionLog::reset_flash_metadata_() {
+  this->flash_index_count_ = 0;
+  this->next_flash_sequence_ = 0;
+  this->flash_oldest_epoch_s_ = 0;
+  this->flash_newest_epoch_s_ = 0;
+  this->flash_last_flush_epoch_s_ = 0;
+  this->flash_stored_hour_count_ = 0;
+}
+
+bool OpenQuattDecisionLog::read_flash_block_(uint32_t slot_index, uint32_t expected_sequence,
+                                              FlashBlockInfo *info, FlashHourPayload *payload) const {
+  if (info == nullptr || payload == nullptr || !this->flash_partition_available_() || slot_index >= FLASH_SLOT_COUNT) {
+    return false;
+  }
+
+  FlashBlockHeader header{};
+  const size_t slot_offset = FLASH_PARTITION_OFFSET + static_cast<size_t>(slot_index) * FLASH_SLOT_SIZE;
+  if (esp_partition_read(this->flash_partition_, slot_offset, &header, sizeof(header)) != ESP_OK ||
+      header.magic != FLASH_TAG_MAGIC || header.version != FLASH_TAG_VERSION ||
+      header.payload_bytes != sizeof(FlashHourPayload) || !epoch_is_sane(header.hour_start_epoch_s) ||
+      (expected_sequence != UINT32_MAX && header.sequence != expected_sequence)) {
+    return false;
+  }
+  if (esp_partition_read(this->flash_partition_, slot_offset + sizeof(header), payload, sizeof(*payload)) != ESP_OK ||
+      payload->hour_start_epoch_s != header.hour_start_epoch_s ||
+      fnv1a_hash_(reinterpret_cast<const uint8_t *>(payload), sizeof(*payload)) != header.crc32) {
+    return false;
+  }
+
+  info->sequence = header.sequence;
+  info->hour_start_epoch_s = header.hour_start_epoch_s;
+  info->write_epoch_s = header.write_epoch_s;
+  info->slot_index = slot_index;
+  return true;
+}
+
+bool OpenQuattDecisionLog::load_flash_bucket_for_epoch_(uint32_t hour_start_epoch_s, HourBucket *bucket) const {
+  if (bucket == nullptr || !epoch_is_sane(hour_start_epoch_s)) {
+    return false;
+  }
+  for (size_t index = this->flash_index_count_; index > 0; --index) {
+    FlashBlockInfo info{};
+    if (!this->copy_flash_info_(index - 1U, &info) || info.hour_start_epoch_s != hour_start_epoch_s) {
+      continue;
+    }
+    FlashHourPayload payload{};
+    FlashBlockInfo verified{};
+    if (!this->read_flash_block_(info.slot_index, info.sequence, &verified, &payload)) {
+      continue;
+    }
+    *bucket = unpack_flash_payload_(payload);
+    return true;
+  }
+  return false;
+}
+
+void OpenQuattDecisionLog::rebuild_flash_metadata_() {
+  this->flash_oldest_epoch_s_ = 0;
+  this->flash_newest_epoch_s_ = 0;
+  this->flash_last_flush_epoch_s_ = 0;
+  this->flash_stored_hour_count_ = 0;
+  uint32_t previous_hour = 0;
+  for (size_t index = 0; index < this->flash_index_count_; ++index) {
+    const FlashBlockInfo &info = this->flash_index_[index];
+    if (index == 0 || info.hour_start_epoch_s != previous_hour) {
+      ++this->flash_stored_hour_count_;
+      previous_hour = info.hour_start_epoch_s;
+    }
+    if (this->flash_oldest_epoch_s_ == 0 || info.hour_start_epoch_s < this->flash_oldest_epoch_s_) {
+      this->flash_oldest_epoch_s_ = info.hour_start_epoch_s;
+    }
+    if (info.hour_start_epoch_s >= this->flash_newest_epoch_s_) {
+      this->flash_newest_epoch_s_ = info.hour_start_epoch_s;
+      this->flash_last_flush_epoch_s_ = info.write_epoch_s;
+    }
+  }
+}
+
+bool OpenQuattDecisionLog::scan_flash_archive_() {
+  this->flash_archive_scanned_ = false;
+  portENTER_CRITICAL(&this->mux_);
+  this->flash_index_count_ = 0;
+  portEXIT_CRITICAL(&this->mux_);
+  if (!this->flash_partition_available_() || this->flash_index_ == nullptr) {
+    this->reset_flash_metadata_();
+    return false;
+  }
+
+  size_t found_count = 0;
+  uint32_t highest_sequence = 0;
+  bool any_valid = false;
+  for (uint32_t slot = 0; slot < FLASH_SLOT_COUNT; ++slot) {
+    FlashBlockInfo info{};
+    FlashHourPayload payload{};
+    if (!this->read_flash_block_(slot, UINT32_MAX, &info, &payload)) {
+      continue;
+    }
+    this->flash_index_[found_count++] = info;
+    if (!any_valid || info.sequence > highest_sequence) {
+      highest_sequence = info.sequence;
+    }
+    any_valid = true;
+  }
+
+  std::sort(this->flash_index_, this->flash_index_ + found_count,
+            [](const FlashBlockInfo &left, const FlashBlockInfo &right) {
+              if (left.hour_start_epoch_s == right.hour_start_epoch_s) {
+                return left.sequence < right.sequence;
+              }
+              return left.hour_start_epoch_s < right.hour_start_epoch_s;
+            });
+  portENTER_CRITICAL(&this->mux_);
+  this->flash_index_count_ = found_count;
+  portEXIT_CRITICAL(&this->mux_);
+  this->next_flash_sequence_ = any_valid ? highest_sequence + 1U : 0U;
+  this->rebuild_flash_metadata_();
+  this->flash_archive_scanned_ = true;
+  return any_valid;
+}
+
+bool OpenQuattDecisionLog::write_flash_bucket_(const HourBucket &bucket) {
+  if (!this->flash_switch_enabled_() || !this->flash_partition_available_() ||
+      !epoch_is_sane(bucket.hour_start_epoch_s)) {
+    return false;
+  }
+
+  const uint32_t sequence = this->next_flash_sequence_;
+  const uint32_t slot_index = sequence % FLASH_SLOT_COUNT;
+  const size_t slot_offset = FLASH_PARTITION_OFFSET + static_cast<size_t>(slot_index) * FLASH_SLOT_SIZE;
+  if ((slot_index % FLASH_SLOTS_PER_SECTOR) == 0) {
+    const esp_err_t erase_result = esp_partition_erase_range(this->flash_partition_, slot_offset, FLASH_SECTOR_SIZE);
+    if (erase_result != ESP_OK) {
+      ESP_LOGW(TAG, "Could not erase decision-log flash sector: %s", esp_err_to_name(erase_result));
+      return false;
+    }
+  }
+
+  const FlashHourPayload payload = pack_flash_payload_(bucket);
+  FlashBlockHeader header{};
+  header.magic = FLASH_TAG_MAGIC;
+  header.version = FLASH_TAG_VERSION;
+  header.payload_bytes = sizeof(payload);
+  header.sequence = sequence;
+  header.hour_start_epoch_s = payload.hour_start_epoch_s;
+  header.write_epoch_s = this->current_epoch_s_();
+  header.crc32 = fnv1a_hash_(reinterpret_cast<const uint8_t *>(&payload), sizeof(payload));
+
+  std::array<uint8_t, FLASH_SLOT_SIZE> slot_buffer{};
+  std::memcpy(slot_buffer.data(), &header, sizeof(header));
+  std::memcpy(slot_buffer.data() + sizeof(header), &payload, sizeof(payload));
+  const esp_err_t write_result = esp_partition_write(
+      this->flash_partition_, slot_offset, slot_buffer.data(), slot_buffer.size());
+  if (write_result != ESP_OK) {
+    ESP_LOGW(TAG, "Could not write decision-log flash slot %u: %s", static_cast<unsigned>(slot_index),
+             esp_err_to_name(write_result));
+    return false;
+  }
+
+  this->next_flash_sequence_ = sequence + 1U;
+  this->scan_flash_archive_();
+  return true;
+}
+
+void OpenQuattDecisionLog::initialize_current_hour_() {
+  if (!this->time_is_valid_()) {
+    return;
+  }
+  const uint64_t uptime_s = this->monotonic_uptime_s_();
+  const uint32_t epoch_s = this->current_epoch_s_();
+  const uint32_t epoch_hour = (epoch_s / 3600UL) * 3600UL;
+  if (this->tracked_hour_start_epoch_s_ == 0) {
+    this->tracked_hour_start_epoch_s_ = epoch_hour;
+  }
+  HourBucket restored{};
+  const bool has_restored = this->load_flash_bucket_for_epoch_(epoch_hour, &restored);
+  bool created = false;
+  portENTER_CRITICAL(&this->mux_);
+  HourBucket *bucket = this->current_bucket_locked_(uptime_s, epoch_s, &created);
+  if (created && has_restored && bucket != nullptr) {
+    const uint64_t hour_start_uptime_s = bucket->hour_start_uptime_s;
+    *bucket = restored;
+    bucket->hour_start_uptime_s = hour_start_uptime_s;
+  }
+  portEXIT_CRITICAL(&this->mux_);
+}
+
+bool OpenQuattDecisionLog::flush_bucket_for_epoch_hour_(uint32_t hour_start_epoch_s) {
+  if (this->buckets_ == nullptr || this->bucket_capacity_ == 0) {
+    return false;
+  }
+  const size_t index = static_cast<size_t>((hour_start_epoch_s / 3600UL) % this->bucket_capacity_);
+  HourBucket bucket{};
+  if (!this->copy_bucket_(index, &bucket) || !bucket.valid ||
+      bucket.hour_start_epoch_s != hour_start_epoch_s || !epoch_is_sane(bucket.hour_start_epoch_s)) {
+    return false;
+  }
+  return this->write_flash_bucket_(bucket);
+}
+
+void OpenQuattDecisionLog::set_flash_enabled(bool enabled) {
+  this->flash_enabled_ = enabled;
+  if (enabled) {
+    this->scan_flash_archive_();
+    this->initialize_current_hour_();
+  }
+}
+
+bool OpenQuattDecisionLog::force_flush() {
+  if (!this->flash_switch_enabled_() || !this->time_is_valid_()) {
+    return false;
+  }
+  if (this->tracked_hour_start_epoch_s_ == 0) {
+    this->initialize_current_hour_();
+  }
+  return this->flush_bucket_for_epoch_hour_(this->tracked_hour_start_epoch_s_);
+}
+
+bool OpenQuattDecisionLog::clear_flash_history() {
+  if (!this->flash_partition_available_()) {
+    this->reset_flash_metadata_();
+    return false;
+  }
+  const esp_err_t result = esp_partition_erase_range(
+      this->flash_partition_, FLASH_PARTITION_OFFSET, FLASH_TOTAL_BYTES);
+  if (result != ESP_OK) {
+    ESP_LOGW(TAG, "Could not erase decision-log flash archive: %s", esp_err_to_name(result));
+    return false;
+  }
+  this->reset_flash_metadata_();
+  this->flash_archive_scanned_ = true;
+  return true;
+}
+
 bool OpenQuattDecisionLog::copy_event_(size_t index, DecisionEvent *out) const {
   if (out == nullptr || this->events_ == nullptr || index >= this->event_count_ || this->event_capacity_ == 0) {
     return false;
@@ -432,6 +803,20 @@ bool OpenQuattDecisionLog::copy_bucket_(size_t index, HourBucket *out) const {
   }
   portENTER_CRITICAL(&this->mux_);
   *out = this->buckets_[index];
+  portEXIT_CRITICAL(&this->mux_);
+  return true;
+}
+
+bool OpenQuattDecisionLog::copy_flash_info_(size_t index, FlashBlockInfo *out) const {
+  if (out == nullptr || this->flash_index_ == nullptr) {
+    return false;
+  }
+  portENTER_CRITICAL(&this->mux_);
+  if (index >= this->flash_index_count_) {
+    portEXIT_CRITICAL(&this->mux_);
+    return false;
+  }
+  *out = this->flash_index_[index];
   portEXIT_CRITICAL(&this->mux_);
   return true;
 }
@@ -568,6 +953,10 @@ void OpenQuattDecisionLog::write_decision_log(httpd_req_t *req) const {
             writer.write_literal(R"(,"event_requested":)") && writer.write_size(this->event_capacity_requested_) &&
             writer.write_literal(R"(,"bucket_capacity":)") && writer.write_size(this->bucket_capacity_) &&
             writer.write_literal(R"(,"bucket_requested":)") && writer.write_size(this->bucket_capacity_requested_) &&
+            writer.write_literal(R"(,"bucket_archive":)") &&
+            writer.write_string(this->flash_partition_available_() ? "flash" : "unavailable") &&
+            writer.write_literal(R"(,"flash_enabled":)") &&
+            writer.write_literal(this->flash_switch_enabled_() ? "true" : "false") &&
             writer.write_literal(R"(},"meta":{)") &&
             writer.write_literal(R"("event_record_size":)") && writer.write_size(sizeof(DecisionEvent)) &&
             writer.write_literal(R"(,"bucket_record_size":)") && writer.write_size(sizeof(HourBucket)) &&
@@ -578,6 +967,12 @@ void OpenQuattDecisionLog::write_decision_log(httpd_req_t *req) const {
             writer.write_literal(R"(,"internal_heap_free":)") && writer.write_uint32(internal_free) &&
             writer.write_literal(R"(,"internal_heap_min":)") && writer.write_uint32(internal_min) &&
             writer.write_literal(R"(,"psram_free":)") && writer.write_uint32(psram_free) &&
+            writer.write_literal(R"(,"flash_stored_hours":)") && writer.write_uint32(this->flash_stored_hour_count_) &&
+            writer.write_literal(R"(,"flash_oldest_epoch_s":)") && writer.write_uint32(this->flash_oldest_epoch_s_) &&
+            writer.write_literal(R"(,"flash_newest_epoch_s":)") && writer.write_uint32(this->flash_newest_epoch_s_) &&
+            writer.write_literal(R"(,"flash_last_flush_epoch_s":)") && writer.write_uint32(this->flash_last_flush_epoch_s_) &&
+            writer.write_literal(R"(,"flash_storage_bytes":)") && writer.write_size(FLASH_TOTAL_BYTES) &&
+            writer.write_literal(R"(,"flash_write_count":)") && writer.write_uint32(this->next_flash_sequence_) &&
             writer.write_literal(R"(},"events":[)");
 
   for (size_t index = 0; ok && index < event_count; ++index) {
@@ -609,13 +1004,12 @@ void OpenQuattDecisionLog::write_decision_log(httpd_req_t *req) const {
 
   ok = ok && writer.write_literal(R"(],"buckets":[)");
   bool first_bucket = true;
-  for (size_t index = 0; ok && index < this->bucket_capacity_; ++index) {
-    HourBucket bucket{};
-    if (!this->copy_bucket_(index, &bucket) || !bucket.valid) {
-      continue;
-    }
-    ok = (first_bucket || writer.write_char(',')) &&
+  auto write_bucket = [&](const HourBucket &bucket, const char *source)->bool {
+    const bool prefix_ok = first_bucket || writer.write_char(',');
+    const bool bucket_ok = prefix_ok &&
          writer.write_literal(R"({"hour_start_uptime_s":)") && writer.write_uint64(bucket.hour_start_uptime_s) &&
+         writer.write_literal(R"(,"hour_start_epoch_s":)") && writer.write_uint32(bucket.hour_start_epoch_s) &&
+         writer.write_literal(R"(,"source":)") && writer.write_string(source) &&
          writer.write_literal(R"(,"starts_hp1":)") && writer.write_uint32(bucket.starts_hp1) &&
          writer.write_literal(R"(,"starts_hp2":)") && writer.write_uint32(bucket.starts_hp2) &&
          writer.write_literal(R"(,"stops_hp1":)") && writer.write_uint32(bucket.stops_hp1) &&
@@ -636,12 +1030,74 @@ void OpenQuattDecisionLog::write_decision_log(httpd_req_t *req) const {
          writer.write_literal(R"(,"defrost_boost_count_hp2":)") && writer.write_uint32(bucket.defrost_boost_count_hp2) &&
          writer.write_literal(R"(,"attention_count":)") && writer.write_uint32(bucket.attention_count) &&
          writer.write_char('}');
-    first_bucket = false;
+    if (bucket_ok) {
+      first_bucket = false;
+    }
+    return bucket_ok;
+  };
+  auto ram_has_epoch = [&](uint32_t epoch_s)->bool {
+    if (epoch_s == 0) return false;
+    for (size_t index = 0; index < this->bucket_capacity_; ++index) {
+      HourBucket bucket{};
+      if (this->copy_bucket_(index, &bucket) && bucket.valid && bucket.hour_start_epoch_s == epoch_s) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  for (size_t index = 0; ok && index < this->flash_index_count_; ++index) {
+    FlashBlockInfo info{};
+    if (!this->copy_flash_info_(index, &info)) {
+      continue;
+    }
+    FlashBlockInfo next{};
+    if (index + 1 < this->flash_index_count_ && this->copy_flash_info_(index + 1, &next) &&
+        next.hour_start_epoch_s == info.hour_start_epoch_s) {
+      continue;
+    }
+    if (ram_has_epoch(info.hour_start_epoch_s)) {
+      continue;
+    }
+    FlashHourPayload payload{};
+    FlashBlockInfo verified{};
+    if (!this->read_flash_block_(info.slot_index, info.sequence, &verified, &payload)) {
+      continue;
+    }
+    ok = write_bucket(unpack_flash_payload_(payload), "flash");
+  }
+
+  for (size_t index = 0; ok && index < this->bucket_capacity_; ++index) {
+    HourBucket bucket{};
+    if (!this->copy_bucket_(index, &bucket) || !bucket.valid) {
+      continue;
+    }
+    ok = write_bucket(bucket, "ram");
   }
 
   ok = ok && writer.write_literal(R"(]})") && writer.flush();
   if (!ok) {
     ESP_LOGW(TAG, "Failed to write decision-log response");
+  }
+  httpd_resp_send_chunk(req, nullptr, 0);
+}
+
+void OpenQuattDecisionLog::write_metadata(httpd_req_t *req) const {
+  ChunkedJsonWriter writer(req);
+  bool ok = writer.write_literal(R"({"ok":true,"enabled":)") &&
+            writer.write_literal(this->flash_switch_enabled_() ? "true" : "false") &&
+            writer.write_literal(R"(,"available":)") &&
+            writer.write_literal(this->flash_partition_available_() ? "true" : "false") &&
+            writer.write_literal(R"(,"stored_hours":)") && writer.write_uint32(this->flash_stored_hour_count_) &&
+            writer.write_literal(R"(,"capacity_hours":)") && writer.write_size(FLASH_SLOT_COUNT) &&
+            writer.write_literal(R"(,"oldest_epoch_s":)") && writer.write_uint32(this->flash_oldest_epoch_s_) &&
+            writer.write_literal(R"(,"newest_epoch_s":)") && writer.write_uint32(this->flash_newest_epoch_s_) &&
+            writer.write_literal(R"(,"last_flush_epoch_s":)") && writer.write_uint32(this->flash_last_flush_epoch_s_) &&
+            writer.write_literal(R"(,"storage_bytes":)") && writer.write_size(FLASH_TOTAL_BYTES) &&
+            writer.write_literal(R"(,"write_count":)") && writer.write_uint32(this->next_flash_sequence_) &&
+            writer.write_literal(R"(})") && writer.flush();
+  if (!ok) {
+    ESP_LOGW(TAG, "Failed to write decision-log metadata response");
   }
   httpd_resp_send_chunk(req, nullptr, 0);
 }
