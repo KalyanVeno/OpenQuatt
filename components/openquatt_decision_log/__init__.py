@@ -21,8 +21,8 @@ CONFIG_SCHEMA = cv.Schema(
         cv.GenerateID(): cv.declare_id(OpenQuattDecisionLog),
         cv.Required(CONF_CLOCK): cv.use_id(time.RealTimeClock),
         cv.Required(CONF_FLASH_SWITCH): cv.use_id(switch.Switch),
-        cv.Optional(CONF_EVENT_CAPACITY, default=512): cv.positive_int,
-        cv.Optional(CONF_EVENT_FALLBACK_CAPACITY, default=64): cv.positive_int,
+        cv.Optional(CONF_EVENT_CAPACITY, default=5120): cv.positive_int,
+        cv.Optional(CONF_EVENT_FALLBACK_CAPACITY, default=128): cv.positive_int,
         cv.Optional(CONF_HOUR_BUCKETS, default=168): cv.positive_int,
         cv.Optional(CONF_HOUR_BUCKETS_FALLBACK, default=24): cv.positive_int,
     }

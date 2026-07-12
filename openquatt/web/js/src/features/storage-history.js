@@ -69,8 +69,9 @@ import { render } from "../core/render-scheduler.js";
     return {
       enabled: payload?.enabled === true,
       available: payload?.available === true,
-      storedHours: Math.max(0, Number(payload?.stored_hours) || 0),
-      capacityHours: Math.max(0, Number(payload?.capacity_hours) || 168),
+      storedEvents: Math.max(0, Number(payload?.stored_events) || 0),
+      capacityEvents: Math.max(0, Number(payload?.capacity_events) || 5120),
+      retentionDays: Math.max(0, Number(payload?.retention_days) || 7),
       oldestEpochS: Math.max(0, Number(payload?.oldest_epoch_s) || 0),
       newestEpochS: Math.max(0, Number(payload?.newest_epoch_s) || 0),
       lastFlushEpochS: Math.max(0, Number(payload?.last_flush_epoch_s) || 0),
@@ -1627,7 +1628,7 @@ import { render } from "../core/render-scheduler.js";
       });
     },
     "clear-decision-log-history": ({ triggerNamedButton }) => {
-      if (!window.confirm("Beslisloghistorie wissen?\n\nAlle bewaarde uursamenvattingen worden verwijderd. De actuele beslislog blijft beschikbaar.")) {
+      if (!window.confirm("Beslisloghistorie wissen?\n\nAlle bewaarde gebeurtenissen worden verwijderd. De actuele beslislog blijft beschikbaar.")) {
         return;
       }
       return triggerNamedButton("decisionLogHistoryClear", {

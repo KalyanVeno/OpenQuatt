@@ -295,13 +295,13 @@ Persistent histories use separate, sector-aligned regions inside `openquatt_data
 | Trends | 360 KiB | 720 hourly blocks, up to 30 days |
 | Energy day totals | 1024 KiB | Long-term daily records |
 | Energy hour detail | 368 KiB | Up to 365 retained day records |
-| Decision log | 84 KiB | 168 hourly summaries, up to 7 days |
+| Decision log | 128 KiB | Up to 5120 exact events, limited to 7 days |
 
-The decision log keeps exact events in PSRAM and writes at most one automatic summary per completed hour. Its 21
-sectors are reused approximately once every seven days. The smallest `openquatt_data` partition is 1920 KiB; all
-maximum archive regions together use 1836 KiB and therefore leave 84 KiB unassigned. The 16 MB table leaves 4180 KiB
-unassigned. The decision-log region is checked at compile time against the smallest partition and at runtime against
-the partition actually present.
+The decision log keeps exact events in PSRAM and writes new records to flash in hourly batches. Each compact flash
+record is 24 bytes and retains its timestamp, type, source, reason, mode, transition values and duration. The smallest
+`openquatt_data` partition is 1920 KiB; all maximum archive regions together use 1880 KiB and therefore leave 40 KiB
+unassigned. The 16 MB table leaves 4136 KiB unassigned. The decision-log region is checked at compile time against the
+smallest partition and at runtime against the partition actually present.
 
 
 ## 10. UI and Observability Organization

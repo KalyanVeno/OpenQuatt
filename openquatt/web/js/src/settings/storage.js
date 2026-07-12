@@ -225,16 +225,12 @@ import { renderModalShell } from "../core/modal-shell.js";
     return `${Math.round(count)} ${Math.round(count) === 1 ? "dag" : "dagen"}`;
   }
 
-  export function formatSettingsStorageHourCount(value, fallback = "Nog geen historie") {
-    const hours = Math.max(0, Math.round(Number(value) || 0));
-    if (hours <= 0) {
+  export function formatSettingsStorageEventCount(value, fallback = "Nog geen historie") {
+    const count = Math.max(0, Math.round(Number(value) || 0));
+    if (count <= 0) {
       return fallback;
     }
-    if (hours >= 24 && hours % 24 === 0) {
-      const days = hours / 24;
-      return `${days} ${days === 1 ? "dag" : "dagen"}`;
-    }
-    return `${hours} uur`;
+    return `${count} ${count === 1 ? "gebeurtenis" : "gebeurtenissen"}`;
   }
 
   export function getSettingsDecisionLogStorageMetadata() {
@@ -355,7 +351,7 @@ import { renderModalShell } from "../core/modal-shell.js";
           </div>
           <div class="oq-settings-storage-summary-metrics" aria-label="Opslagstatus">
             ${hasEntity("trendHistoryEnabled") ? renderSettingsStorageSummaryMetric("Diagnose", trendHistoryFlashEnabled ? trendAvailableValue : (trendHistoryEnabled ? "Alleen live" : "Uit"), trendHistoryFlashEnabled ? "Blijft bewaard na herstart" : "Tijdelijk", trendHistoryEnabled) : ""}
-            ${decisionLogHistoryAvailable ? renderSettingsStorageSummaryMetric("Beslislog", decisionLogHistoryEnabled ? formatSettingsStorageHourCount(decisionLogMetadata.storedHours) : "Alleen sinds herstart", decisionLogHistoryEnabled ? "Maximaal 7 dagen" : "Tijdelijk", decisionLogHistoryEnabled) : ""}
+            ${decisionLogHistoryAvailable ? renderSettingsStorageSummaryMetric("Beslislog", decisionLogHistoryEnabled ? formatSettingsStorageEventCount(decisionLogMetadata.storedEvents) : "Alleen sinds herstart", decisionLogHistoryEnabled ? "Maximaal 7 dagen" : "Tijdelijk", decisionLogHistoryEnabled) : ""}
             ${lifetimeEnergyHistoryAvailable ? renderSettingsStorageSummaryMetric("Energie", lifetimeAvailableValue, lifetimeEnergyHistoryEnabled ? "Blijft bewaard na herstart" : "Uit", lifetimeEnergyHistoryEnabled) : ""}
           </div>
           <button class="oq-helper-button oq-helper-button--ghost oq-settings-storage-summary-action" type="button" data-oq-action="open-history-storage-modal">
@@ -479,7 +475,7 @@ import { renderModalShell } from "../core/modal-shell.js";
     const decisionLogHistoryAvailable = hasEntity("decisionLogHistoryEnabled");
     const decisionLogHistoryEnabled = decisionLogHistoryAvailable && isEntityActive("decisionLogHistoryEnabled");
     const decisionMetadata = getSettingsDecisionLogStorageMetadata();
-    const decisionHoursLabel = formatSettingsStorageHourCount(decisionMetadata.storedHours);
+    const decisionEventsLabel = formatSettingsStorageEventCount(decisionMetadata.storedEvents);
     const lifetimeEnergyHistoryAvailable = hasEntity("lifetimeEnergyHistoryEnabled");
     const lifetimeEnergyHistoryEnabled = lifetimeEnergyHistoryAvailable && isEntityActive("lifetimeEnergyHistoryEnabled");
     const lifetimeAvailableLabel = lifetimeEnergyHistoryAvailable
@@ -534,10 +530,10 @@ import { renderModalShell } from "../core/modal-shell.js";
       title: "Beslisloghistorie",
       meta: "Technische details",
       shortLabel: "Beslislog",
-      primary: decisionLogHistoryEnabled ? decisionHoursLabel : "Alleen sinds herstart",
+      primary: decisionLogHistoryEnabled ? decisionEventsLabel : "Alleen sinds herstart",
       note: decisionMetadata.lastFlushEpochS ? `Laatst opgeslagen: ${formatSettingsStorageTimestamp(decisionMetadata.lastFlushEpochS)}` : "Nog niet opgeslagen",
       items: [
-        { label: "Uren bewaard", value: decisionHoursLabel },
+        { label: "Gebeurtenissen", value: decisionEventsLabel },
         { label: "Opslagruimte", value: formatSettingsStorageKb(Number(decisionMetadata.storageBytes || 0) / 1024) },
         { label: "Opslagacties", value: formatSettingsStorageCount(decisionMetadata.writeCount) },
         { label: "Laatst opgeslagen", value: formatSettingsStorageTimestamp(decisionMetadata.lastFlushEpochS) },
@@ -577,7 +573,7 @@ import { renderModalShell } from "../core/modal-shell.js";
     let body = `
       <div class="oq-settings-storage-hub">
         ${renderHubItem("open-storage-diagnosis", "Diagnose", "Technische meetgegevens", "Temperaturen, doorstroming en vermogen voor grafieken en support.", trendHistoryFlashEnabled ? getSettingsStorageStatOrFallback("trendHistoryFlashAvailable", "Historie actief") : (trendHistoryEnabled ? "Alleen live" : "Uit"), trendHistoryEnabled)}
-        ${decisionLogHistoryAvailable ? renderHubItem("open-storage-decision-log", "Beslislog", "Keuzes van de controller", "Uursamenvattingen van starts, stops, bronwissels en bescherming.", decisionLogHistoryEnabled ? `${decisionHoursLabel} · max. 7 dagen` : "Alleen sinds herstart", decisionLogHistoryEnabled) : ""}
+        ${decisionLogHistoryAvailable ? renderHubItem("open-storage-decision-log", "Beslislog", "Keuzes van de controller", "Exacte momenten, redenen, bronwissels en bescherming.", decisionLogHistoryEnabled ? `${decisionEventsLabel} · max. 7 dagen` : "Alleen sinds herstart", decisionLogHistoryEnabled) : ""}
         ${lifetimeEnergyHistoryAvailable ? renderHubItem("open-storage-energy", "Resultaten", "Energiehistorie", "Dagtotalen en uurdetail voor opbrengst, verbruik en rendement.", lifetimeEnergyHistoryEnabled ? lifetimeAvailableDaysLabel : "Uit", lifetimeEnergyHistoryEnabled) : ""}
       </div>
       <p class="oq-settings-storage-footnote"><strong>Goed om te weten:</strong> gegevens die worden bewaard, blijven beschikbaar na een herstart. Tijdelijke gegevens bestaan alleen zolang de controller online is.</p>`;
@@ -594,14 +590,14 @@ import { renderModalShell } from "../core/modal-shell.js";
       </section>${renderSettingsStorageTechnicalDetails([diagnosisDetails])}`;
     } else if (page === "decision-log") {
       title = "Beslisloghistorie";
-      copy = "Bewaar compacte uursamenvattingen van controllerkeuzes, maximaal zeven dagen.";
+      copy = "Bewaar exacte controllerkeuzes en gebeurtenissen, maximaal zeven dagen.";
       body = `${backButton}<section class="oq-settings-storage-domain oq-settings-storage-domain--single">
         <div class="oq-settings-storage-domain-rows">
-          ${renderSettingsStorageSwitchRow("decisionLogHistoryEnabled", "Beslisloghistorie bewaren", "Bewaar ieder uur een compacte samenvatting van belangrijke beslissingen.", "De laatste zeven dagen blijven beschikbaar na een herstart of update.", "De actuele beslislog blijft tijdelijk beschikbaar; bestaande historie blijft staan.", "Blijft bewaard na herstart")}
-          ${canFlushDecision ? `<div class="oq-settings-storage-inline-action"><div><h4>Beslislog nu opslaan</h4><p>Sla het lopende uur alvast op vóór een update of herstart.</p></div>${renderSettingsStorageActionButton("decisionLogHistoryFlush", "Nu opslaan", "flush-decision-log-history", { disabled: !decisionLogHistoryEnabled, busyLabel: "Opslaan..." })}</div>` : ""}
+          ${renderSettingsStorageSwitchRow("decisionLogHistoryEnabled", "Beslisloghistorie bewaren", "Bewaar exacte momenten en redenen uit de beslislog.", "De laatste zeven dagen blijven beschikbaar na een herstart of update.", "De actuele beslislog blijft tijdelijk beschikbaar; bestaande historie blijft staan.", "Blijft bewaard na herstart")}
+          ${canFlushDecision ? `<div class="oq-settings-storage-inline-action"><div><h4>Beslislog nu opslaan</h4><p>Sla nieuwe gebeurtenissen alvast op vóór een update of herstart.</p></div>${renderSettingsStorageActionButton("decisionLogHistoryFlush", "Nu opslaan", "flush-decision-log-history", { disabled: !decisionLogHistoryEnabled, busyLabel: "Opslaan..." })}</div>` : ""}
         </div>
       </section>${renderSettingsStorageTechnicalDetails([decisionDetails])}
-      ${hasEntity("decisionLogHistoryClear") ? `<details class="oq-settings-storage-advanced"><summary>Geavanceerd</summary><div class="oq-settings-storage-inline-action oq-settings-storage-inline-action--danger"><div><h4>Beslisloghistorie wissen</h4><p>Verwijder alle bewaarde uursamenvattingen. De actuele beslislog blijft staan.</p></div>${renderSettingsStorageActionButton("decisionLogHistoryClear", "Historie wissen", "clear-decision-log-history", { disabled: Number(decisionMetadata.storedHours || 0) <= 0, buttonClass: "oq-helper-button oq-helper-button--warning", busyLabel: "Wissen..." })}</div></details>` : ""}`;
+      ${hasEntity("decisionLogHistoryClear") ? `<details class="oq-settings-storage-advanced"><summary>Geavanceerd</summary><div class="oq-settings-storage-inline-action oq-settings-storage-inline-action--danger"><div><h4>Beslisloghistorie wissen</h4><p>Verwijder alle bewaarde gebeurtenissen. De actuele beslislog blijft staan.</p></div>${renderSettingsStorageActionButton("decisionLogHistoryClear", "Historie wissen", "clear-decision-log-history", { disabled: Number(decisionMetadata.storedEvents || 0) <= 0, buttonClass: "oq-helper-button oq-helper-button--warning", busyLabel: "Wissen..." })}</div></details>` : ""}`;
     } else if (page === "energy") {
       title = "Energiehistorie";
       copy = "Beheer dagtotalen en uurdetail voor de Resultatenpagina.";

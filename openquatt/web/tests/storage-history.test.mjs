@@ -9,38 +9,41 @@ test("decision log storage metadata normalizes firmware values", () => {
   const metadata = parseDecisionLogStorageMetadata({
     enabled: true,
     available: true,
-    stored_hours: 42,
-    capacity_hours: 168,
+    stored_events: 420,
+    capacity_events: 5120,
+    retention_days: 7,
     oldest_epoch_s: 1783700000,
     newest_epoch_s: 1783850000,
     last_flush_epoch_s: 1783851000,
-    storage_bytes: 86016,
+    storage_bytes: 131072,
     write_count: 44,
   });
 
   assert.deepEqual(metadata, {
     enabled: true,
     available: true,
-    storedHours: 42,
-    capacityHours: 168,
+    storedEvents: 420,
+    capacityEvents: 5120,
+    retentionDays: 7,
     oldestEpochS: 1783700000,
     newestEpochS: 1783850000,
     lastFlushEpochS: 1783851000,
-    storageBytes: 86016,
+    storageBytes: 131072,
     writeCount: 44,
   });
 });
 
 test("decision log storage metadata clamps invalid counters", () => {
   const metadata = parseDecisionLogStorageMetadata({
-    stored_hours: -3,
-    capacity_hours: 0,
+    stored_events: -3,
+    capacity_events: 0,
     storage_bytes: "invalid",
   });
 
   assert.equal(metadata.enabled, false);
   assert.equal(metadata.available, false);
-  assert.equal(metadata.storedHours, 0);
-  assert.equal(metadata.capacityHours, 168);
+  assert.equal(metadata.storedEvents, 0);
+  assert.equal(metadata.capacityEvents, 5120);
+  assert.equal(metadata.retentionDays, 7);
   assert.equal(metadata.storageBytes, 0);
 });

@@ -102,7 +102,7 @@ Trendopslag kan onder `Instellingen -> Systeem` worden beheerd. Als trendopslag 
 
 OpenQuatt bewaart de korte trendhistorie in PSRAM en kan aanvullend tot 30 dagen trendhistorie in flash bewaren. Als je flashopslag uitzet, blijft bestaande flashhistorie staan; OpenQuatt stopt dan alleen met nieuwe trenddata naar flash schrijven. Alle ondersteunde OpenQuatt-profielen gebruiken PSRAM; ontbrekende PSRAM wijst dus op een hardware- of profielprobleem.
 
-Via `Instellingen -> Gegevens bewaren` zijn Diagnose, Beslislog en Energie afzonderlijk te beheren. De Beslislog bewaart maximaal zeven dagen compacte uursamenvattingen na een herstart. Exacte gebeurtenissen van het lopende uur blijven tijdelijk in PSRAM; automatisch wordt maximaal eenmaal per afgerond uur naar flash geschreven. Met `Nu opslaan` kan het lopende uur vóór een update of herstart alvast worden vastgelegd.
+Via `Instellingen -> Gegevens bewaren` zijn Diagnose, Beslislog en Energie afzonderlijk te beheren. De Beslislog bewaart maximaal zeven dagen exacte gebeurtenissen en redenen na een herstart. Nieuwe gebeurtenissen worden per uur gebundeld naar flash geschreven. Met `Nu opslaan` kunnen nog niet opgeslagen gebeurtenissen vóór een update of herstart alvast worden vastgelegd.
 
 ## Energie
 

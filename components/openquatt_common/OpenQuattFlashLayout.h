@@ -26,7 +26,7 @@ struct OpenQuattFlashLayout {
       ENERGY_HOURLY_OFFSET + (ENERGY_HOURLY_MAX_SECTOR_COUNT * SECTOR_SIZE);
 
   static constexpr uint32_t DECISION_LOG_OFFSET = ENERGY_END_OFFSET;
-  static constexpr size_t DECISION_LOG_SECTOR_COUNT = 21;
+  static constexpr size_t DECISION_LOG_SECTOR_COUNT = 32;
   static constexpr uint32_t DECISION_LOG_END_OFFSET =
       DECISION_LOG_OFFSET + (DECISION_LOG_SECTOR_COUNT * SECTOR_SIZE);
 };
