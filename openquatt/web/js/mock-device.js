@@ -800,8 +800,7 @@
       pushEvent(5, "flow_hold_start", "SYSTEM", "flow_preflow", "normal", 1, "standby", "limited", 5);
       pushEvent(4.25, "flow_hold_clear", "SYSTEM", "flow_preflow", "normal", 1, "limited", "active", 5, 0, 0, 45);
       pushEvent(4, "startup_inhibit_start", "HP2", "startup_inhibit", "normal", 2, "standby", "blocked", 2, 210, 240);
-      pushEvent(3.5, "startup_inhibit_clear", "HP2", "startup_inhibit", "normal", 5, "blocked", "blocked", 2, 0, 240, 30);
-      pushEvent(3.5, "startup_inhibit_start", "HP1", "startup_inhibit", "normal", 5, "standby", "blocked", 1, 180, 240);
+      pushEvent(3.5, "startup_inhibit_refresh", "HP1", "startup_inhibit", "normal", 5, "blocked", "blocked", 1, 180, 240, 30);
     } else if (state.scenario === "cooling_stop_reasons") {
       // Two complete cooling runs: one is stopped by dew-point protection, the other ends normally.
       pushEvent(96, "flow_hold_start", "SYSTEM", "flow_preflow", "normal", 1, "standby", "limited");
