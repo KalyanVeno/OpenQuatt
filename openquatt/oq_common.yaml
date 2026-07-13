@@ -319,6 +319,11 @@ script:
   - id: oq_install_firmware_update_target_deferred
     mode: restart
     then:
+      - lambda: |-
+          // Clear a terminal phase from an earlier attempt before the web UI starts polling this install.
+          id(oq_ota_phase_code) = 1;
+          id(oq_firmware_update_status).publish_state("Starting");
+          id(oq_firmware_update_progress).publish_state(0.0f);
       # Let the web_server/API button response finish before TLS-heavy GitHub OTA starts.
       - delay: 1500ms
       - script.execute: oq_apply_firmware_update_source
