@@ -341,9 +341,47 @@ text_sensor:
       sorting_group_id: oq_hydraulics
 
 # ----------------------------
-# MAIN LOOP (10s): PI + mode handling
+# CONTROL LOOPS
 # ----------------------------
 interval:
+  # Air Purge keeps its original 5s actuator cadence independently of the 10s PI.
+  # The purge task updates its target at 5.2s phase; this loop applies it 0.5s later.
+  - interval: ${oq_air_purge_loop_s}s
+    startup_delay: ${oq_air_purge_output_startup_delay_ms}ms
+    then:
+      - lambda: |-
+          if (!id(oq_air_purge_active) ||
+              id(oq_control_mode_code) != 100 ||
+              id(oq_commissioning_task_code) != oq_commissioning::TASK_AIR_PURGE) {
+            return;
+          }
+
+          // Apply only changed purge targets so the 5s service tick does not add redundant Modbus writes.
+          auto clamp_iPWM = [](int value) -> int {
+            constexpr int kMinIpwm = 50;
+            constexpr int kMaxIpwm = 850;
+            if (value < kMinIpwm) return kMinIpwm;
+            if (value > kMaxIpwm) return kMaxIpwm;
+            return value;
+          };
+          auto write_pump_pwm_if_changed = [](auto *num, int value) {
+            if (num == nullptr) return;
+            const float cur = num->state;
+            if (isnan(cur) || fabsf(cur - value) > 1.0f) {
+              auto c = num->make_call();
+              c.set_value(value);
+              c.perform();
+            }
+          };
+
+          const int purge_pwm = clamp_iPWM((int) id(oq_air_purge_target_ipwm));
+          id(oq_flow_last_pwm) = purge_pwm;
+          write_pump_pwm_if_changed(id(hp1_pump_speed), purge_pwm);
+          if (${flow_secondary_enabled} != 0) {
+            write_pump_pwm_if_changed(id(${secondary_pump_speed_id}), purge_pwm);
+          }
+
+  # Main PI and mode handling stays aligned to the 10s telemetry cadence.
   - interval: ${oq_flow_loop_s}s
     startup_delay: ${oq_flow_loop_startup_delay_ms}ms
     then:
@@ -680,10 +718,7 @@ interval:
             id(oq_flow_last_pwm) = purge_pwm;
             stable_cnt = 0;
             pi_failsafe = false;
-            write_pump_pwm_if_changed(id(hp1_pump_speed), purge_pwm);
-            if (${flow_secondary_enabled} != 0) {
-              write_pump_pwm_if_changed(id(${secondary_pump_speed_id}), purge_pwm);
-            }
+            // The dedicated 5s Air Purge output loop applies this target.
             if (last_mode != "AIR PURGE") {
               id(oq_flow_mode).publish_state("AIR PURGE");
               last_mode = "AIR PURGE";
