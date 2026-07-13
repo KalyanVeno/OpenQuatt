@@ -143,7 +143,7 @@ import { render } from "../core/render-scheduler.js";
         state.controlNotice = "OTA-update gestart. Wacht tot het device weer online is.";
       }
     } catch (error) {
-      state.controlError = `OTA-update kon niet worden gestart. ${error.message}`;
+      state.controlError = `OTA-update is mislukt. ${error.message}`;
     } finally {
       resetFirmwareInstallUiState();
       render();
@@ -214,7 +214,7 @@ import { render } from "../core/render-scheduler.js";
         state.controlNotice = `Verbindingswissel naar ${targetLabel} is gestart. Wacht tot het device via die verbinding terugkomt.`;
       }
     } catch (error) {
-      state.controlError = `Verbindingswissel kon niet worden gestart. ${error.message}`;
+      state.controlError = `Verbindingswissel is mislukt. ${error.message}`;
     } finally {
       resetFirmwareInstallUiState();
       render();
@@ -287,7 +287,7 @@ import { render } from "../core/render-scheduler.js";
         state.controlNotice = `Opstellingswissel naar ${targetLabel} is gestart. Wacht tot het device met die opstelling terugkomt.`;
       }
     } catch (error) {
-      state.controlError = `Opstellingswissel kon niet worden gestart. ${error.message}`;
+      state.controlError = `Opstellingswissel is mislukt. ${error.message}`;
     } finally {
       resetFirmwareInstallUiState();
       render();
@@ -346,7 +346,7 @@ import { render } from "../core/render-scheduler.js";
         state.controlNotice = `Setupwissel naar ${model.targetBuildLabel} is gestart. Wacht tot het device opnieuw bereikbaar is.`;
       }
     } catch (error) {
-      state.controlError = `Setupwissel kon niet worden gestart. ${error.message}`;
+      state.controlError = `Setupwissel is mislukt. ${error.message}`;
     } finally {
       resetFirmwareInstallUiState();
       render();

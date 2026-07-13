@@ -330,7 +330,7 @@ import { render } from "../core/render-scheduler.js";
     const phase = getFirmwareProgressPhase();
     const percent = getFirmwareProgressPercent();
 
-    if (phase === "starting" || phase === "uploading" || phase === "rebooting") {
+    if (phase === "starting" || phase === "retrying" || phase === "uploading" || phase === "rebooting") {
       state.updateInstallPhaseHint = phase;
       if (!Number.isNaN(percent)) {
         state.updateInstallProgressHint = phase === "rebooting"
@@ -361,14 +361,25 @@ import { render } from "../core/render-scheduler.js";
 
   export function isFirmwareProgressActive() {
     const phase = getFirmwareProgressPhase();
-    return phase === "starting" || phase === "uploading" || phase === "rebooting";
+    return phase === "starting" || phase === "retrying" || phase === "uploading" || phase === "rebooting";
+  }
+
+  export function getFirmwareInstallFailureMessage() {
+    const phase = getFirmwareProgressPhase();
+    if (phase === "error") {
+      return "De firmware-installatie op het device is mislukt. Controleer de netwerkverbinding en probeer opnieuw.";
+    }
+    if (phase === "aborted") {
+      return "De firmware-installatie is door het device afgebroken. Probeer de installatie opnieuw.";
+    }
+    return "";
   }
 
   export function getFirmwareProgressModel() {
     syncFirmwareInstallHints();
 
     const livePhase = getFirmwareProgressPhase();
-    const hasLivePhase = livePhase === "starting" || livePhase === "uploading" || livePhase === "rebooting";
+    const hasLivePhase = livePhase === "starting" || livePhase === "retrying" || livePhase === "uploading" || livePhase === "rebooting";
     const phase = hasLivePhase ? livePhase : state.updateInstallPhaseHint;
     const rawPercent = getFirmwareProgressPercent();
     const hintedPercent = Number.isNaN(state.updateInstallProgressHint) ? 0 : Math.round(state.updateInstallProgressHint);
@@ -389,6 +400,14 @@ import { render } from "../core/render-scheduler.js";
           : state.updateInstallMode === "topology-switch" || state.updateInstallMode === "build-switch"
           ? "Firmware is geplaatst. Het device start opnieuw op en komt daarna met de gekozen opstelling terug."
           : "Firmware is geplaatst. Het device start nu opnieuw op en komt daarna vanzelf terug.",
+      };
+    }
+
+    if (phase === "retrying") {
+      return {
+        phaseLabel: "Opnieuw proberen",
+        percent: 0,
+        copy: "De eerste verbinding voor de firmwaredownload mislukte. OpenQuatt probeert het automatisch nog één keer.",
       };
     }
 
@@ -773,6 +792,12 @@ import { render } from "../core/render-scheduler.js";
       await wait(attempt === 0 ? initialDelayMs : pollDelayMs);
       try {
         await refreshEntities(FIRMWARE_MODAL_KEYS, "all", { forceMissing: true });
+        const failureMessage = getFirmwareInstallFailureMessage();
+        if (failureMessage) {
+          const failure = new Error(failureMessage);
+          failure.firmwareInstallTerminal = true;
+          throw failure;
+        }
         if (getFirmwareProgressPhase() === "rebooting") {
           beginDeviceReconnect("ota");
         }
@@ -819,6 +844,9 @@ import { render } from "../core/render-scheduler.js";
             return true;
         }
       } catch (error) {
+        if (error?.firmwareInstallTerminal) {
+          throw error;
+        }
         if (!waitingForReconnect) {
           state.controlNotice = "Wachten tot het device opnieuw is opgestart...";
           render();
