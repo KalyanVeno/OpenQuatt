@@ -344,7 +344,10 @@ import { render } from "../core/render-scheduler.js";
       return;
     }
 
-    if (hasInstalledFirmwareTargetVersion()) {
+    // Setup switches commonly keep the same semantic version across builds.
+    // Only a normal version update may infer rebooting from the version alone;
+    // build switches must wait for the live OTA phase from the device.
+    if (state.updateInstallMode === "normal" && hasInstalledFirmwareTargetVersion()) {
       state.updateInstallPhaseHint = "rebooting";
       state.updateInstallProgressHint = 100;
       return;
