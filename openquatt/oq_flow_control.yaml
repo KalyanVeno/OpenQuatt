@@ -341,11 +341,11 @@ text_sensor:
       sorting_group_id: oq_hydraulics
 
 # ----------------------------
-# MAIN LOOP (5s): PI + mode handling
+# MAIN LOOP (10s): PI + mode handling
 # ----------------------------
 interval:
   - interval: ${oq_flow_loop_s}s
-    startup_delay: 3200ms
+    startup_delay: ${oq_flow_loop_startup_delay_ms}ms
     then:
       - lambda: |-
           // ============================================================================
