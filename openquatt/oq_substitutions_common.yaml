@@ -168,7 +168,8 @@ oq_defrost_comp_boost_steps: "1"                      # Extra level steps on non
 oq_flow_loop_s: "10"                                  # Control interval of the flow-control loop [s].
 oq_flow_loop_startup_delay_ms: "6000"                 # Phase PI after both staged HP telemetry reads [ms].
 oq_air_purge_loop_s: "5"                              # Independent Air Purge phase cadence; preserves 25s/15s pulse timing [s].
-oq_air_purge_output_startup_delay_ms: "5700"          # Apply each purge target shortly after its 5s phase tick [ms].
+oq_flow_service_output_loop_s: "5"                    # Fast actuator cadence for fixed-output service tasks [s].
+oq_flow_service_output_startup_delay_ms: "5700"       # Apply service targets shortly after their state-machine ticks [ms].
 oq_flow_mismatch_threshold_lph: "150.0"               # Allowed HP1-vs-HP2 flow difference before mismatch logic starts [L/h].
 oq_flow_mismatch_hyst_lph: "50.0"                     # Hysteresis on mismatch detection to prevent chatter [L/h].
 oq_flow_kp_min: "0.00"                                # Lower bound for Flow PI Kp.

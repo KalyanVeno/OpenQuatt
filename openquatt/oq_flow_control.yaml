@@ -344,19 +344,27 @@ text_sensor:
 # CONTROL LOOPS
 # ----------------------------
 interval:
-  # Air Purge keeps its original 5s actuator cadence independently of the 10s PI.
-  # The purge task updates its target at 5.2s phase; this loop applies it 0.5s later.
-  - interval: ${oq_air_purge_loop_s}s
-    startup_delay: ${oq_air_purge_output_startup_delay_ms}ms
+  # Fixed-output service tasks keep their original 5s actuator cadence independently of the 10s PI.
+  # Air Purge updates at 5.2s phase; this loop applies it 0.5s later and also serves Quick Flow Test.
+  - interval: ${oq_flow_service_output_loop_s}s
+    startup_delay: ${oq_flow_service_output_startup_delay_ms}ms
     then:
       - lambda: |-
-          if (!id(oq_air_purge_active) ||
-              id(oq_control_mode_code) != 100 ||
-              id(oq_commissioning_task_code) != oq_commissioning::TASK_AIR_PURGE) {
+          if (id(oq_control_mode_code) != 100) {
             return;
           }
 
-          // Apply only changed purge targets so the 5s service tick does not add redundant Modbus writes.
+          // Select the active fixed-output service owner; task ownership keeps these modes mutually exclusive.
+          const int task_code = id(oq_commissioning_task_code);
+          const bool air_purge_output =
+              id(oq_air_purge_active) && task_code == oq_commissioning::TASK_AIR_PURGE;
+          const bool quick_flow_test_output =
+              id(oq_quick_flow_test_active) && task_code == oq_commissioning::TASK_MANUAL_FLOW;
+          if (!air_purge_output && !quick_flow_test_output) {
+            return;
+          }
+
+          // Apply only changed targets so the 5s service tick does not add redundant Modbus writes.
           auto clamp_iPWM = [](int value) -> int {
             constexpr int kMinIpwm = 50;
             constexpr int kMaxIpwm = 850;
@@ -374,11 +382,14 @@ interval:
             }
           };
 
-          const int purge_pwm = clamp_iPWM((int) id(oq_air_purge_target_ipwm));
-          id(oq_flow_last_pwm) = purge_pwm;
-          write_pump_pwm_if_changed(id(hp1_pump_speed), purge_pwm);
+          const int service_pwm = clamp_iPWM(
+              air_purge_output
+                  ? (int) id(oq_air_purge_target_ipwm)
+                  : (int) id(oq_quick_flow_test_target_ipwm));
+          id(oq_flow_last_pwm) = service_pwm;
+          write_pump_pwm_if_changed(id(hp1_pump_speed), service_pwm);
           if (${flow_secondary_enabled} != 0) {
-            write_pump_pwm_if_changed(id(${secondary_pump_speed_id}), purge_pwm);
+            write_pump_pwm_if_changed(id(${secondary_pump_speed_id}), service_pwm);
           }
 
   # Main PI and mode handling stays aligned to the 10s telemetry cadence.
@@ -718,7 +729,7 @@ interval:
             id(oq_flow_last_pwm) = purge_pwm;
             stable_cnt = 0;
             pi_failsafe = false;
-            // The dedicated 5s Air Purge output loop applies this target.
+            // The dedicated 5s service-output loop applies this target.
             if (last_mode != "AIR PURGE") {
               id(oq_flow_mode).publish_state("AIR PURGE");
               last_mode = "AIR PURGE";
@@ -735,10 +746,7 @@ interval:
             id(oq_flow_last_pwm) = test_pwm;
             stable_cnt = 0;
             pi_failsafe = false;
-            write_pump_pwm_if_changed(id(hp1_pump_speed), test_pwm);
-            if (${flow_secondary_enabled} != 0) {
-              write_pump_pwm_if_changed(id(${secondary_pump_speed_id}), test_pwm);
-            }
+            // The dedicated 5s service-output loop applies this target.
             if (last_mode != "QUICK FLOW TEST") {
               id(oq_flow_mode).publish_state("QUICK FLOW TEST");
               last_mode = "QUICK FLOW TEST";
