@@ -189,8 +189,7 @@ import { replaceOuterHtmlIfSignatureChanged } from "./view-utils.js";
   }
 
   export function getEntityKwhAsWh(key) {
-    const rawValue = state.entities[key]?.value ?? state.entities[key]?.state ?? Number.NaN;
-    const value = rawValue === "" ? Number.NaN : Number(rawValue);
+    const value = getEntityNumericValue(key);
     if (!Number.isFinite(value) || value < 0) {
       return null;
     }
@@ -237,13 +236,7 @@ import { replaceOuterHtmlIfSignatureChanged } from "./view-utils.js";
     });
 
     const todayRecord = getEnergyHistoryTodayRecord();
-    if (todayRecord) {
-      const existing = byDate.get(todayRecord.dateKey);
-      if (existing) {
-        ENERGY_HISTORY_VALUE_KEYS.forEach((key) => {
-          todayRecord[key] ??= existing[key];
-        });
-      }
+    if (todayRecord && !byDate.has(todayRecord.dateKey)) {
       byDate.set(todayRecord.dateKey, todayRecord);
     }
 

@@ -38,7 +38,7 @@ test("day summary uses the authoritative day record instead of partial hour buck
   assert.deepEqual(getEnergyHistorySummaryRecords([dayRecord], hourBuckets, "week", "20260706"), hourBuckets);
 });
 
-test("today record keeps history values while live energy entities are still loading", () => {
+test("current history record stays authoritative while live energy entities load", () => {
   const previousEntities = state.entities;
   const previousRaw = state.energyHistoryRaw;
   state.entities = {
@@ -51,8 +51,8 @@ test("today record keeps history values while live energy entities are still loa
   try {
     const record = getEnergyHistoryRecords().find((item) => item.dateKey === 20260714);
     assert.equal(record?.electricalInputWh, 5131);
-    assert.equal(record?.coolingInputWh, 5052);
-    assert.equal(record?.heatpumpCoolingOutputWh, 25314);
+    assert.equal(record?.coolingInputWh, 5048);
+    assert.equal(record?.heatpumpCoolingOutputWh, 25289);
   } finally {
     state.entities = previousEntities;
     state.energyHistoryRaw = previousRaw;
