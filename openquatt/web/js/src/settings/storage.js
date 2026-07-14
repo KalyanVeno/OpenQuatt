@@ -729,7 +729,7 @@ import { renderModalShell } from "../core/modal-shell.js";
     const mqttValue = mqtt ? (mqtt.enabled ? "Ingeschakeld" : "Uitgeschakeld") : "Niet in backup";
     const mqttMeta = mqtt
       ? `${mqtt.broker || "Geen broker"}:${mqtt.port} · ${mqtt.password_was_set ? "Wachtwoord niet opgeslagen" : "Geen wachtwoord ingesteld"}`
-      : "Bestaande MQTT-configuratie blijft ongewijzigd.";
+      : "MQTT-configuratie en MQTT-afhankelijke bronselecties worden niet hersteld.";
     const warningText = topologyMismatch || installationMismatch
       ? "De backup lijkt van een andere installatie te komen. Je kunt nog steeds doorzetten, maar controleer de secties even goed."
       : summary.requiredMissing

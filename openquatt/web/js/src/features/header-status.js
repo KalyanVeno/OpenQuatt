@@ -489,7 +489,7 @@ import { render } from "../core/render-scheduler.js";
             <div><span>Onbekend</span><strong>${escapeHtml(String(result.unknown.length))}</strong></div>
           </div>
           ${resultDetails}
-          ${result.mqttIncluded ? "" : `<p class="oq-settings-action-note oq-settings-action-note--warning">Deze backup bevatte geen MQTT-configuratie. De bestaande MQTT-instellingen zijn niet gewijzigd.</p>`}
+          ${result.mqttIncluded ? "" : `<p class="oq-settings-action-note oq-settings-action-note--warning">Deze backup bevatte geen MQTT-configuratie. Bestaande MQTT-instellingen en MQTT-afhankelijke bronselecties zijn behouden.</p>`}
           <div class="oq-helper-modal-actions">
             <button class="oq-helper-button oq-helper-button--primary" type="button" data-oq-action="close-system-modal">Gereed</button>
           </div>

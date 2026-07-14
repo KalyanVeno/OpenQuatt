@@ -1480,8 +1480,8 @@ import { render } from "../core/render-scheduler.js";
     const deferredMqttSources = [];
     let shouldCompleteSetup = false;
     let mqttContext = null;
-    let mqttRestoreReady = !draft.mqtt;
-    let mqttRestoreFailureDetail = "";
+    let mqttRestoreReady = false;
+    let mqttRestoreFailureDetail = draft.mqtt ? "" : "Backup bevat geen MQTT-configuratie.";
 
     try {
       await refreshEntities(SETTINGS_BACKUP_KEYS, "all");
@@ -1527,7 +1527,7 @@ import { render } from "../core/render-scheduler.js";
             continue;
           }
 
-          if (draft.mqtt && isSettingsBackupMqttSourceSelection(key, value)) {
+          if (isSettingsBackupMqttSourceSelection(key, value)) {
             deferredMqttSources.push({ key, value, section });
             continue;
           }

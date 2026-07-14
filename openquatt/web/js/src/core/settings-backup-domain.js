@@ -86,7 +86,7 @@ export function normalizeSettingsBackupMqttConfig(value) {
 }
 
 export function settingsBackupMqttNeedsPassword(mqtt) {
-  return Boolean(mqtt?.enabled && mqtt?.password_was_set);
+  return Boolean(mqtt?.password_was_set);
 }
 
 export function isSettingsBackupMqttSourceSelection(key, value) {

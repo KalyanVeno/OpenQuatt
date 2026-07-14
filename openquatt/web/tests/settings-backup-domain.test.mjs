@@ -43,6 +43,8 @@ test("MQTT restore validation requires a valid endpoint", () => {
     password_was_set: true,
   });
   assert.equal(settingsBackupMqttNeedsPassword(mqtt), true);
+  assert.equal(settingsBackupMqttNeedsPassword({ enabled: false, password_was_set: true }), true);
+  assert.equal(settingsBackupMqttNeedsPassword({ enabled: true, password_was_set: false }), false);
 });
 
 test("MQTT-dependent source selections are identified before restore", () => {
