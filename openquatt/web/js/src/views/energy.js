@@ -189,12 +189,8 @@ import { replaceOuterHtmlIfSignatureChanged } from "./view-utils.js";
   }
 
   export function getEntityKwhAsWh(key) {
-    const entity = state.entities[key];
-    const rawValue = entity?.value ?? entity?.state;
-    if (rawValue === undefined || rawValue === null || rawValue === "") {
-      return null;
-    }
-    const value = getEntityNumericValue(key);
+    const rawValue = state.entities[key]?.value ?? state.entities[key]?.state ?? Number.NaN;
+    const value = rawValue === "" ? Number.NaN : Number(rawValue);
     if (!Number.isFinite(value) || value < 0) {
       return null;
     }
@@ -245,9 +241,7 @@ import { replaceOuterHtmlIfSignatureChanged } from "./view-utils.js";
       const existing = byDate.get(todayRecord.dateKey);
       if (existing) {
         ENERGY_HISTORY_VALUE_KEYS.forEach((key) => {
-          if (!Number.isFinite(todayRecord[key])) {
-            todayRecord[key] = existing[key];
-          }
+          todayRecord[key] ??= existing[key];
         });
       }
       byDate.set(todayRecord.dateKey, todayRecord);
@@ -1250,7 +1244,6 @@ import { replaceOuterHtmlIfSignatureChanged } from "./view-utils.js";
       recordCount: model.records.length,
       bucketCount: model.buckets.length,
       latestDate: model.records[model.records.length - 1]?.dateKey || 0,
-      currentValues: ENERGY_HISTORY_VALUE_KEYS.map((key) => model.buckets[model.buckets.length - 1]?.[key] ?? null),
       summary: model.summary,
     });
   }
