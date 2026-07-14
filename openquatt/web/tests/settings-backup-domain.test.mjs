@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildSettingsBackupMqttConfig,
   collectUnknownSettingsBackupItems,
+  isSettingsBackupMqttSourceSelection,
   normalizeSettingsBackupMqttConfig,
   settingsBackupMqttNeedsPassword,
 } from "../js/src/core/settings-backup-domain.js";
@@ -42,6 +43,14 @@ test("MQTT restore validation requires a valid endpoint", () => {
     password_was_set: true,
   });
   assert.equal(settingsBackupMqttNeedsPassword(mqtt), true);
+});
+
+test("MQTT-dependent source selections are identified before restore", () => {
+  assert.equal(isSettingsBackupMqttSourceSelection("roomTempSource", "MQTT"), true);
+  assert.equal(isSettingsBackupMqttSourceSelection("coolingDewPointSource", "Dew point (MQTT)"), true);
+  assert.equal(isSettingsBackupMqttSourceSelection("heatingEnableSource", "MQTT + Manual"), true);
+  assert.equal(isSettingsBackupMqttSourceSelection("outsideTempSource", "Auto"), false);
+  assert.equal(isSettingsBackupMqttSourceSelection("flowSource", "MQTT"), false);
 });
 
 test("unknown settings are retained as individual restore result items", () => {

@@ -15,6 +15,15 @@ export const SETTINGS_BACKUP_MQTT_RETAINED_KEYS = Object.freeze([
   "cooling_enable",
 ]);
 
+const SETTINGS_BACKUP_MQTT_SOURCE_KEYS = new Set([
+  "coolingDewPointSource",
+  "outsideTempSource",
+  "roomTempSource",
+  "roomSetpointSource",
+  "heatingEnableSource",
+  "coolingEnableSource",
+]);
+
 function isObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -78,6 +87,10 @@ export function normalizeSettingsBackupMqttConfig(value) {
 
 export function settingsBackupMqttNeedsPassword(mqtt) {
   return Boolean(mqtt?.enabled && mqtt?.password_was_set);
+}
+
+export function isSettingsBackupMqttSourceSelection(key, value) {
+  return SETTINGS_BACKUP_MQTT_SOURCE_KEYS.has(key) && /\bMQTT\b/i.test(String(value || ""));
 }
 
 export function collectUnknownSettingsBackupItems(settings, sections) {

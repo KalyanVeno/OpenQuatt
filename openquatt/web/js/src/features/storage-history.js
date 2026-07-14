@@ -9,7 +9,7 @@ import { updateEnergyHistoryState } from "../core/feature-state.js";
 import { setEntityBackupValue } from "../core/entity-backup.js";
 import { formatValue, getEntityValue, normalizeDateTimeValue, normalizeTimeValue, parseLooseNumber } from "../core/entity-store.js";
 import { refreshEntities, syncEntities } from "../core/entity-sync.js";
-import { buildSettingsBackupMqttConfig, collectUnknownSettingsBackupItems, normalizeSettingsBackupMqttConfig, SETTINGS_BACKUP_MIN_SCHEMA_VERSION, SETTINGS_BACKUP_MQTT_INPUT_KEYS, SETTINGS_BACKUP_MQTT_RETAINED_KEYS, settingsBackupMqttNeedsPassword } from "../core/settings-backup-domain.js";
+import { buildSettingsBackupMqttConfig, collectUnknownSettingsBackupItems, isSettingsBackupMqttSourceSelection, normalizeSettingsBackupMqttConfig, SETTINGS_BACKUP_MIN_SCHEMA_VERSION, SETTINGS_BACKUP_MQTT_INPUT_KEYS, SETTINGS_BACKUP_MQTT_RETAINED_KEYS, settingsBackupMqttNeedsPassword } from "../core/settings-backup-domain.js";
 import { DEFAULT_TREND_WINDOW_HOURS, state } from "../core/state.js";
 import { ENERGY_HISTORY_VIEW_KEYS, getSettingsStorageRefreshKeys, SETTINGS_STORAGE_KEYS, TREND_HISTORY_VIEW_KEYS } from "../core/storage-history-keys.js";
 import { setStorageHistoryControls } from "../core/storage-history-controls.js";
@@ -1477,8 +1477,11 @@ import { render } from "../core/render-scheduler.js";
     const applied = [];
     const skipped = [];
     const unknown = getSettingsBackupUnknownItems(draft);
+    const deferredMqttSources = [];
     let shouldCompleteSetup = false;
     let mqttContext = null;
+    let mqttRestoreReady = !draft.mqtt;
+    let mqttRestoreFailureDetail = "";
 
     try {
       await refreshEntities(SETTINGS_BACKUP_KEYS, "all");
@@ -1487,11 +1490,12 @@ import { render } from "../core/render-scheduler.js";
         try {
           mqttContext = await prepareSettingsBackupMqttRestore(draft.mqtt, mqttPassword);
         } catch (error) {
+          mqttRestoreFailureDetail = String(error?.message || error);
           skipped.push(createSettingsBackupRestoreItem(
             "mqtt.config",
             "mqtt",
             "MQTT niet voorbereid",
-            String(error?.message || error),
+            mqttRestoreFailureDetail,
             "error",
           ));
         }
@@ -1520,6 +1524,11 @@ import { render } from "../core/render-scheduler.js";
           }
 
           if (key === "openquattEnabled") {
+            continue;
+          }
+
+          if (draft.mqtt && isSettingsBackupMqttSourceSelection(key, value)) {
+            deferredMqttSources.push({ key, value, section });
             continue;
           }
 
@@ -1552,12 +1561,51 @@ import { render } from "../core/render-scheduler.js";
       if (mqttContext) {
         try {
           await finishSettingsBackupMqttRestore(mqttContext, applied);
+          mqttRestoreReady = true;
         } catch (error) {
+          mqttRestoreFailureDetail = String(error?.message || error);
           skipped.push(createSettingsBackupRestoreItem(
             "mqtt.config",
             "mqtt",
             "MQTT herstellen mislukt",
-            `${String(error?.message || error)} MQTT blijft uitgeschakeld.`,
+            `${mqttRestoreFailureDetail} MQTT blijft uitgeschakeld.`,
+            "error",
+          ));
+        }
+      }
+
+      for (const { key, value, section } of deferredMqttSources) {
+        if (!mqttRestoreReady) {
+          skipped.push(createSettingsBackupRestoreItem(
+            key,
+            section.label,
+            "MQTT-bron niet toegepast",
+            `${mqttRestoreFailureDetail || "MQTT kon niet worden hersteld."} De huidige bronselectie is behouden.`,
+            "error",
+          ));
+          continue;
+        }
+
+        const entity = ENTITY_DEFS[key];
+        if (!entity || !hasEntity(key)) {
+          skipped.push(createSettingsBackupRestoreItem(
+            key,
+            section.label,
+            "Niet beschikbaar",
+            "Deze instelling bestaat niet op de huidige installatie of firmware.",
+          ));
+          continue;
+        }
+
+        try {
+          await setEntityBackupValue(key, value);
+          applied.push(key);
+        } catch (error) {
+          skipped.push(createSettingsBackupRestoreItem(
+            key,
+            section.label,
+            "Schrijven mislukt",
+            String(error?.message || error),
             "error",
           ));
         }
