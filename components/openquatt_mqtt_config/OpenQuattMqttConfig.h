@@ -311,6 +311,7 @@ class OpenQuattMqttConfig : public Component {
   std::atomic<bool> clear_session_scoped_inputs_pending_{false};
   std::atomic<bool> client_start_task_running_{false};
   std::atomic<bool> client_start_pending_{false};
+  std::atomic<bool> preference_sync_pending_{false};
   std::atomic<uint8_t> clear_input_mask_pending_{0};
   std::atomic<uint32_t> mqtt_session_generation_{0};
   std::atomic<uint8_t> input_disabled_mask_{0};

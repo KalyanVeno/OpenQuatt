@@ -503,7 +503,8 @@ OpenQuattMqttConfig::StatusSnapshot OpenQuattMqttConfig::get_status_snapshot() {
   this->lock_config_();
   snapshot.enabled = this->enabled_.load();
   snapshot.connected = snapshot.enabled && this->connected_.load() && this->active_broker_ == this->broker_ &&
-                       this->active_port_ == this->port_;
+                       this->active_port_ == this->port_ && this->active_username_ == this->username_ &&
+                       this->active_password_ == this->password_;
   snapshot.broker = this->broker_;
   snapshot.port = this->port_;
   snapshot.username = this->username_;
@@ -531,6 +532,12 @@ OpenQuattMqttConfig::StatusSnapshot OpenQuattMqttConfig::get_status_snapshot() {
 void OpenQuattMqttConfig::loop() {
   if (this->client_start_pending_.load() && network::is_connected()) {
     this->request_client_start_();
+  }
+  if (this->preference_sync_pending_.exchange(false)) {
+    if (!global_preferences->sync()) {
+      ESP_LOGE(TAG, "Failed to sync pending MQTT configuration preferences");
+      this->preference_sync_pending_.store(true);
+    }
   }
   if (this->clear_session_scoped_inputs_pending_.exchange(false)) {
     this->clear_session_scoped_inputs_();
@@ -724,12 +731,15 @@ bool OpenQuattMqttConfig::save_storage_(const Storage &storage, bool sync) {
     return false;
   }
   if (!sync) {
+    this->preference_sync_pending_.store(true);
+    App.wake_loop_threadsafe();
     return true;
   }
   if (!global_preferences->sync()) {
     ESP_LOGE(TAG, "Failed to sync MQTT configuration to preferences");
     return false;
   }
+  this->preference_sync_pending_.store(false);
   return true;
 }
 
@@ -1341,7 +1351,8 @@ void OpenQuattMqttConfig::mqtt_event_handler_(void *handler_args, esp_event_base
     case MQTT_EVENT_DATA: {
       self->lock_config_();
       const bool accept_data = self->enabled_.load() && self->active_broker_ == self->broker_ &&
-                               self->active_port_ == self->port_;
+                               self->active_port_ == self->port_ && self->active_username_ == self->username_ &&
+                               self->active_password_ == self->password_;
       self->unlock_config_();
       if (!accept_data) {
         break;
