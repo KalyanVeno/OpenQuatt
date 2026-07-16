@@ -764,6 +764,10 @@ bool OpenQuattMqttConfig::apply_storage_(const Storage &storage, const char *sou
                      previous_port != this->port_ || previous_username != this->username_ ||
                      previous_password != this->password_;
   this->unlock_config_();
+  if (clear_all_inputs) {
+    this->mqtt_session_generation_.fetch_add(1);
+    this->clear_session_scoped_inputs_pending_.store(false);
+  }
   if (enabled) {
     if (clear_all_inputs) {
       this->clear_all_inputs_();
