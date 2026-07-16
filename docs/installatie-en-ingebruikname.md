@@ -2,6 +2,10 @@
 
 Deze handleiding beschrijft de eerste installatie van OpenQuatt. Heb je een module gekocht waar OpenQuatt al op staat, dan gebruik je de web installer alleen om Wi-Fi in te stellen. Flashen is dan niet nodig. Na het verbinden ga je eerst naar de lokale web-app via `http://openquatt.local`; Home Assistant komt daarna.
 
+Heb je de Heatpump Controller Q-edition, gebruik dan bij voorkeur de doorlopende handleiding [Heatpump Controller Q-edition aansluiten en in gebruik nemen](q-edition.md).
+
+> OpenQuatt is een open-sourceproject op best-effortbasis, zonder gegarandeerde responstijd of individuele ondersteuning. Voor gebruiksvragen en hulp bij diagnose kun je terecht in het [OpenQuatt Discord-kanaal](https://discord.com/channels/1176602554885492786/1464174190788874427). Een reproduceerbare bug meld je als [GitHub-issue](https://github.com/jeroen85/OpenQuatt/issues/new/choose).
+
 ## Installatieroute
 
 Voor een eerste installatie gebruik je de web installer uit de [README](../README.md). Daarmee stel je bij een voorgeïnstalleerde module alleen Wi-Fi in, of flash je zelf de juiste firmware. Bij Ethernet sluit je na het flashen de netwerkkabel aan.
@@ -46,14 +50,22 @@ Gebruik [Handmatige installatie](handmatige-installatie.md) alleen als fallback.
   - Electropaultje Heatpump Listener
 - een USB-kabel voor de eerste flash
 - een werkend Wi-Fi-netwerk of, bij Heatpump Controller Q Ethernet, een aangesloten netwerkkabel
-- Chrome, Edge of Firefox op desktop voor de web installer
-- Home Assistant wordt sterk aanbevolen
+- Chrome of Edge op desktop voor de web installer
+- Home Assistant is optioneel voor OpenQuatt zelf en aanbevolen voor dashboards en automatisering
 
 ## Kies het juiste profiel in de installer
 
 Kies in de installer altijd exact de combinatie van je opstelling, hardware en verbinding. Voor nieuwe installaties is de [Heatpump Controller Q-edition](https://electropaultje.nl/product/heatpump-controller-q-edition/) de voorkeursmodule.
 
 OpenQuatt ondersteunt Quatt Hybrid V1, V1.5 en V2. Die versie kies je na het flashen in de Quick Start van de web-app.
+
+Je herkent de generatie aan het model en de sensoraansluiting:
+
+| Keuze | Model en kenmerken |
+|---|---|
+| `V1` | Model `AMM4`: flowmeter bij de CV-ketel en vorstbeveiligingsklep buiten de buitenunit. Kies dit ook voor een gemengde V1/V1.5 Duo. |
+| `V1.5` | Model `AMM4-V1.5`: flowmeter in de buitenunit; onder de CV-ketel zit alleen een kleine clip-on temperatuursensor. |
+| `V2` | Model `AMH6` of `AMH6-2`: flowmeter in de buitenunit; onder de CV-ketel zit alleen een kleine clip-on temperatuursensor. |
 
 | Opstelling | Hardware | Verbinding | Installerkeuze |
 |---|---|---|---|
@@ -70,7 +82,7 @@ Ethernet is alleen beschikbaar voor de Heatpump Controller Q. ESPHome ondersteun
 
 ## Installatie via de web installer
 
-> Let op: gebruik van OpenQuatt kan gevolgen hebben voor je Quatt-garantie. De standaard commerciële Quatt-garantie vervalt in principe bij gebruik van externe aansturing zoals OpenQuatt. De wettelijke garantie blijft bestaan, maar een garantieclaim kan daardoor in de praktijk wel ingewikkelder worden.
+> Let op: OpenQuatt kan gevolgen hebben voor Quatts commerciële garantie. Zie de [actuele Quatt-voorwaarden](https://www.quatt.io/algemene-voorwaarden); wettelijke rechten staan daar los van.
 
 ### Voorgeïnstalleerde module: alleen Wi-Fi instellen
 
@@ -115,13 +127,17 @@ Als die naam niet werkt, zoek dan het IP-adres van OpenQuatt in je router en ope
 
 De web-app toont Quick Start zolang de basisinstellingen nog niet zijn afgerond. Loop die eerst rustig door. Quick Start zet de belangrijkste keuzes klaar:
 
-1. Quatt Hybrid-versie;
-2. verwarmingsstrategie;
-3. instellingen voor de gekozen strategie;
-4. flowregeling;
-5. watertemperatuurbeveiliging;
-6. stille uren;
-7. bevestigen en afronden.
+1. setup: `Single` of `Duo` en Wi-Fi of Ethernet;
+2. Quatt Hybrid-versie: V1, V1.5 of V2;
+3. flowmeting;
+4. bron voor kamertemperatuur en kamer-setpoint;
+5. ondersteuning door CV-ketel of boiler;
+6. verwarmingsstrategie;
+7. instellingen voor de gekozen strategie;
+8. flowregeling en afstelling;
+9. watertemperatuurbeveiliging;
+10. stille uren en compressorlimieten;
+11. controleren en afronden.
 
 Gebruik daarna pas Home Assistant voor dashboard, dagelijkse controle en optionele dynamische bronselectie.
 

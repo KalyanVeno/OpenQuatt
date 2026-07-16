@@ -1,0 +1,326 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 2901" role="img" aria-labelledby="title desc">
+  <title id="title">Kabels stap voor stap verplaatsen van Quatt CiC naar Heatpump Controller Q-edition</title>
+  <desc id="desc">Zeven stappen: CiC en Quatt-buitenunits spanningsloos maken en fotograferen, buitenunit Modbus naar M1 verplaatsen, thermostaat naar OTT, ketel naar OTB of R1, Quatt sensorkabel naar Q, optioneel M2 met de CiC verbinden, controleren en de installatie weer inschakelen.</desc>
+  <defs>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 10 5 0 10z" fill="#dc2626"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 10 5 0 10z" fill="#16a34a"/>
+    </marker>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 10 5 0 10z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 10 5 0 10z" fill="#ea580c"/>
+    </marker>
+    <marker id="arrow-gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 10 5 0 10z" fill="#64748b"/>
+    </marker>
+    <style>
+      text { font-family: Inter, "Segoe UI", Arial, sans-serif; }
+      .eyebrow { font-size: 15px; font-weight: 800; letter-spacing: 1.7px; }
+      .title { font-size: 38px; font-weight: 820; letter-spacing: -1.1px; fill: #111827; }
+      .subtitle { font-size: 18px; font-weight: 500; fill: #4b5563; }
+      .step-no { font-size: 16px; font-weight: 850; fill: #ea580c; }
+      .step-title { font-size: 26px; font-weight: 820; fill: #111827; }
+      .step-copy { font-size: 16px; font-weight: 500; fill: #4b5563; }
+      .map-title { font-size: 18px; font-weight: 800; fill: #111827; }
+      .completion-title { fill: #ffffff; }
+      .map-copy { font-size: 14px; font-weight: 600; fill: #475569; }
+      .device-name { font-size: 23px; font-weight: 820; }
+      .device-copy { font-size: 11px; font-weight: 650; }
+      .micro { font-size: 8px; font-weight: 720; }
+      .terminal { font-size: 10px; font-weight: 850; }
+      .hcq-label { font-size: 15px; font-weight: 850; fill: #facc15; }
+      .check { font-size: 15px; font-weight: 700; fill: #1f2937; }
+      .panel-kicker { font-size: 11px; font-weight: 850; letter-spacing: 1.2px; fill: #64748b; }
+      .panel-title { font-size: 16px; font-weight: 800; fill: #111827; }
+      .route-label { font-size: 13px; font-weight: 800; }
+    </style>
+
+    <g id="cic-device">
+      <rect x="0" y="0" width="330" height="240" rx="30" fill="#4b5054" stroke="#303437" stroke-width="3"/>
+      <circle cx="42" cy="38" r="13" fill="#303437" stroke="#73797d" stroke-width="2"/>
+      <text x="206" y="43" class="device-name" fill="#353a3e">Quatt</text>
+      <rect x="25" y="59" width="280" height="145" rx="9" fill="#f3f3f1" stroke="#d6d3d1" stroke-width="2"/>
+      <rect x="43" y="76" width="193" height="24" rx="2" fill="#171717"/>
+      <text x="54" y="92" class="device-copy" fill="#ffffff">Quatt Commander-in-Chief</text>
+
+      <rect x="244" y="72" width="34" height="53" rx="4" fill="#e7e5e4" stroke="#d6d3d1"/>
+      <path d="M250 80h21M253 77v6M258 77v6M263 77v6M268 77v6" fill="none" stroke="#57534e" stroke-width="1.5"/>
+      <path d="M250 94h7m4 0 9-6M250 105h20" fill="none" stroke="#57534e" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M261 109c6 7 2 12-2 12-5 0-6-6-1-10 0 3 3 3 3-2z" fill="#57534e"/>
+      <circle cx="290" cy="88" r="4" fill="#292524"/>
+      <circle cx="290" cy="111" r="4" fill="#292524"/>
+
+      <rect x="36" y="138" width="38" height="51" rx="5" fill="#ffffff" stroke="#d6d3d1"/>
+      <path d="M41 159h28" fill="none" stroke="#44403c" stroke-width="2"/>
+      <circle cx="55" cy="159" r="10" fill="none" stroke="#44403c" stroke-width="2"/>
+      <path d="M47 154c4 0 5 5 8 5s4-5 8-5M47 164c4 0 5-5 8-5s4 5 8 5" fill="none" stroke="#44403c" stroke-width="1.7" stroke-linecap="round"/>
+
+      <rect x="79" y="138" width="41" height="51" rx="5" fill="#fafafa" stroke="#d6d3d1"/>
+      <path d="M87 147v15M83 163h8M87 151h4" fill="none" stroke="#78716c" stroke-width="1.8" stroke-linecap="round"/>
+      <circle cx="87" cy="164" r="3" fill="none" stroke="#78716c" stroke-width="1.8"/>
+      <path d="M102 151c2-5 10-5 12 0M103 153h10M105 156v3M109 156v3M113 156v3" fill="none" stroke="#78716c" stroke-width="1.8" stroke-linecap="round"/>
+      <circle cx="89" cy="196" r="4" fill="#a8a29e"/>
+      <circle cx="109" cy="196" r="4" fill="#a8a29e"/>
+
+      <rect x="124" y="138" width="50" height="51" rx="5" fill="#fafafa" stroke="#d6d3d1"/>
+      <rect x="136" y="146" width="26" height="16" rx="2" fill="none" stroke="#78716c" stroke-width="1.8"/>
+      <path d="M132 166h34l-4 4h-26z" fill="none" stroke="#78716c" stroke-width="1.8" stroke-linejoin="round"/>
+      <rect x="128" y="169" width="14" height="16" rx="2" fill="#dc2626"/><text x="132" y="181" class="micro" fill="#ffffff">A</text>
+      <rect x="144" y="169" width="14" height="16" rx="2" fill="#16a34a"/><text x="148" y="181" class="micro" fill="#ffffff">G</text>
+      <rect x="160" y="169" width="14" height="16" rx="2" fill="#2563eb"/><text x="164" y="181" class="micro" fill="#ffffff">B</text>
+      <circle cx="132" cy="196" r="4" fill="#a8a29e"/>
+      <circle cx="149" cy="196" r="4" fill="#a8a29e"/>
+      <circle cx="166" cy="196" r="4" fill="#a8a29e"/>
+
+      <rect x="178" y="138" width="58" height="51" rx="5" fill="#ffffff" stroke="#d6d3d1"/>
+      <circle cx="207" cy="152" r="9" fill="none" stroke="#57534e" stroke-width="1.8"/>
+      <circle cx="207" cy="152" r="2" fill="#57534e"/>
+      <path d="M207 150c-2-7 5-8 6-4 1 4-3 5-6 4zM209 153c7 0 6 7 2 7-4 0-4-4-2-7zM205 153c-4 6-10 1-8-3 2-3 6-1 8 3z" fill="#78716c"/>
+      <rect x="181" y="169" width="17" height="16" rx="2" fill="#dc2626"/><text x="186" y="181" class="micro" fill="#ffffff">A</text>
+      <rect x="199" y="169" width="17" height="16" rx="2" fill="#16a34a"/><text x="204" y="181" class="micro" fill="#ffffff">G</text>
+      <rect x="217" y="169" width="17" height="16" rx="2" fill="#2563eb"/><text x="222" y="181" class="micro" fill="#ffffff">B</text>
+      <circle cx="187" cy="196" r="4" fill="#dc2626"/>
+      <circle cx="205" cy="196" r="4" fill="#16a34a"/>
+      <circle cx="223" cy="196" r="4" fill="#2563eb"/>
+
+      <rect x="240" y="138" width="31" height="51" rx="5" fill="#ffffff" stroke="#d6d3d1"/>
+      <text x="243" y="155" class="micro" fill="#44403c">20°</text>
+      <path d="M259 147v13M256 162h6" fill="none" stroke="#57534e" stroke-width="1.5"/>
+      <circle cx="259" cy="163" r="2.5" fill="none" stroke="#57534e" stroke-width="1.5"/>
+      <text x="245" y="180" class="micro" fill="#78716c">OT</text>
+      <circle cx="247" cy="196" r="4" fill="#64748b"/>
+      <circle cx="263" cy="196" r="4" fill="#64748b"/>
+
+      <rect x="275" y="138" width="28" height="51" rx="5" fill="#ffffff" stroke="#d6d3d1"/>
+      <path d="M288 147c8 10 3 17-2 17-7 0-8-8-2-14 0 5 4 4 4-3z" fill="#57534e"/>
+      <text x="279" y="180" class="micro" fill="#78716c">OT</text>
+      <circle cx="281" cy="196" r="4" fill="#64748b"/>
+      <circle cx="296" cy="196" r="4" fill="#64748b"/>
+
+      <rect x="43" y="202" width="24" height="20" rx="4" fill="#171717" stroke="#050505" stroke-width="2"/>
+      <rect x="48" y="198" width="14" height="7" rx="2" fill="#262626"/>
+      <rect x="79" y="204" width="41" height="17" rx="5" fill="#315b43" stroke="#1f3d2e"/>
+      <circle cx="89" cy="212" r="5" fill="#d6d3d1" stroke="#57534e"/><circle cx="109" cy="212" r="5" fill="#d6d3d1" stroke="#57534e"/>
+      <rect x="124" y="204" width="50" height="17" rx="5" fill="#315b43" stroke="#1f3d2e"/>
+      <circle cx="132" cy="212" r="5" fill="#d6d3d1" stroke="#57534e"/><circle cx="149" cy="212" r="5" fill="#d6d3d1" stroke="#57534e"/><circle cx="166" cy="212" r="5" fill="#d6d3d1" stroke="#57534e"/>
+      <rect x="178" y="204" width="58" height="17" rx="5" fill="#315b43" stroke="#1f3d2e"/>
+      <circle cx="187" cy="212" r="5" fill="#d6d3d1" stroke="#57534e"/><circle cx="205" cy="212" r="5" fill="#d6d3d1" stroke="#57534e"/><circle cx="223" cy="212" r="5" fill="#d6d3d1" stroke="#57534e"/>
+      <rect x="240" y="204" width="31" height="17" rx="5" fill="#315b43" stroke="#1f3d2e"/>
+      <circle cx="247" cy="212" r="5" fill="#d6d3d1" stroke="#57534e"/><circle cx="263" cy="212" r="5" fill="#d6d3d1" stroke="#57534e"/>
+      <rect x="275" y="204" width="28" height="17" rx="5" fill="#315b43" stroke="#1f3d2e"/>
+      <circle cx="281" cy="212" r="5" fill="#d6d3d1" stroke="#57534e"/><circle cx="296" cy="212" r="5" fill="#d6d3d1" stroke="#57534e"/>
+
+      <path d="M55 221v15" stroke="#171717" stroke-width="5"/>
+      <path d="M187 220v12M205 220v12M223 220v12M247 220v12M263 220v12M281 220v12M296 220v12" stroke="#9ca3af" stroke-width="3"/>
+    </g>
+
+    <g id="hcq-device">
+      <!-- De smalle behuizing en versprongen poorten volgen het fysieke HCQ-front. -->
+      <rect x="26" y="0" width="168" height="240" rx="20" fill="#15171b" stroke="#050608" stroke-width="3"/>
+      <rect x="31" y="5" width="158" height="230" rx="16" fill="none" stroke="#2d3035" stroke-width="2"/>
+      <circle cx="45" cy="20" r="7" fill="#737373" stroke="#d4d4d4"/>
+      <path d="M41 20h8M45 16v8" stroke="#262626" stroke-width="1.5"/>
+      <circle cx="175" cy="20" r="7" fill="#737373" stroke="#d4d4d4"/>
+      <path d="M171 20h8M175 16v8" stroke="#262626" stroke-width="1.5"/>
+      <circle cx="45" cy="220" r="7" fill="#737373" stroke="#d4d4d4"/>
+      <path d="M41 220h8M45 216v8" stroke="#262626" stroke-width="1.5"/>
+      <circle cx="175" cy="220" r="7" fill="#737373" stroke="#d4d4d4"/>
+      <path d="M171 220h8M175 216v8" stroke="#262626" stroke-width="1.5"/>
+      <circle cx="89" cy="34" r="4" fill="#050608"/>
+      <circle cx="131" cy="34" r="4" fill="#050608"/>
+
+      <text x="45" y="70" class="hcq-label">Q</text>
+      <text x="45" y="108" class="hcq-label">R1</text>
+      <text x="45" y="145" class="hcq-label">R2</text>
+      <text x="45" y="182" class="hcq-label">T</text>
+      <text x="175" y="95" class="hcq-label" text-anchor="end">M1</text>
+      <text x="175" y="132" class="hcq-label" text-anchor="end">M2</text>
+      <text x="175" y="171" class="hcq-label" text-anchor="end">OTT</text>
+      <text x="175" y="210" class="hcq-label" text-anchor="end">OTB</text>
+
+      <!-- Q is de donkere originele Quatt-connector; overige klemmen zijn groen. -->
+      <g fill="#52525b" stroke="#27272a" stroke-width="2">
+        <rect x="6" y="51" width="26" height="30" rx="4"/>
+      </g>
+      <g fill="#16a34a" stroke="#14532d" stroke-width="2">
+        <rect x="6" y="89" width="26" height="30" rx="4"/>
+        <rect x="6" y="126" width="26" height="30" rx="4"/>
+        <rect x="6" y="163" width="26" height="30" rx="4"/>
+        <rect x="188" y="76" width="26" height="30" rx="4"/>
+        <rect x="188" y="113" width="26" height="30" rx="4"/>
+        <rect x="188" y="152" width="26" height="30" rx="4"/>
+        <rect x="188" y="191" width="26" height="30" rx="4"/>
+      </g>
+      <!-- Twee scheidingslijnen bij drie terminals; één scheidingslijn bij twee terminals. -->
+      <path d="M12 61h14M12 71h14 M12 99h14M12 109h14 M12 136h14M12 146h14 M12 173h14M12 183h14 M194 86h14M194 96h14 M194 123h14M194 133h14 M194 167h14 M194 206h14" stroke="#f5f5f5" stroke-width="2"/>
+    </g>
+  </defs>
+
+  <rect width="1000" height="2901" rx="28" fill="#ffffff"/>
+  <rect width="1000" height="8" rx="4" fill="#ea580c"/>
+  <text x="54" y="58" class="eyebrow" fill="#ea580c">ÉÉN KABEL TEGELIJK · CIC → HEATPUMP CONTROLLER Q-EDITION (HCQ)</text>
+  <text x="54" y="105" class="title">Van oude aansluiting naar nieuwe poort.</text>
+  <text x="54" y="139" class="subtitle">Herken de pictogrammen, volg de signaalnaam en werk de stappen van boven naar beneden af.</text>
+
+  <!-- Stap 1 -->
+  <rect x="32" y="174" width="936" height="332" rx="24" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="58" y="216" class="step-no">01 · VOORBEREIDEN</text>
+  <text x="58" y="251" class="step-title">Spanning eraf. Foto maken. Kabels labelen.</text>
+  <use href="#cic-device" transform="translate(58 278) scale(.76)"/>
+  <text x="414" y="315" class="map-title">Voor je iets losmaakt</text>
+  <circle cx="420" cy="337" r="13" fill="#dcfce7"/><path d="M414 337l5 5 9-11" fill="none" stroke="#15803d" stroke-width="3"/>
+  <text x="444" y="343" class="check">Schakel de CiC uit.</text>
+  <circle cx="420" cy="371" r="13" fill="#dcfce7"/><path d="M414 371l5 5 9-11" fill="none" stroke="#15803d" stroke-width="3"/>
+  <text x="444" y="377" class="check">Maak Quatt-buitenunit(s) spanningsloos via de werkschakelaar.</text>
+  <circle cx="420" cy="405" r="13" fill="#dcfce7"/><path d="M414 405l5 5 9-11" fill="none" stroke="#15803d" stroke-width="3"/>
+  <text x="444" y="411" class="check">Fotografeer de complete aansluitstrook.</text>
+  <circle cx="420" cy="439" r="13" fill="#dcfce7"/><path d="M414 439l5 5 9-11" fill="none" stroke="#15803d" stroke-width="3"/>
+  <text x="444" y="445" class="check">Label iedere kabel op functie, niet alleen op kleur.</text>
+  <!-- Stap 2 -->
+  <rect x="32" y="522" width="936" height="405" rx="24" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="58" y="564" class="step-no">02 · BUITENUNITCOMMUNICATIE</text>
+  <text x="58" y="599" class="step-title">Verplaats Modbus van de CiC naar M1.</text>
+  <text x="58" y="626" class="step-copy">M1 is de primaire Modbuspoort voor de Quatt-buitenunit(s). De klemvolgorde is anders.</text>
+  <rect x="58" y="646" width="400" height="254" rx="18" fill="#f8fafc"/>
+  <text x="78" y="674" class="panel-kicker">LOSMAKEN VAN CIC</text>
+  <text x="78" y="698" class="panel-title">Modbus · A / G / B</text>
+  <use href="#cic-device" transform="translate(76 714) scale(.62)"/>
+  <path d="M192 858 C192 874 204 883 222 883 C292 883 338 776 408 776" fill="none" stroke="#dc2626" stroke-width="5"/>
+  <path d="M203 858 C203 876 216 887 235 887 C300 887 344 800 408 800" fill="none" stroke="#16a34a" stroke-width="5"/>
+  <path d="M214 858 C214 878 228 891 248 891 C310 891 350 824 408 824" fill="none" stroke="#2563eb" stroke-width="5"/>
+  <text x="432" y="781" class="route-label" fill="#b91c1c" text-anchor="middle">A</text>
+  <text x="432" y="805" class="route-label" fill="#166534" text-anchor="middle">G</text>
+  <text x="432" y="829" class="route-label" fill="#1d4ed8" text-anchor="middle">B</text>
+
+  <circle cx="500" cy="776" r="23" fill="#ea580c"/>
+  <path d="M490 776h19m-7-7 7 7-7 7" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <rect x="542" y="646" width="400" height="254" rx="18" fill="#fff7ed"/>
+  <text x="562" y="674" class="panel-kicker" fill="#c2410c">AANSLUITEN OP HCQ</text>
+  <text x="562" y="698" class="panel-title">M1 · GND / A / B</text>
+  <path d="M888 750 C861 750 842 766 817 766" fill="none" stroke="#16a34a" stroke-width="5"/>
+  <path d="M888 770 C861 770 842 770 817 770" fill="none" stroke="#dc2626" stroke-width="5"/>
+  <path d="M888 790 C861 790 842 775 817 775" fill="none" stroke="#2563eb" stroke-width="5"/>
+  <use href="#hcq-device" transform="translate(687 714) scale(.62)"/>
+  <text x="916" y="755" class="route-label" fill="#166534" text-anchor="middle">GND</text>
+  <text x="916" y="775" class="route-label" fill="#b91c1c" text-anchor="middle">A</text>
+  <text x="916" y="795" class="route-label" fill="#1d4ed8" text-anchor="middle">B</text>
+  <text x="562" y="878" class="map-copy" fill="#b91c1c">Let bij M1 goed op de juiste volgorde van de aders.</text>
+
+  <!-- Stap 3 -->
+  <rect x="32" y="943" width="936" height="345" rx="24" fill="#f8fbff" stroke="#dbeafe"/>
+  <text x="58" y="985" class="step-no">03 · KAMERTHERMOSTAAT</text>
+  <text x="58" y="1020" class="step-title">Neem de twee OpenTherm-aders over naar OTT.</text>
+  <rect x="58" y="1042" width="400" height="220" rx="18" fill="#f1f5f9"/>
+  <text x="78" y="1070" class="panel-kicker">LOSMAKEN VAN CIC</text>
+  <text x="78" y="1094" class="panel-title">Thermostaat · twee OT-aders</text>
+  <use href="#cic-device" transform="translate(76 1108) scale(.62)"/>
+  <path d="M229 1240 C229 1249 239 1254 254 1254 C310 1254 358 1142 430 1142" fill="none" stroke="#64748b" stroke-width="5"/>
+  <path d="M239 1240 C239 1251 250 1257 265 1257 C321 1257 368 1164 430 1164" fill="none" stroke="#94a3b8" stroke-width="5"/>
+
+  <circle cx="500" cy="1154" r="23" fill="#ea580c"/>
+  <path d="M490 1154h19m-7-7 7 7-7 7" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <rect x="542" y="1042" width="400" height="220" rx="18" fill="#eff6ff"/>
+  <text x="562" y="1070" class="panel-kicker" fill="#1d4ed8">AANSLUITEN OP HCQ</text>
+  <text x="562" y="1094" class="panel-title">OTT · OpenTherm thermostaat</text>
+  <path d="M924 1208 C904 1208 888 1208 870 1208" fill="none" stroke="#64748b" stroke-width="5"/>
+  <path d="M924 1216 C904 1216 888 1216 870 1216" fill="none" stroke="#94a3b8" stroke-width="5"/>
+  <use href="#hcq-device" transform="translate(748 1108) scale(.62)"/>
+  <text x="562" y="1219" class="map-copy">Polariteit en adervolgorde</text>
+  <text x="562" y="1238" class="map-copy">maken niet uit.</text>
+
+  <!-- Stap 4 -->
+  <rect x="32" y="1304" width="936" height="430" rx="24" fill="#fffaf7" stroke="#fed7aa"/>
+  <text x="58" y="1346" class="step-no">04 · CV-KETEL — KIES ÉÉN ROUTE</text>
+  <text x="58" y="1381" class="step-title">OpenTherm naar OTB óf aan/uit naar R1.</text>
+  <text x="58" y="1408" class="step-copy">Gebruik nooit beide routes tegelijk. Het CV-aan/uit-contact van de CiC zit onder een apart afdekkapje.</text>
+  <rect x="58" y="1426" width="400" height="274" rx="18" fill="#fff7ed" stroke="#fed7aa"/>
+  <text x="78" y="1454" class="panel-kicker" fill="#c2410c">ROUTE A · OPENTHERM-KETEL</text>
+  <text x="78" y="1478" class="panel-title">Twee keteladers naar OTB</text>
+  <use href="#cic-device" transform="translate(74 1500) scale(.47)"/>
+  <use href="#hcq-device" transform="translate(326 1497) scale(.5)"/>
+  <path d="M206 1600 C206 1621 225 1632 252 1632 H423 C439 1632 442 1604 433 1604" fill="none" stroke="#ea580c" stroke-width="5"/>
+  <path d="M213 1600 C213 1614 230 1622 256 1622 H415 C429 1622 434 1600 433 1599" fill="none" stroke="#ea580c" stroke-width="5"/>
+  <text x="78" y="1664" class="map-copy" fill="#c2410c">OpenTherm: beide aders naar OTB.</text>
+  <text x="78" y="1685" class="map-copy">Polariteit en adervolgorde maken niet uit.</text>
+
+  <circle cx="500" cy="1563" r="23" fill="#ffffff" stroke="#ea580c" stroke-width="2"/>
+  <text x="500" y="1568" text-anchor="middle" class="route-label" fill="#c2410c">OF</text>
+
+  <rect x="542" y="1426" width="400" height="274" rx="18" fill="#eff6ff" stroke="#bfdbfe"/>
+  <text x="562" y="1454" class="panel-kicker" fill="#1d4ed8">ROUTE B · AAN/UIT-KETEL</text>
+  <text x="562" y="1478" class="panel-title">Twee keteladers naar R1</text>
+  <use href="#cic-device" transform="translate(558 1500) scale(.47)"/>
+  <use href="#hcq-device" transform="translate(820 1497) scale(.5)"/>
+  <path d="M694 1549 C744 1549 773 1549 823 1549" fill="none" stroke="#2563eb" stroke-width="5"/>
+  <path d="M694 1554 C744 1554 773 1554 823 1554" fill="none" stroke="#2563eb" stroke-width="5"/>
+  <text x="562" y="1664" class="map-copy" fill="#1d4ed8">R1: COM midden · NO onder.</text>
+  <text x="562" y="1685" class="map-copy">NC boven blijft vrij; adervolgorde maakt niet uit.</text>
+  <text x="500" y="1720" text-anchor="middle" class="map-copy" fill="#b91c1c">Kies alleen de route die op de CiC in gebruik was.</text>
+
+  <!-- Stap 5 -->
+  <rect x="32" y="1750" width="936" height="345" rx="24" fill="#fffbeb" stroke="#fde68a"/>
+  <text x="58" y="1792" class="step-no">05 · QUATT FLOW- / TEMPERATUURSENSOR</text>
+  <text x="58" y="1827" class="step-title">Steek de bestaande sensorkabel over naar Q.</text>
+  <rect x="58" y="1844" width="400" height="225" rx="18" fill="#f8fafc"/>
+  <text x="78" y="1872" class="panel-kicker">LOSMAKEN VAN CIC</text>
+  <text x="78" y="1896" class="panel-title">Originele Quatt-sensorstekker</text>
+  <use href="#cic-device" transform="translate(70 1908) scale(.62)"/>
+  <path d="M105 2045 C105 2053 118 2059 138 2059 C225 2059 320 1970 430 1970" fill="none" stroke="#d97706" stroke-width="6"/>
+
+  <circle cx="500" cy="1966" r="23" fill="#ea580c"/>
+  <path d="M490 1966h19m-7-7 7 7-7 7" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <rect x="542" y="1844" width="400" height="225" rx="18" fill="#fffbeb"/>
+  <text x="562" y="1872" class="panel-kicker" fill="#b45309">AANSLUITEN OP HCQ</text>
+  <text x="562" y="1896" class="panel-title">Q · bestaande Quatt connector</text>
+  <path d="M560 1949 C625 1949 690 1949 752 1949" fill="none" stroke="#d97706" stroke-width="6"/>
+  <use href="#hcq-device" transform="translate(748 1908) scale(.62)"/>
+  <text x="562" y="2019" class="map-copy">Gebruik de</text>
+  <text x="562" y="2038" class="map-copy">originele stekker.</text>
+
+  <!-- Stap 6 -->
+  <rect x="32" y="2111" width="936" height="405" rx="24" fill="#f5f3ff" stroke="#ddd6fe"/>
+  <text x="58" y="2153" class="step-no">06 · OPTIONEEL · CiC-COMPATIBILITEIT</text>
+  <text x="58" y="2188" class="step-title">Verbind M2 met de vrijgekomen CiC-Modbuspoort.</text>
+  <text x="58" y="2217" class="step-copy">OpenQuatt stuurt zo meetdata naar de CiC, zodat de Quatt app kan blijven meekijken.</text>
+
+  <rect x="58" y="2237" width="400" height="244" rx="18" fill="#f8fafc"/>
+  <text x="78" y="2265" class="panel-kicker">AANSLUITEN OP CiC</text>
+  <text x="78" y="2289" class="panel-title">Vrijgekomen buitenunit-Modbus · A / G / B</text>
+
+  <rect x="542" y="2237" width="400" height="244" rx="18" fill="#ede9fe"/>
+  <text x="562" y="2265" class="panel-kicker" fill="#6d28d9">AANSLUITEN OP HCQ</text>
+  <text x="562" y="2289" class="panel-title">M2 · GND / A / B</text>
+
+  <use href="#cic-device" transform="translate(76 2302) scale(.62)"/>
+  <path d="M203 2433 C203 2440 220 2440 245 2440 H820 C870 2440 895 2415 895 2402 C895 2386 858 2377 820 2377" fill="none" stroke="#16a34a" stroke-width="5" stroke-linecap="round"/>
+  <path d="M192 2433 C192 2448 212 2448 242 2448 H830 C880 2448 905 2420 905 2408 C905 2392 860 2382 820 2382" fill="none" stroke="#dc2626" stroke-width="5" stroke-linecap="round"/>
+  <path d="M214 2433 C214 2456 232 2456 258 2456 H840 C890 2456 915 2425 915 2414 C915 2398 862 2387 820 2387" fill="none" stroke="#2563eb" stroke-width="5" stroke-linecap="round"/>
+  <use href="#hcq-device" transform="translate(687 2302) scale(.62)"/>
+
+  <text x="500" y="2503" class="map-copy" text-anchor="middle">Na Quick Start: Instellingen → Bronnen / integraties → CiC-compatibiliteit (standaard uit).</text>
+
+  <!-- Stap 7 -->
+  <rect x="32" y="2532" width="936" height="329" rx="24" fill="#f0fdf4" stroke="#bbf7d0"/>
+  <text x="58" y="2574" class="step-no">07 · EINDCONTROLE</text>
+  <text x="58" y="2609" class="step-title">Schakel pas in als elke kabel op de juiste plek zit.</text>
+  <use href="#hcq-device" transform="translate(83 2635) scale(.82)"/>
+  <circle cx="348" cy="2663" r="14" fill="#dcfce7"/><path d="M341 2663l6 6 11-13" fill="none" stroke="#15803d" stroke-width="3"/>
+  <text x="375" y="2669" class="check">M1: A → A, G → GND en B → B.</text>
+  <circle cx="348" cy="2697" r="14" fill="#dcfce7"/><path d="M341 2697l6 6 11-13" fill="none" stroke="#15803d" stroke-width="3"/>
+  <text x="375" y="2703" class="check">OTT is aangesloten. De ketel via OTB óf R1, nooit beide.</text>
+  <circle cx="348" cy="2731" r="14" fill="#dcfce7"/><path d="M341 2731l6 6 11-13" fill="none" stroke="#15803d" stroke-width="3"/>
+  <text x="375" y="2737" class="check">De Q-stekker en alle overige verbindingen zitten stevig vast.</text>
+  <circle cx="348" cy="2765" r="14" fill="#dcfce7"/><path d="M341 2765l6 6 11-13" fill="none" stroke="#15803d" stroke-width="3"/>
+  <text x="375" y="2771" class="check">M2 is alleen aangesloten als je CiC-compatibiliteit wilt.</text>
+  <rect x="335" y="2802" width="565" height="46" rx="12" fill="#166534"/>
+  <text x="359" y="2831" class="map-title completion-title">Voed HCQ via USB. Schakel daarna de Quatt-buitenunit(s) in.</text>
+
+  <text x="54" y="2881" class="micro" fill="#64748b">Schematische weergave · volg bij twijfel altijd de labels op de hardware en maak vóór loshalen een foto.</text>
+</svg>

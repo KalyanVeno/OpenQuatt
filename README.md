@@ -4,10 +4,15 @@
 
 OpenQuatt is open-source ESPHome-firmware voor Quatt Hybrid `Single`- en `Duo`-installaties. Het project geeft je lokaal inzicht, lokale controle, een uitgebreide web-app en optionele Home Assistant-integratie bovenop de bestaande Quatt-hardware.
 
+> [!IMPORTANT]
+> OpenQuatt is momenteel een **open-sourceproject op best-effortbasis**. Ontwikkeling, documentatie en ondersteuning worden door de community geleverd op basis van beschikbare tijd; er is geen gegarandeerde responstijd of individuele ondersteuning.
+>
+> Voor gebruiksvragen en hulp bij diagnose kun je terecht in het [OpenQuatt Discord-kanaal](https://discord.com/channels/1176602554885492786/1464174190788874427). Een reproduceerbare bug meld je als [GitHub-issue](https://github.com/jeroen85/OpenQuatt/issues/new/choose).
+
 > [!WARNING]
 > OpenQuatt is community-firmware voor gebruikers met enig technisch inzicht. Gebruik het bewust en test wijzigingen stap voor stap.
 >
-> Gebruik van OpenQuatt kan gevolgen hebben voor je Quatt-garantie. De standaard commerciële Quatt-garantie vervalt in principe bij gebruik van externe aansturing zoals OpenQuatt. De wettelijke garantie blijft bestaan, maar een garantieclaim kan daardoor in de praktijk wel ingewikkelder worden.
+> Gebruik van OpenQuatt kan gevolgen hebben voor Quatts commerciële garantie. Raadpleeg de [actuele Quatt-voorwaarden](https://www.quatt.io/algemene-voorwaarden); wettelijke rechten staan daar los van.
 
 ## Wat is OpenQuatt?
 
@@ -17,12 +22,12 @@ OpenQuatt is bedoeld voor gebruikers van een Quatt Hybrid `Single` of `Duo` die:
 - lokale controle willen via een uitgebreide web-app;
 - instellingen en verwarmingsstrategie zelf willen beheren;
 - koeling willen kunnen gebruiken waar hun installatie dat ondersteunt;
-- optioneel Home Assistant willen gebruiken voor dashboarding en automatisering;
+- Home Assistant willen gebruiken voor dashboards en automatisering;
 - via de installer de juiste firmware voor hun opstelling, hardware en verbinding willen kiezen.
 
 OpenQuatt richt zich niet op Quatt All-Electric, Quatt Chill of koppeling met Quatt HomeBattery.
 
-Je hoeft voor de eerste installatie niet eerst alle technische achtergronddocumenten te lezen. De hoofdroute is: installer openen, je opstelling, hardware en verbinding kiezen, flashen, `openquatt.local` openen en Quick Start afronden. Home Assistant is optioneel en komt daarna.
+Je hoeft voor de eerste installatie niet eerst alle technische achtergronddocumenten te lezen. De hoofdroute is: installer openen, je opstelling, hardware en verbinding kiezen, flashen, `openquatt.local` openen en Quick Start afronden. Home Assistant is optioneel voor OpenQuatt zelf en aanbevolen voor dashboards en automatisering.
 
 ## Ondersteunde combinaties
 
@@ -30,7 +35,7 @@ OpenQuatt ondersteunt momenteel Quatt Hybrid `Single` en `Duo` (V1, V1.5 en V2).
 
 Voor nieuwe installaties is de [`Electropaultje Heatpump Controller Q-edition`](https://electropaultje.nl/product/heatpump-controller-q-edition/) de aanbevolen en volledig ondersteunde module. Deze hardware is speciaal voor OpenQuatt gemaakt en is de primaire focus voor support en nieuwe ontwikkeling.
 
-`Waveshare ESP32-S3-Relay-1CH` en `Electropaultje Heatpump Listener` blijven beschikbaar met limited/best-effort support. Ze blijven waarschijnlijk gewoon functioneren, maar actieve ontwikkeling en support richten zich op Q-edition.
+`Waveshare ESP32-S3-Relay-1CH` en `Electropaultje Heatpump Listener` blijven beschikbaar met limited/best-effort support. Ze blijven waarschijnlijk gewoon functioneren, maar actieve ontwikkeling en support richten zich op de Heatpump Controller Q-edition.
 
 Alle Wi-Fi-combinaties van bovenstaande opstelling en hardware zijn beschikbaar. Voor de Heatpump Controller Q zijn daarnaast Ethernet-builds beschikbaar voor `Single` en `Duo`. Ethernet en Wi-Fi zijn nu nog aparte firmware-builds; een Ethernet-build verwacht dus een werkende kabel/netwerkroute en heeft geen automatische Wi-Fi fallback of captive portal.
 
@@ -48,6 +53,7 @@ Alleen de nieuwste stabiele eerste-installatiebestanden worden standaard via de 
 
 Voor de volledige installatiestappen en eerste controle:
 
+- [Heatpump Controller Q-edition aansluiten en in gebruik nemen](docs/q-edition.md)
 - [Installatie en ingebruikname](docs/installatie-en-ingebruikname.md)
 - [Web-app gebruiken](docs/web-app.md)
 - [Web-app demo](https://jeroen85.github.io/OpenQuatt/demo/)
@@ -83,8 +89,8 @@ Alle ondersteunde OpenQuatt-profielen gebruiken PSRAM. De firmware zet `psram.ig
 Belangrijke beperkingen voor deze fase:
 
 - OpenQuatt is bedoeld voor Quatt Hybrid `Single` en `Duo`, niet voor Quatt All-Electric, Quatt Chill of Quatt HomeBattery.
-- Q-edition is de support- en ontwikkelfocus; Waveshare en Heatpump Listener zijn limited/best-effort.
-- OpenTherm betekent nu: thermostaat uitlezen op Q-edition. OpenTherm-aansturing van de ketel staat op de roadmap.
+- De Heatpump Controller Q-edition is de support- en ontwikkelfocus; Waveshare en Heatpump Listener zijn limited/best-effort.
+- OpenTherm betekent nu: thermostaat uitlezen op de Heatpump Controller Q-edition. OpenTherm-aansturing van de ketel staat op de roadmap.
 - Ethernet en Wi-Fi zijn nu nog aparte firmware-builds.
 - CV-assist in Heating Curve, CV/boiler-only mode en uitgebreidere storingsafhandeling staan op de roadmap.
 - OpenQuatt is geen officiële Quatt-helpdesk of individuele installatieservice.
@@ -117,4 +123,4 @@ Meer heb je voor normaal gebruik meestal niet nodig.
 
 Dit project bevat een `LICENSE`-bestand in de root van de repository.
 
-Built with <a href="https://esphome.io/"><img src="https://media.esphome.io/logo/logo-text-on-light.svg" alt="ESPHome" height="24" align="absmiddle" /></a>
+Built with [ESPHome](https://esphome.io/).
