@@ -302,11 +302,28 @@ import { render } from "../core/render-scheduler.js";
       updateInstallTargetVersion: "",
       updateInstallPhaseHint: "",
       updateInstallProgressHint: Number.NaN,
+      updateInstallLiveProgressObserved: false,
       updateInstallMode: "",
       updateInstallTargetConnection: "",
       updateInstallTargetTopology: "",
     });
     clearFirmwareOtaQuietWindow();
+  }
+
+  export function primeFirmwareInstallProgressState() {
+    state.entities.firmwareUpdateStatus = {
+      ...(state.entities.firmwareUpdateStatus || {}),
+      state: "Starting",
+      value: "Starting",
+    };
+    state.entities.firmwareUpdateProgress = {
+      ...(state.entities.firmwareUpdateProgress || {}),
+      state: 0,
+      value: 0,
+    };
+    state.updateInstallPhaseHint = "starting";
+    state.updateInstallProgressHint = 0;
+    state.updateInstallLiveProgressObserved = false;
   }
 
   export function resetFirmwareManualUploadSelection() {
@@ -330,7 +347,10 @@ import { render } from "../core/render-scheduler.js";
     const phase = getFirmwareProgressPhase();
     const percent = getFirmwareProgressPercent();
 
-    if (phase === "starting" || phase === "retrying" || phase === "uploading" || phase === "rebooting") {
+    const freshRebootPhase = phase !== "rebooting"
+      || !state.updateInstallBusy
+      || state.updateInstallLiveProgressObserved;
+    if ((phase === "starting" || phase === "retrying" || phase === "uploading" || phase === "rebooting") && freshRebootPhase) {
       state.updateInstallPhaseHint = phase;
       if (!Number.isNaN(percent)) {
         state.updateInstallProgressHint = phase === "rebooting"
@@ -379,7 +399,10 @@ import { render } from "../core/render-scheduler.js";
     syncFirmwareInstallHints();
 
     const livePhase = getFirmwareProgressPhase();
-    const hasLivePhase = livePhase === "starting" || livePhase === "retrying" || livePhase === "uploading" || livePhase === "rebooting";
+    const hasLivePhase = livePhase === "starting"
+      || livePhase === "retrying"
+      || livePhase === "uploading"
+      || (livePhase === "rebooting" && (!state.updateInstallBusy || state.updateInstallLiveProgressObserved));
     const phase = hasLivePhase ? livePhase : state.updateInstallPhaseHint;
     const rawPercent = getFirmwareProgressPercent();
     const hintedPercent = Number.isNaN(state.updateInstallProgressHint) ? 0 : Math.round(state.updateInstallProgressHint);
@@ -792,13 +815,17 @@ import { render } from "../core/render-scheduler.js";
       await wait(attempt === 0 ? initialDelayMs : pollDelayMs);
       try {
         await refreshEntities(FIRMWARE_MODAL_KEYS, "all", { forceMissing: true });
+        const livePhase = getFirmwareProgressPhase();
+        if (livePhase === "starting" || livePhase === "retrying" || livePhase === "uploading") {
+          state.updateInstallLiveProgressObserved = true;
+        }
         const failureMessage = getFirmwareInstallFailureMessage();
         if (failureMessage) {
           const failure = new Error(failureMessage);
           failure.firmwareInstallTerminal = true;
           throw failure;
         }
-        if (getFirmwareProgressPhase() === "rebooting") {
+        if (livePhase === "rebooting" && state.updateInstallLiveProgressObserved) {
           beginDeviceReconnect("ota");
         }
         render();
