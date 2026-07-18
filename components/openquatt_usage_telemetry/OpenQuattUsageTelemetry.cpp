@@ -154,7 +154,8 @@ void OpenQuattUsageTelemetry::dump_config() {
   ESP_LOGCONFIG(TAG, "OpenQuatt usage statistics:");
   ESP_LOGCONFIG(TAG, "  Enabled: %s", YESNO(this->enabled_.load()));
   ESP_LOGCONFIG(TAG, "  Broker configured: %s", YESNO(this->is_configured()));
-  ESP_LOGCONFIG(TAG, "  TLS port: %u", this->port_);
+  ESP_LOGCONFIG(TAG, "  Transport: %s", this->tls_ ? "MQTT/TLS" : "MQTT");
+  ESP_LOGCONFIG(TAG, "  Port: %u", this->port_);
   ESP_LOGCONFIG(TAG, "  Default on for new installations: %s", YESNO(this->default_enabled_));
   ESP_LOGCONFIG(TAG, "  Quick Start complete: %s", YESNO(this->is_setup_complete_()));
   ESP_LOGCONFIG(TAG, "  Publish interval: %" PRIu32 " seconds", this->interval_ms_ / 1000U);
