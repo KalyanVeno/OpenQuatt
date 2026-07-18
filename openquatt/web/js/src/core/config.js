@@ -20,6 +20,7 @@
     ["flow", "Flowregeling en afstelling", "Leg daarna vast hoe de pomp geregeld moet worden en welke waarden daarbij horen. De autotune staat later onder Instellingen → Installatie → Service & commissioning."],
     ["water", "Watertemperatuur beveiligen", "Controleer de normale bovengrens en de tripgrens voor het watercircuit."],
     ["silent", "Stille uren en niveaus", "Stel daarna het stille venster en de compressorlimieten voor dag en nacht in."],
+    ["usage-telemetry", "Gebruiksstatistieken", "Kies bewust of OpenQuatt beperkte technische gebruiksstatistieken mag delen.", "usageTelemetryEnabled"],
     ["confirm", "Bevestigen en afronden", "Controleer nog één keer je keuzes. Met afronden markeer je Quick Start als voltooid."],
   ].map(([id, title, copy, optionalEntity], index) => ({ id, kicker: `Stap ${index + 1}`, title, copy, ...(optionalEntity ? { optionalEntity } : {}) }));
 
@@ -97,6 +98,7 @@
     wifiSignal: { domain: "sensor", name: "WiFi Signal", optional: true },
     espInternalTemp: { domain: "sensor", name: "ESP Internal Temperature", optional: true },
     statusLedsEnabled: { domain: "switch", name: "Status LEDs enabled", optional: true },
+    usageTelemetryEnabled: { domain: "switch", name: "Usage statistics", optional: true },
     hpGeneration: { domain: "select", name: "Quatt Hybrid version" },
     strategy: { domain: "select", name: "Heating Control Mode" },
     openquattEnabled: { domain: "switch", name: "OpenQuatt Enabled", optional: true },
@@ -1440,6 +1442,7 @@
     "boilerRatedHeatPower",
     ...COMMISSIONING_STATE_KEYS,
     "manualCoolingEnable",
+    "usageTelemetryEnabled",
     "silentModeOverride",
     "trendHistoryEnabled",
     "trendHistoryFlashEnabled",
@@ -1485,6 +1488,7 @@
     "coolingFallbackMinSupplyTemp",
     "coolingEffectiveMinSupplyTemp",
     "statusLedsEnabled",
+    "usageTelemetryEnabled",
   ]);
   // Keep this aligned with persisted UI settings. The build checks that new
   // writable settings are backed up or explicitly excluded above.

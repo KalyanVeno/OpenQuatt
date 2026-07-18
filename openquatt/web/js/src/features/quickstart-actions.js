@@ -40,6 +40,9 @@ import { render } from "../core/render-scheduler.js";
     if (stepId === "silent") {
       return [...new Set([...base, ...SILENT_SETTING_KEYS])];
     }
+    if (stepId === "usage-telemetry") {
+      return [...new Set([...base, "usageTelemetryEnabled"])];
+    }
     if (stepId === "confirm") {
       return [...new Set([
         ...base,

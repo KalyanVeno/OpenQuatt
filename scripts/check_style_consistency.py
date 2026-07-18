@@ -122,6 +122,7 @@ STRICT_TOP_LEVEL_ORDER_RULES = {
     ),
     "openquatt/topology/duo.yaml": (
         "secondary_hp_id",
+        "oq_topology",
         "secondary_outside_is_distinct",
         "flow_secondary_enabled",
         "flow_mismatch_internal",
@@ -142,6 +143,7 @@ STRICT_TOP_LEVEL_ORDER_RULES = {
     ),
     "openquatt/topology/single.yaml": (
         "secondary_hp_id",
+        "oq_topology",
         "secondary_outside_is_distinct",
         "flow_secondary_enabled",
         "flow_mismatch_internal",
@@ -297,6 +299,7 @@ NESTED_KEY_ORDER_RULES = {
         "oq_cic",
         "oq_ha_inputs",
         "oq_mqtt_ingress",
+        "oq_usage_telemetry",
         "oq_local_sensors",
         "oq_sensor_sources",
     ),
