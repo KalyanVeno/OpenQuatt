@@ -13,6 +13,7 @@ from esphome.core import CORE
 
 CONF_BROKER = "broker"
 CONF_PORT = "port"
+CONF_TLS = "tls"
 CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
 CONF_TOPIC = "topic"
@@ -55,6 +56,7 @@ CONFIG_SCHEMA = cv.All(
         {
             cv.Optional(CONF_BROKER, default=""): cv.All(cv.string_strict, cv.Length(max=128)),
             cv.Optional(CONF_PORT, default=8883): cv.port,
+            cv.Optional(CONF_TLS, default=True): cv.boolean,
             cv.Optional(CONF_USERNAME, default=""): cv.All(cv.string_strict, cv.Length(max=96)),
             cv.Optional(CONF_PASSWORD, default=""): cv.sensitive(
                 cv.All(cv.string_strict, cv.Length(max=192))
@@ -93,6 +95,7 @@ async def to_code(config):
 
     cg.add(var.set_broker(config[CONF_BROKER]))
     cg.add(var.set_port(config[CONF_PORT]))
+    cg.add(var.set_tls(config[CONF_TLS]))
     cg.add(var.set_username(config[CONF_USERNAME]))
     cg.add(var.set_password(config[CONF_PASSWORD]))
     cg.add(var.set_topic(config[CONF_TOPIC]))

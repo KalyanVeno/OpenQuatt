@@ -218,7 +218,7 @@ Het bericht bevat geen MAC-adres, meetwaarden, regelwaarden, instellingen of log
 
 Wanneer delen voor het eerst actief wordt, maakt de controller met de hardware-randomgenerator een UUIDv4 aan en bewaart die lokaal. Een UUIDv4 heeft 122 willekeurige bits; zelfs bij één miljoen installaties is de kans op minstens één dubbel ID kleiner dan ongeveer `10^-25`. Dit ID blijft gelijk na een OTA-update en wanneer je delen tijdelijk uitzet. Een fabrieksreset maakt een nieuw ID. De keuze en het ID worden niet via een instellingenbackup naar een andere controller gekopieerd. Uitzetten stopt nieuwe berichten direct; er wordt geen wachtrij voor later opgeslagen.
 
-De statistiekenclient staat los van de configureerbare [MQTT inputbronnen](mqtt.md): hij publiceert alleen dit ene bericht, subscribed nergens op en schakelt ESPHome MQTT-discovery, entiteitspublicaties en logexport niet in. Een build zonder geconfigureerde centrale broker maakt ook wanneer delen aanstaat geen externe verbinding.
+De statistiekenclient staat los van de configureerbare [MQTT inputbronnen](mqtt.md): hij publiceert alleen dit ene bericht, subscribed nergens op en schakelt ESPHome MQTT-discovery, entiteitspublicaties en logexport niet in. Het JSON-bericht wordt met QoS 1 retained gepubliceerd op `devices/<installation-id>/telemetry`, zodat de broker per installatie alleen de laatste payload bewaart. Een build zonder geconfigureerde centrale broker maakt ook wanneer delen aanstaat geen externe verbinding.
 
 #### Debugopname voor support
 

@@ -21,6 +21,7 @@ class OpenQuattUsageTelemetry : public switch_::Switch, public Component {
  public:
   void set_broker(const std::string &broker) { this->broker_ = broker; }
   void set_port(uint16_t port) { this->port_ = port; }
+  void set_tls(bool tls) { this->tls_ = tls; }
   void set_username(const std::string &username) { this->username_ = username; }
   void set_password(const std::string &password) { this->password_ = password; }
   void set_topic(const std::string &topic) { this->topic_ = topic; }
@@ -87,6 +88,7 @@ class OpenQuattUsageTelemetry : public switch_::Switch, public Component {
 
   std::string broker_;
   uint16_t port_{8883};
+  bool tls_{true};
   std::string username_;
   std::string password_;
   std::string topic_;
@@ -105,6 +107,7 @@ class OpenQuattUsageTelemetry : public switch_::Switch, public Component {
   ESPPreferenceObject pref_;
   std::array<uint8_t, 16> installation_id_bytes_{};
   std::string installation_id_;
+  std::string publish_topic_;
   std::string payload_;
   esp_mqtt_client_handle_t mqtt_client_{nullptr};
   SemaphoreHandle_t runtime_lock_{nullptr};

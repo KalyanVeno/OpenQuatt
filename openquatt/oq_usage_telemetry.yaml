@@ -1,7 +1,7 @@
 # ==============================================================================
 # OpenQuatt - Optional Usage Statistics
 # ==============================================================================
-# Dedicated outbound-only MQTT/TLS client. This intentionally does not enable
+# Dedicated outbound-only MQTT client. This intentionally does not enable
 # ESPHome's global MQTT component and therefore does not export component state,
 # discovery messages or logs.
 # ==============================================================================
@@ -17,6 +17,7 @@ openquatt_usage_telemetry:
   name: "Usage statistics"
   broker: "${usage_telemetry_broker}"
   port: ${usage_telemetry_port}
+  tls: ${usage_telemetry_tls}
   username: "${usage_telemetry_username}"
   password: "${usage_telemetry_password}"
   topic: "${usage_telemetry_topic}"

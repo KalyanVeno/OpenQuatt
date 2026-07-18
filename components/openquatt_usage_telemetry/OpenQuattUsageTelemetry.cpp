@@ -312,8 +312,10 @@ bool OpenQuattUsageTelemetry::start_client_() {
   esp_mqtt_client_config_t mqtt_config{};
   mqtt_config.broker.address.hostname = this->broker_.c_str();
   mqtt_config.broker.address.port = this->port_;
-  mqtt_config.broker.address.transport = MQTT_TRANSPORT_OVER_SSL;
-  mqtt_config.broker.verification.crt_bundle_attach = esp_crt_bundle_attach;
+  mqtt_config.broker.address.transport = this->tls_ ? MQTT_TRANSPORT_OVER_SSL : MQTT_TRANSPORT_OVER_TCP;
+  if (this->tls_) {
+    mqtt_config.broker.verification.crt_bundle_attach = esp_crt_bundle_attach;
+  }
   mqtt_config.credentials.client_id = this->installation_id_.c_str();
   mqtt_config.session.keepalive = 30;
   mqtt_config.session.disable_clean_session = false;
@@ -506,8 +508,10 @@ void OpenQuattUsageTelemetry::mqtt_event_handler_(void *handler_args, esp_event_
         self->publish_failed_.store(true);
         break;
       }
-      const int message_id = esp_mqtt_client_enqueue(event->client, self->topic_.c_str(), self->payload_.c_str(),
-                                                     static_cast<int>(self->payload_.size()), 1, 0, true);
+      self->publish_topic_ = self->topic_ + "/" + self->installation_id_ + "/telemetry";
+      const int message_id = esp_mqtt_client_enqueue(event->client, self->publish_topic_.c_str(),
+                                                     self->payload_.c_str(), static_cast<int>(self->payload_.size()),
+                                                     1, 1, true);
       if (message_id < 0) {
         self->publish_failed_.store(true);
       } else {
