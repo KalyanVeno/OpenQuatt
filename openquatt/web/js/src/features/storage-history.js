@@ -1455,6 +1455,10 @@ import { render } from "../core/render-scheduler.js";
     applied.push("mqtt.config");
   }
 
+  export function shouldDisableUsageTelemetryForSetupRestore(shouldCompleteSetup, setupWasComplete) {
+    return shouldCompleteSetup && !setupWasComplete;
+  }
+
   export async function restoreSettingsBackup() {
     const draft = state.settingsBackupDraft;
     if (!draft || state.settingsBackupBusy) {
@@ -1479,12 +1483,15 @@ import { render } from "../core/render-scheduler.js";
     const unknown = getSettingsBackupUnknownItems(draft);
     const deferredMqttSources = [];
     let shouldCompleteSetup = false;
+    let setupWasComplete = false;
+    let setupCompletionSafe = true;
     let mqttContext = null;
     let mqttRestoreReady = false;
     let mqttRestoreFailureDetail = draft.mqtt ? "" : "Backup bevat geen MQTT-configuratie.";
 
     try {
-      await refreshEntities(SETTINGS_BACKUP_KEYS, "all");
+      await refreshEntities([...SETTINGS_BACKUP_KEYS, "usageTelemetryEnabled"], "all");
+      setupWasComplete = isEntityActive("setupComplete");
 
       if (draft.mqtt) {
         try {
@@ -1636,7 +1643,23 @@ import { render } from "../core/render-scheduler.js";
         }
       }
 
-      if (shouldCompleteSetup && ENTITY_DEFS.apply) {
+      if (shouldDisableUsageTelemetryForSetupRestore(shouldCompleteSetup, setupWasComplete) && hasEntity("usageTelemetryEnabled")) {
+        try {
+          await setEntityBackupValue("usageTelemetryEnabled", false);
+          applied.push("usageTelemetryEnabled");
+        } catch (error) {
+          setupCompletionSafe = false;
+          skipped.push(createSettingsBackupRestoreItem(
+            "usageTelemetryEnabled",
+            "Installatie",
+            "Gebruiksstatistieken uitschakelen mislukt",
+            String(error?.message || error),
+            "error",
+          ));
+        }
+      }
+
+      if (shouldCompleteSetup && ENTITY_DEFS.apply && setupCompletionSafe) {
         try {
           const response = await fetch(buildEntityPath("button", "Complete setup", "press"), { method: "POST" });
           if (!response.ok) {
@@ -1652,6 +1675,14 @@ import { render } from "../core/render-scheduler.js";
             "error",
           ));
         }
+      } else if (shouldCompleteSetup && !setupCompletionSafe) {
+        skipped.push(createSettingsBackupRestoreItem(
+          "setupComplete",
+          "Installatie",
+          "Setup bewust niet afgerond",
+          "Gebruiksstatistieken konden niet veilig worden uitgeschakeld.",
+          "error",
+        ));
       } else if (Object.prototype.hasOwnProperty.call(draft.settings?.installation || {}, "setupComplete")) {
         skipped.push(createSettingsBackupRestoreItem(
           "setupComplete",

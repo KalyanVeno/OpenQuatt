@@ -720,7 +720,7 @@ import { escapeHtml } from "../core/html.js";
             <div>
               <span class="oq-usage-consent-kicker">Vrijwillige keuze</span>
               <h3>Beperkte statistieken delen</h3>
-              <p>Pas na het afronden, met een willekeurige startvertraging, en daarna ongeveer elke vier uur via MQTT met TLS.</p>
+              <p>Pas na het afronden, met een willekeurige startvertraging, en daarna ongeveer elke vier uur via MQTT. De huidige verbinding op poort 1883 is niet versleuteld.</p>
             </div>
           </div>
           <div class="oq-usage-consent-action">

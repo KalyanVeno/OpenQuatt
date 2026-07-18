@@ -14,7 +14,7 @@ export function renderSettingsPrivacySection() {
       ${renderSettingsSwitchField(
         "usageTelemetryEnabled",
         "Technische gebruiksstatistieken delen",
-        "Ongeveer elke vier uur via MQTT met TLS: een willekeurig installatie-ID, uptime, firmware en releasekanaal, hardwareprofiel en -revisie, opstelling en verbindingstype. Geen MAC-adres, meetwaarden, regelwaarden, instellingen of logs.",
+        "Ongeveer elke vier uur via MQTT: een willekeurig installatie-ID, uptime, firmware en releasekanaal, hardwareprofiel en -revisie, opstelling en verbindingstype. De huidige verbinding op poort 1883 is niet versleuteld. Geen MAC-adres, meetwaarden, regelwaarden, instellingen of logs.",
         "Delen staat aan. Uitzetten stopt nieuwe berichten; het installatie-ID blijft lokaal bewaard.",
         "Delen staat uit. Er worden geen gebruiksstatistieken verstuurd.",
       )}

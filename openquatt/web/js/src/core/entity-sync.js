@@ -319,7 +319,7 @@ import { fetchWithTimeout } from "./browser-utils.js";
   export const OVERVIEW_BULK_FOLLOWUP_DELAY_MS = 3500;
 
   export function getPrimeBaseKeys() {
-    return ["setupComplete", "strategy", ...HEADER_ENTITY_KEYS];
+    return ["setupComplete", "strategy", "usageTelemetryEnabled", ...HEADER_ENTITY_KEYS];
   }
 
   export function getEnergyViewEntityKeys() {
