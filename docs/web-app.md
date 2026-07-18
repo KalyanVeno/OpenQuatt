@@ -202,7 +202,7 @@ Hier vind je beheerfuncties:
 
 #### Gebruiksstatistieken en privacy
 
-Delen staat standaard aan en de opt-out verschijnt tijdens Quick Start, vóór het afronden. Je kunt de keuze later wijzigen via **Instellingen → Systeem → Gebruiksstatistieken**. Als delen aan staat, verstuurt OpenQuatt na een willekeurige startvertraging en daarna ongeveer elke vier uur één klein MQTT-bericht via TLS.
+Delen staat standaard aan en de opt-out verschijnt tijdens Quick Start, vóór het afronden. Je kunt de keuze later wijzigen via **Instellingen → Systeem → Gebruiksstatistieken**. De eerste verzendtimer start pas nadat Quick Start is afgerond. Als delen dan nog aan staat, verstuurt OpenQuatt na een willekeurige startvertraging en daarna ongeveer elke vier uur één klein MQTT-bericht via TLS.
 
 Het bericht bevat uitsluitend:
 

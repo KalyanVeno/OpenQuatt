@@ -106,7 +106,7 @@ void OpenQuattUsageTelemetry::setup() {
   }
 
   this->apply_storage_(storage);
-  if (this->enabled_.load()) {
+  if (this->enabled_.load() && this->is_setup_complete_()) {
     this->schedule_initial_publish_();
   }
 }
@@ -131,7 +131,11 @@ void OpenQuattUsageTelemetry::loop() {
     return;
   }
 
-  if (!this->enabled_.load() || !this->is_configured() || !network::is_connected()) {
+  if (!this->enabled_.load() || !this->is_setup_complete_() || !this->is_configured() ||
+      !network::is_connected()) {
+    if (!this->is_setup_complete_()) {
+      this->next_publish_ms_ = 0;
+    }
     return;
   }
   if (this->next_publish_ms_ == 0U) {
@@ -148,6 +152,7 @@ void OpenQuattUsageTelemetry::dump_config() {
   ESP_LOGCONFIG(TAG, "  Broker configured: %s", YESNO(this->is_configured()));
   ESP_LOGCONFIG(TAG, "  TLS port: %u", this->port_);
   ESP_LOGCONFIG(TAG, "  Default on for new installations: %s", YESNO(this->default_enabled_));
+  ESP_LOGCONFIG(TAG, "  Quick Start complete: %s", YESNO(this->is_setup_complete_()));
   ESP_LOGCONFIG(TAG, "  Publish interval: %" PRIu32 " seconds", this->interval_ms_ / 1000U);
   ESP_LOGCONFIG(TAG, "  Installation ID present: %s", YESNO(!this->installation_id_.empty()));
 }
@@ -183,7 +188,11 @@ void OpenQuattUsageTelemetry::write_state(bool state) {
   this->apply_storage_(storage);
   if (state) {
     this->consecutive_failures_ = 0;
-    this->schedule_initial_publish_();
+    if (this->is_setup_complete_()) {
+      this->schedule_initial_publish_();
+    } else {
+      this->next_publish_ms_ = 0;
+    }
     if (!this->is_configured()) {
       ESP_LOGW(TAG, "Usage statistics were enabled, but no telemetry broker is configured in this build");
     }
@@ -228,6 +237,11 @@ bool OpenQuattUsageTelemetry::ensure_installation_id_(Storage *storage) {
   storage->installation_id[8] = static_cast<uint8_t>((storage->installation_id[8] & 0x3FU) | 0x80U);
   storage->installation_id_present = 1U;
   return uuid_is_present_(storage->installation_id);
+}
+
+bool OpenQuattUsageTelemetry::is_setup_complete_() const {
+  return this->setup_complete_sensor_ != nullptr && this->setup_complete_sensor_->has_state() &&
+         this->setup_complete_sensor_->state;
 }
 
 void OpenQuattUsageTelemetry::apply_storage_(const Storage &storage) {
@@ -286,7 +300,8 @@ void OpenQuattUsageTelemetry::start_publish_session_() {
 }
 
 bool OpenQuattUsageTelemetry::start_client_() {
-  if (!this->enabled_.load() || !this->session_active_.load() || !this->is_configured()) {
+  if (!this->enabled_.load() || !this->session_active_.load() || !this->is_setup_complete_() ||
+      !this->is_configured()) {
     return false;
   }
 

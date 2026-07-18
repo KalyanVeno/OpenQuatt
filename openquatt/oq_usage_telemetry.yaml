@@ -21,6 +21,7 @@ openquatt_usage_telemetry:
   password: "${usage_telemetry_password}"
   topic: "${usage_telemetry_topic}"
   default_enabled: true
+  setup_complete_sensor: oq_setup_complete_sensor
   interval: 4h
   initial_delay_min: 15min
   initial_delay_max: 60min

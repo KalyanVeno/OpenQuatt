@@ -8,6 +8,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
+#include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/switch/switch.h"
 #include "esphome/core/component.h"
 #include "esphome/core/preferences.h"
@@ -24,6 +25,7 @@ class OpenQuattUsageTelemetry : public switch_::Switch, public Component {
   void set_password(const std::string &password) { this->password_ = password; }
   void set_topic(const std::string &topic) { this->topic_ = topic; }
   void set_default_enabled(bool enabled) { this->default_enabled_ = enabled; }
+  void set_setup_complete_sensor(binary_sensor::BinarySensor *sensor) { this->setup_complete_sensor_ = sensor; }
   void set_interval_ms(uint32_t interval_ms) { this->interval_ms_ = interval_ms; }
   void set_initial_delay_min_ms(uint32_t delay_ms) { this->initial_delay_min_ms_ = delay_ms; }
   void set_initial_delay_max_ms(uint32_t delay_ms) { this->initial_delay_max_ms_ = delay_ms; }
@@ -66,6 +68,7 @@ class OpenQuattUsageTelemetry : public switch_::Switch, public Component {
   bool load_storage_(Storage *storage);
   bool save_storage_(const Storage &storage);
   bool ensure_installation_id_(Storage *storage);
+  bool is_setup_complete_() const;
   void apply_storage_(const Storage &storage);
   void schedule_initial_publish_();
   void schedule_regular_publish_();
@@ -88,6 +91,7 @@ class OpenQuattUsageTelemetry : public switch_::Switch, public Component {
   std::string password_;
   std::string topic_;
   bool default_enabled_{true};
+  binary_sensor::BinarySensor *setup_complete_sensor_{nullptr};
   uint32_t interval_ms_{4UL * 60UL * 60UL * 1000UL};
   uint32_t initial_delay_min_ms_{15UL * 60UL * 1000UL};
   uint32_t initial_delay_max_ms_{60UL * 60UL * 1000UL};

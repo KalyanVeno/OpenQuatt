@@ -1,6 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import switch
+from esphome.components import binary_sensor, switch
 from esphome.components.esp32 import (
     add_idf_sdkconfig_option,
     add_idf_component,
@@ -17,6 +17,7 @@ CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
 CONF_TOPIC = "topic"
 CONF_DEFAULT_ENABLED = "default_enabled"
+CONF_SETUP_COMPLETE_SENSOR = "setup_complete_sensor"
 CONF_INTERVAL = "interval"
 CONF_INITIAL_DELAY_MIN = "initial_delay_min"
 CONF_INITIAL_DELAY_MAX = "initial_delay_max"
@@ -60,6 +61,7 @@ CONFIG_SCHEMA = cv.All(
             ),
             cv.Required(CONF_TOPIC): cv.All(cv.publish_topic, cv.Length(max=128)),
             cv.Optional(CONF_DEFAULT_ENABLED, default=True): cv.boolean,
+            cv.Required(CONF_SETUP_COMPLETE_SENSOR): cv.use_id(binary_sensor.BinarySensor),
             cv.Optional(CONF_INTERVAL, default="4h"): cv.positive_time_period_milliseconds,
             cv.Optional(CONF_INITIAL_DELAY_MIN, default="15min"): cv.positive_time_period_milliseconds,
             cv.Optional(CONF_INITIAL_DELAY_MAX, default="60min"): cv.positive_time_period_milliseconds,
@@ -95,6 +97,8 @@ async def to_code(config):
     cg.add(var.set_password(config[CONF_PASSWORD]))
     cg.add(var.set_topic(config[CONF_TOPIC]))
     cg.add(var.set_default_enabled(config[CONF_DEFAULT_ENABLED]))
+    setup_complete_sensor = await cg.get_variable(config[CONF_SETUP_COMPLETE_SENSOR])
+    cg.add(var.set_setup_complete_sensor(setup_complete_sensor))
     cg.add(var.set_interval_ms(config[CONF_INTERVAL].total_milliseconds))
     cg.add(var.set_initial_delay_min_ms(config[CONF_INITIAL_DELAY_MIN].total_milliseconds))
     cg.add(var.set_initial_delay_max_ms(config[CONF_INITIAL_DELAY_MAX].total_milliseconds))
