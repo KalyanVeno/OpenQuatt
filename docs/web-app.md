@@ -202,7 +202,7 @@ Hier vind je beheerfuncties:
 
 #### Gebruiksstatistieken en privacy
 
-Delen staat standaard aan en de opt-out verschijnt tijdens Quick Start, vóór het afronden. Je kunt de keuze later wijzigen via **Instellingen → Systeem → Gebruiksstatistieken**. De eerste verzendtimer start pas nadat Quick Start is afgerond. Als delen dan nog aan staat, verstuurt OpenQuatt na een willekeurige startvertraging en daarna ongeveer elke vier uur één klein MQTT-bericht via TLS.
+Delen staat standaard aan en de opt-out verschijnt tijdens Quick Start, vóór het afronden. Je kunt de keuze later wijzigen via **Instellingen → Systeem → Gebruiksstatistieken**. De eerste verzendtimer start pas nadat Quick Start is afgerond. Als delen dan nog aan staat, verstuurt OpenQuatt na een willekeurige startvertraging en daarna ongeveer elke vier uur één klein MQTT-bericht. De huidige centrale brokerverbinding op poort 1883 gebruikt nog geen TLS; credentials en payload zijn onderweg daarom niet versleuteld.
 
 Bij een upgrade van een installatie die Quick Start al had afgerond, ontbreekt nog een opgeslagen telemetrykeuze. Zo'n bestaande installatie start daarom eenmalig met delen uit; de gebruiker kan delen later onder **Instellingen → Systeem → Gebruiksstatistieken** aanzetten. Alleen nieuwe installaties die Quick Start nog moeten doorlopen gebruiken de standaard-aan opt-out.
 
