@@ -20,7 +20,7 @@
     ["flow", "Flowregeling en afstelling", "Leg daarna vast hoe de pomp geregeld moet worden en welke waarden daarbij horen. De autotune staat later onder Instellingen → Installatie → Service & commissioning."],
     ["water", "Watertemperatuur beveiligen", "Controleer de normale bovengrens en de tripgrens voor het watercircuit."],
     ["silent", "Stille uren en niveaus", "Stel daarna het stille venster en de compressorlimieten voor dag en nacht in."],
-    ["usage-telemetry", "Gebruiksstatistieken", "Kies bewust of OpenQuatt beperkte technische gebruiksstatistieken mag delen.", "usageTelemetryEnabled"],
+    ["usage-telemetry", "Gebruiksstatistieken", "Controleer of OpenQuatt beperkte technische gebruiksstatistieken mag blijven delen. Delen staat standaard aan.", "usageTelemetryEnabled"],
     ["confirm", "Bevestigen en afronden", "Controleer nog één keer je keuzes. Met afronden markeer je Quick Start als voltooid."],
   ].map(([id, title, copy, optionalEntity], index) => ({ id, kicker: `Stap ${index + 1}`, title, copy, ...(optionalEntity ? { optionalEntity } : {}) }));
 
@@ -1200,6 +1200,7 @@
   export const OVERVIEW_KEYS = [
     "strategy",
     "openquattEnabled",
+    "usageTelemetryEnabled",
     "boilerCvAssistEnabled",
     "openquattResumeAt",
     "manualCoolingEnable",
@@ -1278,6 +1279,7 @@
   export const FAST_OVERVIEW_KEYS = [
     "strategy",
     "openquattEnabled",
+    "usageTelemetryEnabled",
     "boilerCvAssistEnabled",
     "openquattResumeAt",
     "manualCoolingEnable",

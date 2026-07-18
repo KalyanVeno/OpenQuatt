@@ -9,7 +9,7 @@ export function renderSettingsPrivacySection() {
   return renderSettingsSection(
     "Privacy",
     "Gebruiksstatistieken",
-    "Beheer hier of OpenQuatt beperkte technische gebruiksstatistieken mag delen.",
+    "Delen staat standaard aan. Zet het hier uit als je geen technische gebruiksstatistieken wilt versturen.",
     `<div class="oq-settings-grid">
       ${renderSettingsSwitchField(
         "usageTelemetryEnabled",

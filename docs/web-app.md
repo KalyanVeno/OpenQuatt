@@ -63,7 +63,7 @@ Quick Start begint op de Heatpump Controller Q met een controle van de firmware-
 | `Flowregeling en afstelling` | Automatische flow of vaste pompstand | Bepaalt hoe OpenQuatt de waterdoorstroming regelt. |
 | `Watertemperatuur beveiligen` | Maximale watertemperatuur | Laat OpenQuatt terugregelen voordat het water te warm wordt. |
 | `Stille uren en niveaus` | Tijdvenster en compressorlimieten | Begrenst de compressor bijvoorbeeld 's nachts. |
-| `Gebruiksstatistieken` | Wel of niet beperkte technische statistieken delen | Dit is een vrijwillige opt-in en staat standaard uit. |
+| `Gebruiksstatistieken` | Wel of niet beperkte technische statistieken delen | Delen staat standaard aan en kan tijdens Quick Start worden uitgezet. |
 | `Bevestigen en afronden` | Je keuzes controleren | Markeert de basisconfiguratie als klaar. |
 
 Gebruik je Waveshare of Heatpump Listener? Begin dan inhoudelijk bij **Kies je Quatt Hybrid**; Quick Start toont alleen de stappen die voor jouw hardware van toepassing zijn.
@@ -194,7 +194,7 @@ Hier vind je beheerfuncties:
 - opslag voor Diagnose, Beslislog en Energie;
 - firmware-updates en updatekanaal;
 - web-login en API-beveiliging;
-- de opt-in voor gebruiksstatistieken;
+- de keuze voor gebruiksstatistieken;
 - backup en restore;
 - systeemstatus;
 - logboek;
@@ -202,7 +202,7 @@ Hier vind je beheerfuncties:
 
 #### Gebruiksstatistieken en privacy
 
-De opt-in staat standaard uit en verschijnt tijdens Quick Start. Je kunt de keuze later wijzigen via **Instellingen → Systeem → Gebruiksstatistieken**. Als delen aan staat, verstuurt OpenQuatt na een willekeurige startvertraging en daarna ongeveer elke vier uur één klein MQTT-bericht via TLS.
+Delen staat standaard aan en de opt-out verschijnt tijdens Quick Start, vóór het afronden. Je kunt de keuze later wijzigen via **Instellingen → Systeem → Gebruiksstatistieken**. Als delen aan staat, verstuurt OpenQuatt na een willekeurige startvertraging en daarna ongeveer elke vier uur één klein MQTT-bericht via TLS.
 
 Het bericht bevat uitsluitend:
 
@@ -214,9 +214,9 @@ Het bericht bevat uitsluitend:
 
 Het bericht bevat geen MAC-adres, meetwaarden, regelwaarden, instellingen of logs. De MQTT-broker ziet bij een netwerkverbinding technisch wel het bron-IP-adres, maar dit staat niet in de payload.
 
-Bij de eerste opt-in maakt de controller met de hardware-randomgenerator een UUIDv4 aan en bewaart die lokaal. Een UUIDv4 heeft 122 willekeurige bits; zelfs bij één miljoen installaties is de kans op minstens één dubbel ID kleiner dan ongeveer `10^-25`. Dit ID blijft gelijk na een OTA-update en wanneer je delen tijdelijk uitzet. Een fabrieksreset maakt bij een volgende opt-in een nieuw ID. De opt-in en het ID worden niet via een instellingenbackup naar een andere controller gekopieerd. Uitzetten stopt nieuwe berichten direct; er wordt geen wachtrij voor later opgeslagen.
+Bij de eerste opstart maakt de controller met de hardware-randomgenerator een UUIDv4 aan en bewaart die lokaal. Een UUIDv4 heeft 122 willekeurige bits; zelfs bij één miljoen installaties is de kans op minstens één dubbel ID kleiner dan ongeveer `10^-25`. Dit ID blijft gelijk na een OTA-update en wanneer je delen tijdelijk uitzet. Een fabrieksreset maakt een nieuw ID. De keuze en het ID worden niet via een instellingenbackup naar een andere controller gekopieerd. Uitzetten stopt nieuwe berichten direct; er wordt geen wachtrij voor later opgeslagen.
 
-De statistiekenclient staat los van de configureerbare [MQTT inputbronnen](mqtt.md): hij publiceert alleen dit ene bericht, subscribed nergens op en schakelt ESPHome MQTT-discovery, entiteitspublicaties en logexport niet in. Een build zonder geconfigureerde centrale broker maakt ook na opt-in geen externe verbinding.
+De statistiekenclient staat los van de configureerbare [MQTT inputbronnen](mqtt.md): hij publiceert alleen dit ene bericht, subscribed nergens op en schakelt ESPHome MQTT-discovery, entiteitspublicaties en logexport niet in. Een build zonder geconfigureerde centrale broker maakt ook wanneer delen aanstaat geen externe verbinding.
 
 #### Debugopname voor support
 

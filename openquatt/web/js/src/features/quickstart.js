@@ -713,7 +713,7 @@ import { escapeHtml } from "../core/html.js";
       <section class="oq-helper-panel">
         <p class="oq-helper-label">${escapeHtml(getQuickStepKicker("usage-telemetry"))}</p>
         <h2 class="oq-helper-section-title">Gebruiksstatistieken</h2>
-        <p class="oq-helper-section-copy">Je kiest zelf of OpenQuatt beperkte technische statistieken mag delen. De keuze staat standaard uit en blijft later aanpasbaar.</p>
+        <p class="oq-helper-section-copy">OpenQuatt deelt standaard beperkte technische statistieken. Wil je dit niet, zet delen hier uit. Je kunt de keuze later altijd wijzigen.</p>
         <div class="oq-usage-consent${enabled ? " is-enabled" : ""}">
           <div class="oq-usage-consent-copy">
             <span class="oq-usage-consent-icon" aria-hidden="true">${renderOqIcon("bar-chart", "oq-usage-consent-icon-svg")}</span>

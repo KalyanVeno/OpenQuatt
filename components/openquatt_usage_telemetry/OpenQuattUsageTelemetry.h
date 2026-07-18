@@ -23,6 +23,7 @@ class OpenQuattUsageTelemetry : public switch_::Switch, public Component {
   void set_username(const std::string &username) { this->username_ = username; }
   void set_password(const std::string &password) { this->password_ = password; }
   void set_topic(const std::string &topic) { this->topic_ = topic; }
+  void set_default_enabled(bool enabled) { this->default_enabled_ = enabled; }
   void set_interval_ms(uint32_t interval_ms) { this->interval_ms_ = interval_ms; }
   void set_initial_delay_min_ms(uint32_t delay_ms) { this->initial_delay_min_ms_ = delay_ms; }
   void set_initial_delay_max_ms(uint32_t delay_ms) { this->initial_delay_max_ms_ = delay_ms; }
@@ -86,6 +87,7 @@ class OpenQuattUsageTelemetry : public switch_::Switch, public Component {
   std::string username_;
   std::string password_;
   std::string topic_;
+  bool default_enabled_{true};
   uint32_t interval_ms_{4UL * 60UL * 60UL * 1000UL};
   uint32_t initial_delay_min_ms_{15UL * 60UL * 1000UL};
   uint32_t initial_delay_max_ms_{60UL * 60UL * 1000UL};

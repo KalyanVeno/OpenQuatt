@@ -15,12 +15,12 @@ external_components:
 openquatt_usage_telemetry:
   id: oq_usage_telemetry
   name: "Usage statistics"
-  disabled_by_default: true
   broker: "${usage_telemetry_broker}"
   port: ${usage_telemetry_port}
   username: "${usage_telemetry_username}"
   password: "${usage_telemetry_password}"
   topic: "${usage_telemetry_topic}"
+  default_enabled: true
   interval: 4h
   initial_delay_min: 15min
   initial_delay_max: 60min

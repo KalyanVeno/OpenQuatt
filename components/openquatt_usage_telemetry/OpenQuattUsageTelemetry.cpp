@@ -92,11 +92,16 @@ void OpenQuattUsageTelemetry::setup() {
   if (!this->load_storage_(&storage)) {
     storage.magic = STORAGE_MAGIC;
     storage.version = STORAGE_VERSION;
-    storage.enabled = 0;
+    storage.enabled = this->default_enabled_ ? 1U : 0U;
     storage.installation_id_present = 0;
     storage.installation_id.fill(0);
-    if (!this->save_storage_(storage)) {
-      ESP_LOGE(TAG, "Failed to initialize usage telemetry preferences");
+    const bool initialized = (storage.enabled == 0U || this->ensure_installation_id_(&storage)) &&
+                             this->save_storage_(storage);
+    if (!initialized) {
+      ESP_LOGE(TAG, "Failed to initialize usage telemetry preferences; usage statistics remain disabled");
+      storage.enabled = 0;
+      storage.installation_id_present = 0;
+      storage.installation_id.fill(0);
     }
   }
 
@@ -142,6 +147,7 @@ void OpenQuattUsageTelemetry::dump_config() {
   ESP_LOGCONFIG(TAG, "  Enabled: %s", YESNO(this->enabled_.load()));
   ESP_LOGCONFIG(TAG, "  Broker configured: %s", YESNO(this->is_configured()));
   ESP_LOGCONFIG(TAG, "  TLS port: %u", this->port_);
+  ESP_LOGCONFIG(TAG, "  Default on for new installations: %s", YESNO(this->default_enabled_));
   ESP_LOGCONFIG(TAG, "  Publish interval: %" PRIu32 " seconds", this->interval_ms_ / 1000U);
   ESP_LOGCONFIG(TAG, "  Installation ID present: %s", YESNO(!this->installation_id_.empty()));
 }
@@ -183,6 +189,9 @@ void OpenQuattUsageTelemetry::write_state(bool state) {
     }
   } else {
     this->next_publish_ms_ = 0;
+    if (!this->session_active_.load()) {
+      this->payload_.clear();
+    }
     App.wake_loop_threadsafe();
   }
 }
@@ -256,7 +265,9 @@ void OpenQuattUsageTelemetry::start_publish_session_() {
     return;
   }
 
-  this->build_payload_();
+  if (this->payload_.empty()) {
+    this->build_payload_();
+  }
   this->publish_succeeded_.store(false);
   this->publish_failed_.store(false);
   this->pending_message_id_.store(-1);
@@ -350,14 +361,15 @@ void OpenQuattUsageTelemetry::finish_publish_session_(bool succeeded) {
   this->publish_failed_.store(false);
   this->pending_message_id_.store(-1);
   this->finishing_session_.store(false);
-  this->payload_.clear();
 
   if (!this->enabled_.load()) {
+    this->payload_.clear();
     this->next_publish_ms_ = 0;
     this->consecutive_failures_ = 0;
     return;
   }
   if (succeeded) {
+    this->payload_.clear();
     this->consecutive_failures_ = 0;
     this->schedule_regular_publish_();
     ESP_LOGD(TAG, "Usage statistics published successfully");
