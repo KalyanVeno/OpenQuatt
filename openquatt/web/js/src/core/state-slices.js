@@ -191,7 +191,7 @@ export function createFirmwareState() {
     updateInstallTargetVersion: "",
     updateInstallPhaseHint: "",
     updateInstallProgressHint: Number.NaN,
-    updateInstallLiveProgressObserved: false,
+    updateInstallStatusPollObserved: false,
     updateInstallMode: "",
     updateInstallTargetConnection: "",
     updateInstallTargetTopology: "",
