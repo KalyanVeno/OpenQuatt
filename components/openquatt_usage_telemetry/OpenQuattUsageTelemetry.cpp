@@ -90,9 +90,11 @@ void OpenQuattUsageTelemetry::setup() {
   this->pref_ = global_preferences->make_preference<Storage>(STORAGE_KEY, true);
   Storage storage{};
   if (!this->load_storage_(&storage)) {
+    const bool setup_state_known = this->setup_complete_sensor_ != nullptr && this->setup_complete_sensor_->has_state();
+    const bool fresh_install = setup_state_known && !this->setup_complete_sensor_->state;
     storage.magic = STORAGE_MAGIC;
     storage.version = STORAGE_VERSION;
-    storage.enabled = this->default_enabled_ ? 1U : 0U;
+    storage.enabled = this->default_enabled_ && fresh_install ? 1U : 0U;
     storage.installation_id_present = 0;
     storage.installation_id.fill(0);
     const bool initialized = (storage.enabled == 0U || this->ensure_installation_id_(&storage)) &&
@@ -102,6 +104,8 @@ void OpenQuattUsageTelemetry::setup() {
       storage.enabled = 0;
       storage.installation_id_present = 0;
       storage.installation_id.fill(0);
+    } else if (this->default_enabled_ && !fresh_install) {
+      ESP_LOGI(TAG, "No usage telemetry preference found for an existing or unknown setup; defaulting to disabled");
     }
   }
 

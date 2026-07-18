@@ -204,6 +204,8 @@ Hier vind je beheerfuncties:
 
 Delen staat standaard aan en de opt-out verschijnt tijdens Quick Start, vóór het afronden. Je kunt de keuze later wijzigen via **Instellingen → Systeem → Gebruiksstatistieken**. De eerste verzendtimer start pas nadat Quick Start is afgerond. Als delen dan nog aan staat, verstuurt OpenQuatt na een willekeurige startvertraging en daarna ongeveer elke vier uur één klein MQTT-bericht via TLS.
 
+Bij een upgrade van een installatie die Quick Start al had afgerond, ontbreekt nog een opgeslagen telemetrykeuze. Zo'n bestaande installatie start daarom eenmalig met delen uit; de gebruiker kan delen later onder **Instellingen → Systeem → Gebruiksstatistieken** aanzetten. Alleen nieuwe installaties die Quick Start nog moeten doorlopen gebruiken de standaard-aan opt-out.
+
 Het bericht bevat uitsluitend:
 
 - een willekeurig installatie-ID;
@@ -214,7 +216,7 @@ Het bericht bevat uitsluitend:
 
 Het bericht bevat geen MAC-adres, meetwaarden, regelwaarden, instellingen of logs. De MQTT-broker ziet bij een netwerkverbinding technisch wel het bron-IP-adres, maar dit staat niet in de payload.
 
-Bij de eerste opstart maakt de controller met de hardware-randomgenerator een UUIDv4 aan en bewaart die lokaal. Een UUIDv4 heeft 122 willekeurige bits; zelfs bij één miljoen installaties is de kans op minstens één dubbel ID kleiner dan ongeveer `10^-25`. Dit ID blijft gelijk na een OTA-update en wanneer je delen tijdelijk uitzet. Een fabrieksreset maakt een nieuw ID. De keuze en het ID worden niet via een instellingenbackup naar een andere controller gekopieerd. Uitzetten stopt nieuwe berichten direct; er wordt geen wachtrij voor later opgeslagen.
+Wanneer delen voor het eerst actief wordt, maakt de controller met de hardware-randomgenerator een UUIDv4 aan en bewaart die lokaal. Een UUIDv4 heeft 122 willekeurige bits; zelfs bij één miljoen installaties is de kans op minstens één dubbel ID kleiner dan ongeveer `10^-25`. Dit ID blijft gelijk na een OTA-update en wanneer je delen tijdelijk uitzet. Een fabrieksreset maakt een nieuw ID. De keuze en het ID worden niet via een instellingenbackup naar een andere controller gekopieerd. Uitzetten stopt nieuwe berichten direct; er wordt geen wachtrij voor later opgeslagen.
 
 De statistiekenclient staat los van de configureerbare [MQTT inputbronnen](mqtt.md): hij publiceert alleen dit ene bericht, subscribed nergens op en schakelt ESPHome MQTT-discovery, entiteitspublicaties en logexport niet in. Een build zonder geconfigureerde centrale broker maakt ook wanneer delen aanstaat geen externe verbinding.
 
