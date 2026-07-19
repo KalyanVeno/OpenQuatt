@@ -317,6 +317,24 @@
   line-height: 1.45;
 }
 
+.oq-usage-settings {
+  display: grid;
+  gap: 14px;
+}
+
+.oq-usage-settings .oq-usage-consent {
+  margin-top: 0;
+}
+
+.oq-usage-disclosure--collapsible {
+  margin-top: 0;
+  padding-inline: 0;
+}
+
+.oq-usage-disclosure--collapsible .oq-usage-network-note {
+  padding-bottom: 0;
+}
+
 .oq-helper-panel-note {
   margin: 8px 0 0;
   color: var(--oq-helper-soft);

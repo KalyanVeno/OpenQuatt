@@ -1,5 +1,5 @@
 import { getEntityNumericValue, getEntityStateText, hasEntity, isEntityActive } from "../core/app-shared.js";
-import { QUICK_STEPS, renderOqIcon } from "../core/config.js";
+import { QUICK_STEPS } from "../core/config.js";
 import { isCurveMode } from "../core/domain-helpers.js";
 import { formatValue, getEntityValue, toTimeInputValue } from "../core/entity-store.js";
 import { createScrollKeeper } from "../core/scroll-keeper.js";
@@ -7,12 +7,13 @@ import { renderModalShell } from "../core/modal-shell.js";
 import { state } from "../core/state.js";
 import { getDeviceMeta, getFirmwareBuildConnection, getInstallationTopology } from "./device-context.js";
 import { getFirmwareBuildSwitchModel, getFirmwareProgressModel } from "./firmware-update.js";
-import { formatSettingsOptionLabel, renderSettingsCompactSwitchControl, renderSettingsFieldCard, renderSettingsInfoToggle } from "../settings/controls.js";
+import { formatSettingsOptionLabel, renderSettingsFieldCard, renderSettingsInfoToggle } from "../settings/controls.js";
 import { renderCurveGraph, renderFlowSettingsFields, renderHeatingCurveProfileField, renderHeatingStrategyExplainCards, renderPowerHouseAdvancedField, renderPowerHouseBaseFields, renderSettingsCurveInputs, renderStrategySelectionFields } from "../settings/heating.js";
 import { renderBoilerCvFields, renderHpGenerationField } from "../settings/installation.js";
 import { renderSilentSettingsGrid } from "../settings/silent.js";
 import { renderWaterSettingsFields } from "../settings/water.js";
 import { escapeHtml } from "../core/html.js";
+import { renderUsageTelemetryConsent, renderUsageTelemetryDisclosure } from "./usage-telemetry.js";
 
   export function getQuickStartSetupModel() {
     const currentTopology = getInstallationTopology();
@@ -714,59 +715,8 @@ import { escapeHtml } from "../core/html.js";
         <p class="oq-helper-label">${escapeHtml(getQuickStepKicker("usage-telemetry"))}</p>
         <h2 class="oq-helper-section-title">Gebruiksstatistieken</h2>
         <p class="oq-helper-section-copy">OpenQuatt deelt standaard beperkte technische statistieken. Wil je dit niet, zet delen hier uit. Je kunt de keuze later altijd wijzigen.</p>
-        <div class="oq-usage-consent${enabled ? " is-enabled" : ""}">
-          <div class="oq-usage-consent-copy">
-            <span class="oq-usage-consent-icon" aria-hidden="true">${renderOqIcon("bar-chart", "oq-usage-consent-icon-svg")}</span>
-            <div>
-              <span class="oq-usage-consent-kicker">Vrijwillige keuze</span>
-              <h3>Beperkte statistieken delen</h3>
-              <p>Pas na het afronden, met een willekeurige startvertraging, en daarna ongeveer elk uur via MQTT. De huidige verbinding op poort 1883 is niet versleuteld.</p>
-            </div>
-          </div>
-          <div class="oq-usage-consent-action">
-            ${renderSettingsCompactSwitchControl(
-              "usageTelemetryEnabled",
-              "Technische gebruiksstatistieken delen",
-              enabled,
-              busy,
-              "Delen",
-              "Niet delen",
-            )}
-          </div>
-        </div>
-        <div class="oq-usage-disclosure">
-          <div class="oq-usage-disclosure-head">
-            <h3>Wat gaat er mee?</h3>
-            <span>Geen verwarmings- of regeldata</span>
-          </div>
-          <div class="oq-usage-disclosure-grid">
-            <section class="oq-usage-disclosure-column" aria-labelledby="oq-usage-included-title">
-              <div class="oq-usage-disclosure-column-head">
-                <span class="oq-usage-disclosure-column-icon is-included" aria-hidden="true">${renderOqIcon("bar-chart", "oq-usage-disclosure-icon-svg")}</span>
-                <h4 id="oq-usage-included-title">In het bericht</h4>
-              </div>
-              <ul>
-                <li><strong>Installatie</strong><span>Willekeurig ID en uptime</span></li>
-                <li><strong>Software</strong><span>Versie en releasekanaal</span></li>
-                <li><strong>Platform</strong><span>Hardware, opstelling, verbinding en wifi-signaal</span></li>
-                <li><strong>Systeemstatus</strong><span>Geheugen, looptijd, chiptemperatuur en herstartreden</span></li>
-                <li><strong>Functies</strong><span>Aan/uit-status van CiC, OpenTherm-thermostaat, ketelondersteuning, MQTT-inputs en lokale historie; plus de ketelaansluiting (aan/uit of OpenTherm)</span></li>
-              </ul>
-            </section>
-            <section class="oq-usage-disclosure-column is-excluded" aria-labelledby="oq-usage-excluded-title">
-              <div class="oq-usage-disclosure-column-head">
-                <span class="oq-usage-disclosure-column-icon" aria-hidden="true">${renderOqIcon("shield", "oq-usage-disclosure-icon-svg")}</span>
-                <h4 id="oq-usage-excluded-title">Niet in het bericht</h4>
-              </div>
-              <ul>
-                <li><strong>Identiteit</strong><span>Geen MAC-adres of netwerkadres</span></li>
-                <li><strong>Installatiegedrag</strong><span>Geen verwarmingsmetingen of regelwaarden</span></li>
-                <li><strong>Lokale data</strong><span>Geen ingestelde temperaturen, grenzen, MQTT-topics of logs</span></li>
-              </ul>
-            </section>
-          </div>
-          <p class="oq-usage-network-note">${renderOqIcon("server", "oq-usage-network-note-icon")} De MQTT-broker kan, zoals iedere internetdienst, technisch wel het bron-IP-adres zien.</p>
-        </div>
+        ${renderUsageTelemetryConsent({ enabled, busy })}
+        ${renderUsageTelemetryDisclosure()}
         ${renderQuickStartStepNav()}
       </section>
     `;

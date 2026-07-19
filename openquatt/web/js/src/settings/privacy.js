@@ -1,23 +1,22 @@
-import { hasEntity } from "../core/app-shared.js";
-import { renderSettingsSection, renderSettingsSwitchField } from "./controls.js";
+import { hasEntity, isEntityActive } from "../core/app-shared.js";
+import { state } from "../core/state.js";
+import { renderUsageTelemetryConsent, renderUsageTelemetryDisclosure } from "../features/usage-telemetry.js";
+import { renderSettingsSection } from "./controls.js";
 
 export function renderSettingsPrivacySection() {
   if (!hasEntity("usageTelemetryEnabled")) {
     return "";
   }
+  const enabled = isEntityActive("usageTelemetryEnabled");
+  const busy = state.loadingEntities || state.busyAction === "switch-usageTelemetryEnabled";
 
   return renderSettingsSection(
     "Privacy",
     "Gebruiksstatistieken",
-    "Delen staat standaard aan. Zet het hier uit als je geen technische gebruiksstatistieken wilt versturen.",
-    `<div class="oq-settings-grid">
-      ${renderSettingsSwitchField(
-        "usageTelemetryEnabled",
-        "Technische gebruiksstatistieken delen",
-        "Ongeveer elk uur via MQTT: een willekeurig installatie-ID, software- en platforminformatie, technische systeemstatus, de ketelaansluiting (aan/uit of OpenTherm) en de aan/uit-status van CiC, de OpenTherm-thermostaat, ketelondersteuning, MQTT-inputs en lokale historie. Bij wifi gaat ook de signaalsterkte mee. De huidige verbinding op poort 1883 is niet versleuteld. Geen MAC-adres, netwerkadres, MQTT-brokergegevens of -topics, ingestelde temperaturen of grenzen, verwarmingsmetingen, regelwaarden of loginhoud.",
-        "Delen staat aan. Uitzetten stopt nieuwe berichten; het installatie-ID blijft lokaal bewaard.",
-        "Delen staat uit. Er worden geen gebruiksstatistieken verstuurd.",
-      )}
+    "OpenQuatt deelt standaard beperkte technische gebruiksstatistieken. Wil je dit niet, zet delen hier uit. Je kunt deze keuze altijd wijzigen.",
+    `<div class="oq-usage-settings">
+      ${renderUsageTelemetryConsent({ enabled, busy, settings: true })}
+      ${renderUsageTelemetryDisclosure({ collapsible: true, idPrefix: "oq-settings-usage", open: state.usageTelemetryDetailsOpen })}
     </div>`,
   );
 }
