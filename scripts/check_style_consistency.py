@@ -172,6 +172,7 @@ STRICT_TOP_LEVEL_ORDER_RULES = {
     "openquatt/profiles/heatpump_controller_q.yaml": (
         "substitutions",
         "packages",
+        "openquatt_usage_telemetry",
         "psram",
         "select",
         "spi",

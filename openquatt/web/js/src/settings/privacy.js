@@ -14,7 +14,7 @@ export function renderSettingsPrivacySection() {
       ${renderSettingsSwitchField(
         "usageTelemetryEnabled",
         "Technische gebruiksstatistieken delen",
-        "Ongeveer elke vier uur via MQTT: een willekeurig installatie-ID, uptime, firmware en releasekanaal, hardwareprofiel en -revisie, opstelling en verbindingstype. De huidige verbinding op poort 1883 is niet versleuteld. Geen MAC-adres, meetwaarden, regelwaarden, instellingen of logs.",
+        "Ongeveer elk uur via MQTT: een willekeurig installatie-ID, software- en platforminformatie, technische systeemstatus en de aan/uit-status van CiC, de OpenTherm-thermostaat, MQTT-inputs en lokale historie. Bij wifi gaat ook de signaalsterkte mee. De huidige verbinding op poort 1883 is niet versleuteld. Geen MAC-adres, netwerkadres, MQTT-brokergegevens of -topics, ingestelde temperaturen of grenzen, verwarmingsmetingen, regelwaarden of loginhoud.",
         "Delen staat aan. Uitzetten stopt nieuwe berichten; het installatie-ID blijft lokaal bewaard.",
         "Delen staat uit. Er worden geen gebruiksstatistieken verstuurd.",
       )}

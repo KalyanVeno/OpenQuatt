@@ -2,11 +2,13 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <inttypes.h>
 
 #include "esp_crt_bundle.h"
+#include "esp_heap_caps.h"
 #if defined(CONFIG_IDF_TARGET_ESP32S3)
 #include "esp_efuse.h"
 #include "esp_efuse_table.h"
@@ -14,6 +16,7 @@
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "esphome/components/network/util.h"
+#include "esphome/components/openquatt_mqtt_config/OpenQuattMqttConfig.h"
 #include "esphome/core/application.h"
 #include "esphome/core/hal.h"
 #include "esphome/core/helpers.h"
@@ -68,6 +71,72 @@ std::string json_escape_(const std::string &input) {
 
 bool uuid_is_present_(const std::array<uint8_t, 16> &bytes) {
   return std::any_of(bytes.begin(), bytes.end(), [](uint8_t byte) { return byte != 0U; });
+}
+
+void append_json_key_(std::string &payload, const char *key) {
+  payload += R"(,")";
+  payload += key;
+  payload += R"(":)";
+}
+
+void append_json_uint_(std::string &payload, const char *key, size_t value) {
+  append_json_key_(payload, key);
+  payload += std::to_string(static_cast<uint64_t>(value));
+}
+
+void append_json_optional_number_(std::string &payload, const char *key, const sensor::Sensor *source,
+                                  unsigned decimals) {
+  append_json_key_(payload, key);
+  if (source == nullptr || !source->has_state() || !std::isfinite(source->state)) {
+    payload += "null";
+    return;
+  }
+  char value[32];
+  std::snprintf(value, sizeof(value), "%.*f", static_cast<int>(decimals), source->state);
+  payload += value;
+}
+
+void append_json_optional_bool_(std::string &payload, const char *key, const switch_::Switch *source) {
+  append_json_key_(payload, key);
+  if (source == nullptr) {
+    payload += "null";
+    return;
+  }
+  payload += source->state ? "true" : "false";
+}
+
+void append_json_optional_bool_(std::string &payload, const char *key, bool available, bool value) {
+  append_json_key_(payload, key);
+  if (!available) {
+    payload += "null";
+    return;
+  }
+  payload += value ? "true" : "false";
+}
+
+const char *reset_reason_name_(esp_reset_reason_t reason) {
+  switch (reason) {
+    case ESP_RST_POWERON:
+      return "power_on";
+    case ESP_RST_EXT:
+      return "external";
+    case ESP_RST_SW:
+      return "software";
+    case ESP_RST_PANIC:
+      return "panic";
+    case ESP_RST_INT_WDT:
+      return "interrupt_watchdog";
+    case ESP_RST_TASK_WDT:
+      return "task_watchdog";
+    case ESP_RST_WDT:
+      return "watchdog";
+    case ESP_RST_DEEPSLEEP:
+      return "deep_sleep";
+    case ESP_RST_BROWNOUT:
+      return "brownout";
+    default:
+      return "unknown";
+  }
 }
 
 }  // namespace
@@ -409,7 +478,7 @@ void OpenQuattUsageTelemetry::build_payload_() {
   const std::string hardware_revision = this->read_hardware_revision_();
 
   this->payload_.clear();
-  this->payload_.reserve(448);
+  this->payload_.reserve(960);
   this->payload_ += R"({"schema_version":1,"message_id":")";
   this->payload_ += random_message_id_();
   this->payload_ += R"(","installation_id":")";
@@ -434,7 +503,29 @@ void OpenQuattUsageTelemetry::build_payload_() {
   this->payload_ += json_escape_(this->topology_);
   this->payload_ += R"(","connection":")";
   this->payload_ += json_escape_(this->connection_);
-  this->payload_ += R"("})";
+  this->payload_ += '"';
+  append_json_uint_(this->payload_, "heap_free_b", heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+  append_json_uint_(this->payload_, "heap_min_free_b", heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL));
+  append_json_uint_(this->payload_, "heap_largest_block_b", heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
+  append_json_uint_(this->payload_, "psram_free_b", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+  append_json_optional_number_(this->payload_, "loop_time_ms", this->loop_time_sensor_, 0);
+  append_json_optional_number_(this->payload_, "esp_internal_temp_c", this->internal_temperature_sensor_, 1);
+  append_json_optional_number_(this->payload_, "wifi_rssi_dbm", this->wifi_signal_sensor_, 1);
+  append_json_key_(this->payload_, "reset_reason");
+  this->payload_ += '"';
+  this->payload_ += reset_reason_name_(esp_reset_reason());
+  this->payload_ += '"';
+  append_json_optional_bool_(this->payload_, "cic_polling_enabled", this->cic_polling_switch_);
+  append_json_optional_bool_(this->payload_, "cic_compatibility_enabled", this->cic_compatibility_switch_);
+  append_json_optional_bool_(this->payload_, "ot_thermostat_enabled", this->ot_thermostat_switch_);
+  append_json_optional_bool_(this->payload_, "mqtt_inputs_enabled", this->mqtt_config_ != nullptr,
+                             this->mqtt_config_ != nullptr && this->mqtt_config_->is_enabled());
+  append_json_optional_bool_(this->payload_, "trend_ram_enabled", this->trend_ram_switch_);
+  append_json_optional_bool_(this->payload_, "trend_flash_enabled", this->trend_flash_switch_);
+  append_json_optional_bool_(this->payload_, "decision_log_flash_enabled", this->decision_log_flash_switch_);
+  append_json_optional_bool_(this->payload_, "energy_history_flash_enabled", this->energy_history_flash_switch_);
+  append_json_optional_bool_(this->payload_, "ram_log_history_enabled", this->ram_log_history_switch_);
+  this->payload_ += '}';
 }
 
 std::string OpenQuattUsageTelemetry::read_hardware_revision_() const {

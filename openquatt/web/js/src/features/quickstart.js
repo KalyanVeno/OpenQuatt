@@ -720,7 +720,7 @@ import { escapeHtml } from "../core/html.js";
             <div>
               <span class="oq-usage-consent-kicker">Vrijwillige keuze</span>
               <h3>Beperkte statistieken delen</h3>
-              <p>Pas na het afronden, met een willekeurige startvertraging, en daarna ongeveer elke vier uur via MQTT. De huidige verbinding op poort 1883 is niet versleuteld.</p>
+              <p>Pas na het afronden, met een willekeurige startvertraging, en daarna ongeveer elk uur via MQTT. De huidige verbinding op poort 1883 is niet versleuteld.</p>
             </div>
           </div>
           <div class="oq-usage-consent-action">
@@ -737,7 +737,7 @@ import { escapeHtml } from "../core/html.js";
         <div class="oq-usage-disclosure">
           <div class="oq-usage-disclosure-head">
             <h3>Wat gaat er mee?</h3>
-            <span>Geen meet- of regeldata</span>
+            <span>Geen verwarmings- of regeldata</span>
           </div>
           <div class="oq-usage-disclosure-grid">
             <section class="oq-usage-disclosure-column" aria-labelledby="oq-usage-included-title">
@@ -748,7 +748,9 @@ import { escapeHtml } from "../core/html.js";
               <ul>
                 <li><strong>Installatie</strong><span>Willekeurig ID en uptime</span></li>
                 <li><strong>Software</strong><span>Versie en releasekanaal</span></li>
-                <li><strong>Platform</strong><span>Hardware, opstelling en verbinding</span></li>
+                <li><strong>Platform</strong><span>Hardware, opstelling, verbinding en wifi-signaal</span></li>
+                <li><strong>Systeemstatus</strong><span>Geheugen, looptijd, chiptemperatuur en herstartreden</span></li>
+                <li><strong>Functies</strong><span>Aan/uit-status van CiC, OpenTherm-thermostaat, MQTT-inputs en lokale historie</span></li>
               </ul>
             </section>
             <section class="oq-usage-disclosure-column is-excluded" aria-labelledby="oq-usage-excluded-title">
@@ -757,9 +759,9 @@ import { escapeHtml } from "../core/html.js";
                 <h4 id="oq-usage-excluded-title">Niet in het bericht</h4>
               </div>
               <ul>
-                <li><strong>Identiteit</strong><span>Geen MAC-adres</span></li>
-                <li><strong>Installatiegedrag</strong><span>Geen meet- of regelwaarden</span></li>
-                <li><strong>Lokale data</strong><span>Geen instellingen of logs</span></li>
+                <li><strong>Identiteit</strong><span>Geen MAC-adres of netwerkadres</span></li>
+                <li><strong>Installatiegedrag</strong><span>Geen verwarmingsmetingen of regelwaarden</span></li>
+                <li><strong>Lokale data</strong><span>Geen ingestelde temperaturen, grenzen, MQTT-topics of logs</span></li>
               </ul>
             </section>
           </div>

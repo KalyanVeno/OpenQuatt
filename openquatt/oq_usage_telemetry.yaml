@@ -23,7 +23,7 @@ openquatt_usage_telemetry:
   topic: "${usage_telemetry_topic}"
   default_enabled: true
   setup_complete_sensor: oq_setup_complete_sensor
-  interval: 4h
+  interval: 1h
   initial_delay_min: 15min
   initial_delay_max: 60min
   jitter: 15min
@@ -32,3 +32,12 @@ openquatt_usage_telemetry:
   hardware_profile: "${oq_hardware_profile}"
   topology: "${oq_topology}"
   connection: "${oq_connection}"
+  loop_time_sensor: oq_loop_time
+  internal_temperature_sensor: oq_esp_internal_temperature
+  cic_polling_switch: cic_enable
+  mqtt_config: oq_mqtt_config
+  trend_ram_switch: oq_trend_history_enabled_switch
+  trend_flash_switch: oq_trend_history_flash_switch
+  decision_log_flash_switch: oq_decision_log_flash_switch
+  energy_history_flash_switch: oq_lifetime_energy_history_switch
+  ram_log_history_switch: oq_ram_log_history_switch

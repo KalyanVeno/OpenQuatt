@@ -9,12 +9,16 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 #include "esphome/components/binary_sensor/binary_sensor.h"
+#include "esphome/components/sensor/sensor.h"
 #include "esphome/components/switch/switch.h"
 #include "esphome/core/component.h"
 #include "esphome/core/preferences.h"
 #include "mqtt_client.h"
 
 namespace esphome {
+namespace openquatt_mqtt_config {
+class OpenQuattMqttConfig;
+}
 namespace openquatt_usage_telemetry {
 
 class OpenQuattUsageTelemetry : public switch_::Switch, public Component {
@@ -36,6 +40,26 @@ class OpenQuattUsageTelemetry : public switch_::Switch, public Component {
   void set_hardware_profile(const std::string &profile) { this->hardware_profile_ = profile; }
   void set_topology(const std::string &topology) { this->topology_ = topology; }
   void set_connection(const std::string &connection) { this->connection_ = connection; }
+  void set_loop_time_sensor(sensor::Sensor *sensor) { this->loop_time_sensor_ = sensor; }
+  void set_internal_temperature_sensor(sensor::Sensor *sensor) { this->internal_temperature_sensor_ = sensor; }
+  void set_wifi_signal_sensor(sensor::Sensor *sensor) { this->wifi_signal_sensor_ = sensor; }
+  void set_cic_polling_switch(switch_::Switch *feature_switch) { this->cic_polling_switch_ = feature_switch; }
+  void set_cic_compatibility_switch(switch_::Switch *feature_switch) {
+    this->cic_compatibility_switch_ = feature_switch;
+  }
+  void set_ot_thermostat_switch(switch_::Switch *feature_switch) { this->ot_thermostat_switch_ = feature_switch; }
+  void set_mqtt_config(openquatt_mqtt_config::OpenQuattMqttConfig *config) { this->mqtt_config_ = config; }
+  void set_trend_ram_switch(switch_::Switch *feature_switch) { this->trend_ram_switch_ = feature_switch; }
+  void set_trend_flash_switch(switch_::Switch *feature_switch) { this->trend_flash_switch_ = feature_switch; }
+  void set_decision_log_flash_switch(switch_::Switch *feature_switch) {
+    this->decision_log_flash_switch_ = feature_switch;
+  }
+  void set_energy_history_flash_switch(switch_::Switch *feature_switch) {
+    this->energy_history_flash_switch_ = feature_switch;
+  }
+  void set_ram_log_history_switch(switch_::Switch *feature_switch) {
+    this->ram_log_history_switch_ = feature_switch;
+  }
 
   void setup() override;
   void loop() override;
@@ -94,7 +118,7 @@ class OpenQuattUsageTelemetry : public switch_::Switch, public Component {
   std::string topic_;
   bool default_enabled_{true};
   binary_sensor::BinarySensor *setup_complete_sensor_{nullptr};
-  uint32_t interval_ms_{4UL * 60UL * 60UL * 1000UL};
+  uint32_t interval_ms_{60UL * 60UL * 1000UL};
   uint32_t initial_delay_min_ms_{15UL * 60UL * 1000UL};
   uint32_t initial_delay_max_ms_{60UL * 60UL * 1000UL};
   uint32_t jitter_ms_{15UL * 60UL * 1000UL};
@@ -103,6 +127,18 @@ class OpenQuattUsageTelemetry : public switch_::Switch, public Component {
   std::string hardware_profile_;
   std::string topology_;
   std::string connection_;
+  sensor::Sensor *loop_time_sensor_{nullptr};
+  sensor::Sensor *internal_temperature_sensor_{nullptr};
+  sensor::Sensor *wifi_signal_sensor_{nullptr};
+  switch_::Switch *cic_polling_switch_{nullptr};
+  switch_::Switch *cic_compatibility_switch_{nullptr};
+  switch_::Switch *ot_thermostat_switch_{nullptr};
+  openquatt_mqtt_config::OpenQuattMqttConfig *mqtt_config_{nullptr};
+  switch_::Switch *trend_ram_switch_{nullptr};
+  switch_::Switch *trend_flash_switch_{nullptr};
+  switch_::Switch *decision_log_flash_switch_{nullptr};
+  switch_::Switch *energy_history_flash_switch_{nullptr};
+  switch_::Switch *ram_log_history_switch_{nullptr};
 
   ESPPreferenceObject pref_;
   std::array<uint8_t, 16> installation_id_bytes_{};
