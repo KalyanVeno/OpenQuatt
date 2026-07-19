@@ -11,6 +11,8 @@ function seedLogState() {
   state.nativeOpen = false;
   state.systemModal = null;
   state.busyAction = "";
+  state.webServerLogSource = null;
+  state.webServerLogConnected = false;
   state.webServerLogHistoryError = "";
   state.webServerLogHistoryLoaded = true;
   state.webServerLogCsrfToken = "test-csrf-token";
@@ -30,7 +32,11 @@ test("clearWebServerLogHistory clears firmware history before local entries", as
     fetch: async (url, options) => {
       requests.push({ url, options });
       assert.equal(state.webServerLogEntries.length, 1);
-      return { ok: true, status: 200 };
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ enabled: true, csrf_token: "test-csrf-token", entries: [] }),
+      };
     },
   };
 
@@ -63,6 +69,142 @@ test("clearWebServerLogHistory preserves visible entries when firmware clearing 
   assert.equal(state.webServerLogHistoryLoaded, true);
   assert.match(state.webServerLogHistoryError, /HTTP 500/);
   assert.equal(state.busyAction, "");
+});
+
+test("clearWebServerLogHistory backfills the closed live-stream gap after failure", async (t) => {
+  const originalWindow = globalThis.window;
+  t.after(() => {
+    globalThis.window = originalWindow;
+  });
+
+  seedLogState();
+  state.systemModal = "webserver-logs";
+  let streamClosed = false;
+  state.webServerLogSource = {
+    close() {
+      streamClosed = true;
+    },
+  };
+  const requests = [];
+  globalThis.window = {
+    location: { pathname: "/" },
+    fetch: async (url, options = {}) => {
+      requests.push({ url, options });
+      if (options.method === "POST") {
+        return { ok: false, status: 503 };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          enabled: true,
+          csrf_token: "test-csrf-token",
+          entries: [{ raw: "missed while clearing", ts: 2000, seq: 2 }],
+        }),
+      };
+    },
+  };
+
+  assert.equal(await clearWebServerLogHistory(), false);
+  assert.deepEqual(requests.map(({ url }) => url), [
+    "/openquatt/logs/clear",
+    "/openquatt/logs/recent",
+  ]);
+  assert.deepEqual(state.webServerLogEntries.map(({ raw }) => raw), ["old log entry", "missed while clearing"]);
+  assert.match(state.webServerLogHistoryError, /HTTP 503/);
+  assert.equal(streamClosed, true);
+});
+
+test("clearWebServerLogHistory reconciles entries produced after firmware clearing", async (t) => {
+  const originalWindow = globalThis.window;
+  t.after(() => {
+    globalThis.window = originalWindow;
+  });
+
+  seedLogState();
+  state.systemModal = "webserver-logs";
+  let streamClosed = false;
+  state.webServerLogSource = {
+    close() {
+      streamClosed = true;
+    },
+  };
+  const requests = [];
+  globalThis.window = {
+    location: { pathname: "/" },
+    fetch: async (url, options = {}) => {
+      requests.push({ url, options });
+      if (options.method === "POST") {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            enabled: true,
+            csrf_token: "test-csrf-token",
+            entries: [{ raw: "after clear 1", ts: 1000, seq: 1 }],
+          }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          enabled: true,
+          csrf_token: "test-csrf-token",
+          entries: [
+            { raw: "after clear 1", ts: 1000, seq: 1 },
+            { raw: "after clear 2", ts: 2000, seq: 2 },
+          ],
+        }),
+      };
+    },
+  };
+
+  assert.equal(await clearWebServerLogHistory(), true);
+  assert.deepEqual(requests.map(({ url }) => url), [
+    "/openquatt/logs/clear",
+    "/openquatt/logs/recent",
+  ]);
+  assert.deepEqual(state.webServerLogEntries.map(({ raw }) => raw), ["after clear 1", "after clear 2"]);
+  assert.equal(state.webServerLogHistoryLoaded, true);
+  assert.equal(streamClosed, true);
+});
+
+test("clearWebServerLogHistory refreshes and retries after a rotated CSRF token", async (t) => {
+  const originalWindow = globalThis.window;
+  t.after(() => {
+    globalThis.window = originalWindow;
+  });
+
+  seedLogState();
+  state.systemModal = "webserver-logs";
+  const postedTokens = [];
+  globalThis.window = {
+    location: { pathname: "/" },
+    fetch: async (_url, options = {}) => {
+      if (options.method === "POST") {
+        postedTokens.push(options.body.get("csrf_token"));
+        if (postedTokens.length === 1) {
+          return { ok: false, status: 403 };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ enabled: true, csrf_token: "rotated-csrf-token", entries: [] }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ enabled: true, csrf_token: "rotated-csrf-token", entries: [] }),
+      };
+    },
+  };
+
+  assert.equal(await clearWebServerLogHistory(), true);
+  assert.deepEqual(postedTokens, ["test-csrf-token", "rotated-csrf-token"]);
+  assert.equal(state.webServerLogCsrfToken, "rotated-csrf-token");
+  assert.equal(state.webServerLogHistoryError, "");
 });
 
 test("clearWebServerLogHistory does not replace another pending action", async (t) => {

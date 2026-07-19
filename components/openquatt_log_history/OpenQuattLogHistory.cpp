@@ -504,7 +504,7 @@ void OpenQuattLogHistory::split_log_fields_(const char *raw, const char **tag_st
   }
 }
 
-void OpenQuattLogHistory::push_entry_(const LogEntry &entry) {
+void OpenQuattLogHistory::push_entry_locked_(const LogEntry &entry) {
   if (!this->entries_) {
     return;
   }
@@ -522,7 +522,7 @@ void OpenQuattLogHistory::push_entry_(const LogEntry &entry) {
 }
 
 void OpenQuattLogHistory::rebase_history_(uint32_t offset_s) {
-  if (offset_s == 0) {
+  if (offset_s == 0 || !this->lock_history_()) {
     return;
   }
 
@@ -530,6 +530,7 @@ void OpenQuattLogHistory::rebase_history_(uint32_t offset_s) {
     const size_t entry_index = (this->head_ + index) % ENTRY_CAPACITY;
     this->entries_[entry_index].timestamp_s += offset_s;
   }
+  this->unlock_history_();
 }
 
 void OpenQuattLogHistory::sync_time_state_() {
@@ -649,7 +650,6 @@ void OpenQuattLogHistory::on_log_(uint8_t level, const char *tag, const char *me
   LogEntry entry{};
   // The API uses this compact sequence only for relative ordering; wrapping at
   // uint16_t is intentional.
-  entry.seq = static_cast<uint16_t>(this->next_seq_++);
   entry.timestamp_s = static_cast<uint32_t>(this->current_time_ms_() / 1000ULL);
   entry.level = normalize_level_(level);
   copy_sanitized_log_line_(message, message_len, entry.raw, sizeof(entry.raw));
@@ -660,15 +660,24 @@ void OpenQuattLogHistory::on_log_(uint8_t level, const char *tag, const char *me
   }
 
   (void) tag;
-  this->push_entry_(entry);
+  if (!this->lock_history_()) {
+    return;
+  }
+  entry.seq = static_cast<uint16_t>(this->next_seq_++);
+  this->push_entry_locked_(entry);
+  this->unlock_history_();
 }
 
 void OpenQuattLogHistory::set_enabled(bool enabled) { this->enabled_ = enabled; }
 
 void OpenQuattLogHistory::clear_history() {
+  if (!this->lock_history_()) {
+    return;
+  }
   this->head_ = 0;
   this->count_ = 0;
   this->next_seq_ = 1;
+  this->unlock_history_();
 }
 
 void OpenQuattLogHistory::rotate_csrf_token_() {
@@ -677,6 +686,12 @@ void OpenQuattLogHistory::rotate_csrf_token_() {
   this->csrf_token_ = base64_encode_bytes_(token_bytes.data(), token_bytes.size());
 }
 
+bool OpenQuattLogHistory::lock_history_() const {
+  return this->history_mutex_ != nullptr && xSemaphoreTake(this->history_mutex_, portMAX_DELAY) == pdTRUE;
+}
+
+void OpenQuattLogHistory::unlock_history_() const { xSemaphoreGive(this->history_mutex_); }
+
 void OpenQuattLogHistory::setup() {
   if (logger::global_logger == nullptr) {
     ESP_LOGE(TAG, "global_logger is unavailable");
@@ -684,6 +699,11 @@ void OpenQuattLogHistory::setup() {
   }
   if (web_server_base::global_web_server_base == nullptr) {
     ESP_LOGE(TAG, "global_web_server_base is unavailable");
+    return;
+  }
+  this->history_mutex_ = xSemaphoreCreateMutex();
+  if (this->history_mutex_ == nullptr) {
+    ESP_LOGE(TAG, "Failed to allocate log history mutex");
     return;
   }
 
@@ -722,11 +742,17 @@ void OpenQuattLogHistory::loop() {
 }
 
 void OpenQuattLogHistory::dump_config() {
+  size_t entry_count = 0;
+  if (this->lock_history_()) {
+    entry_count = this->count_;
+    this->unlock_history_();
+  }
+
   ESP_LOGCONFIG(TAG, "OpenQuatt log history");
   ESP_LOGCONFIG(TAG, "  Enabled switch: %s", this->enabled_switch_ == nullptr ? "<missing>" : "configured");
   ESP_LOGCONFIG(TAG, "  Clock: %s", this->clock_ == nullptr ? "<missing>" : "configured");
   ESP_LOGCONFIG(TAG, "  Enabled: %s", YESNO(this->enabled_));
-  ESP_LOGCONFIG(TAG, "  Entries: %u / %u", static_cast<unsigned>(this->count_), static_cast<unsigned>(ENTRY_CAPACITY));
+  ESP_LOGCONFIG(TAG, "  Entries: %u / %u", static_cast<unsigned>(entry_count), static_cast<unsigned>(ENTRY_CAPACITY));
   ESP_LOGCONFIG(TAG, "  History buffer: %s", !this->entries_ ? "missing" : (this->entries_.is_external() ? "PSRAM" : "internal"));
 #ifdef USE_ESP32_CRASH_HANDLER
   ESP_LOGCONFIG(TAG, "  Pending crash report: %s", YESNO(this->pending_crash_report_));
@@ -737,6 +763,26 @@ void OpenQuattLogHistory::write_recent_logs(httpd_req_t *req) const {
   if (req == nullptr) {
     return;
   }
+
+  PsramBuffer<LogEntry> snapshot;
+  if (!snapshot.allocate(ENTRY_CAPACITY)) {
+    ESP_LOGW(TAG, "Failed to allocate recent log snapshot");
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Unable to snapshot recent logs");
+    return;
+  }
+
+  size_t snapshot_count = 0;
+  if (!this->lock_history_()) {
+    ESP_LOGW(TAG, "Failed to lock recent log history");
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Unable to lock recent logs");
+    return;
+  }
+  snapshot_count = this->count_;
+  for (size_t index = 0; index < snapshot_count; ++index) {
+    const size_t entry_index = (this->head_ + index) % ENTRY_CAPACITY;
+    snapshot[index] = this->entries_[entry_index];
+  }
+  this->unlock_history_();
 
   ChunkedJsonWriter writer(req);
   if (!writer.write_literal("{\"enabled\":") || !writer.write_literal(this->enabled_ ? "true" : "false") ||
@@ -772,15 +818,14 @@ void OpenQuattLogHistory::write_recent_logs(httpd_req_t *req) const {
     return true;
   };
 
-  for (size_t index = 0; index < this->count_; ++index) {
+  for (size_t index = 0; index < snapshot_count; ++index) {
     if (index > 0) {
       if (!writer.write_char(',')) {
         ESP_LOGW(TAG, "Failed to stream recent log separator");
         return;
       }
     }
-    const size_t entry_index = (this->head_ + index) % ENTRY_CAPACITY;
-    if (!write_json_entry(this->entries_[entry_index])) {
+    if (!write_json_entry(snapshot[index])) {
       ESP_LOGW(TAG, "Failed to stream recent log entry");
       return;
     }

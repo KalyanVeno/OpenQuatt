@@ -487,6 +487,24 @@ export function clearWebServerLogOutput() {
   }
 }
 
+function replaceWebServerLogOutput(payload) {
+  const recentEntries = normalizeRecentWebServerLogPayload(payload);
+  updateWebServerLogState({
+    webServerLogEntries: recentEntries,
+    webServerLogError: "",
+    webServerLogHistoryError: "",
+    webServerLogHistoryLoading: false,
+    webServerLogHistoryLoaded: false,
+    webServerLogCsrfToken: String(payload?.csrf_token || state.webServerLogCsrfToken || ""),
+    webServerLogCopyMessage: "",
+    webServerLogCopyError: "",
+    webServerLogHistoryRequestToken: state.webServerLogHistoryRequestToken + 1,
+    webServerLogRecentTail: recentEntries.slice(-4).map((entry) => String(entry.raw ?? entry.text ?? "")),
+    webServerLogRecentAnchorAt: recentEntries.length > 0 ? Date.now() : 0,
+  });
+  webServerLogScrollKeeper.invalidate();
+}
+
 export async function clearWebServerLogHistory() {
   if (state.busyAction) {
     return false;
@@ -512,26 +530,56 @@ export async function clearWebServerLogHistory() {
 
   state.busyAction = "clear-webserver-log-history";
   state.webServerLogHistoryError = "";
+  closeWebServerLogStream();
   render();
 
+  let cleared = false;
   try {
-    const body = new URLSearchParams();
-    body.set("csrf_token", csrfToken);
-    const response = await window.fetch(getWebServerLogClearUrl(), { method: "POST", body });
+    let activeCsrfToken = csrfToken;
+    let response;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const body = new URLSearchParams();
+      body.set("csrf_token", activeCsrfToken);
+      response = await window.fetch(getWebServerLogClearUrl(), { method: "POST", body });
+      if (response.status !== 403 || attempt > 0) {
+        break;
+      }
+
+      updateWebServerLogState({
+        webServerLogCsrfToken: "",
+        webServerLogHistoryLoaded: false,
+        webServerLogHistoryRequestToken: state.webServerLogHistoryRequestToken + 1,
+      });
+      await refreshWebServerLogHistory();
+      activeCsrfToken = String(state.webServerLogCsrfToken || "");
+      if (!activeCsrfToken) {
+        break;
+      }
+    }
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-    clearWebServerLogOutput();
-    return true;
+    replaceWebServerLogOutput(await response.json());
+    cleared = true;
   } catch (error) {
     state.webServerLogHistoryError = `De RAM-logbuffer kon niet worden geleegd (${error instanceof Error ? error.message : "onbekende fout"}).`;
-    return false;
   } finally {
     state.busyAction = "";
     if (state.systemModal === "webserver-logs") {
       render();
     }
   }
+
+  const clearError = state.webServerLogHistoryError;
+  if (state.systemModal === "webserver-logs") {
+    await refreshWebServerLogHistory();
+    if (clearError) {
+      state.webServerLogHistoryError = clearError;
+      render();
+    }
+  }
+  return cleared;
 }
 
 export function resetWebServerLogRecoveryState() {
@@ -550,7 +598,8 @@ export function syncWebServerLogStream() {
     return;
   }
 
-  const shouldConnect = state.mounted && !state.nativeOpen && state.systemModal === "webserver-logs";
+  const shouldConnect = state.mounted && !state.nativeOpen && state.systemModal === "webserver-logs" &&
+    state.busyAction !== "clear-webserver-log-history";
   if (!shouldConnect) {
     closeWebServerLogStream();
     return;
