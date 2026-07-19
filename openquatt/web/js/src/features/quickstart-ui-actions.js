@@ -1,10 +1,12 @@
 import { invokeActionMap } from "../core/action-router.js";
+import { commitSwitch } from "../core/entity-write-actions.js";
 import { render } from "../core/render-scheduler.js";
 import { state } from "../core/state.js";
 import {
   abortQuickStartFlowTest,
   applyQuickStartFlowSourceConfiguration,
   applyQuickStartThermostatSourceConfiguration,
+  initializeQuickStartUsageTelemetryChoice,
   refreshQuickStartFlowSignal,
   refreshQuickStartStepHydration,
   startQuickStartFlowTest,
@@ -12,10 +14,21 @@ import {
 import { selectQuickStepByOffset } from "./quickstart.js";
 import { installQuickStartSetupSwitch } from "./firmware-actions.js";
 
+async function prepareQuickStartStep(stepId) {
+  await refreshQuickStartStepHydration(stepId);
+  if (stepId === "usage-telemetry") {
+    await initializeQuickStartUsageTelemetryChoice();
+  }
+}
+
 function moveQuickStartStep(offset) {
   selectQuickStepByOffset(offset);
+  if (state.currentStep === "usage-telemetry") {
+    state.controlError = "";
+    state.controlNotice = "";
+  }
   render();
-  void refreshQuickStartStepHydration(state.currentStep);
+  void prepareQuickStartStep(state.currentStep);
 }
 
 const quickStartActionHandlers = {
@@ -37,8 +50,12 @@ const quickStartActionHandlers = {
   },
   "select-step": (button) => {
     state.currentStep = button.dataset.stepId || "generation";
+    if (state.currentStep === "usage-telemetry") {
+      state.controlError = "";
+      state.controlNotice = "";
+    }
     render();
-    void refreshQuickStartStepHydration(state.currentStep);
+    void prepareQuickStartStep(state.currentStep);
   },
   "select-quickstart-setup": (button) => {
     state.quickStartSetupDraft = button.dataset.setupTarget || "";
@@ -54,6 +71,8 @@ const quickStartActionHandlers = {
   "start-quickstart-flow-test": () => startQuickStartFlowTest(),
   "abort-quickstart-flow-test": () => abortQuickStartFlowTest(),
   "apply-quickstart-thermostat-source": () => applyQuickStartThermostatSourceConfiguration(),
+  "retry-usage-telemetry-choice": () => prepareQuickStartStep("usage-telemetry"),
+  "confirm-no-usage-telemetry": () => commitSwitch("usageTelemetryEnabled", false),
   "previous-step": () => moveQuickStartStep(-1),
   "next-step": () => moveQuickStartStep(1),
 };
