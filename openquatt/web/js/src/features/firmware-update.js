@@ -2,7 +2,7 @@ import { hasEntity } from "../core/app-shared.js";
 import { FIRMWARE_MODAL_KEYS, FIRMWARE_OTA_START_QUIET_MS, FIRMWARE_RELEASE_URLS } from "../core/config.js";
 import { getEntityValue } from "../core/entity-store.js";
 import { refreshEntities } from "../core/entity-sync.js";
-import { beginDeviceReconnect, getDeviceReconnectCopy, getDeviceReconnectStatusCopy, getDeviceReconnectStatusLabel, getDeviceReconnectTitle } from "../core/device-reconnect.js";
+import { beginDeviceReconnect, clearOtaBrowserRefreshPending, getDeviceReconnectCopy, getDeviceReconnectStatusCopy, getDeviceReconnectStatusLabel, getDeviceReconnectTitle, scheduleOtaBrowserRefresh } from "../core/device-reconnect.js";
 import { startEntityPolling, stopEntityPolling } from "../core/entity-polling-controls.js";
 import { isFirmwareOtaQuietActive } from "../core/firmware-quiet.js";
 import { updateFirmwareState } from "../core/feature-state.js";
@@ -829,6 +829,7 @@ import { render } from "../core/render-scheduler.js";
             && !isFirmwareProgressActive()
             && !isFirmwareUpdateInstalling()
           ) {
+            scheduleOtaBrowserRefresh();
             return true;
           }
         } else if (state.updateInstallMode === "topology-switch") {
@@ -839,6 +840,7 @@ import { render } from "../core/render-scheduler.js";
             && !isFirmwareProgressActive()
             && !isFirmwareUpdateInstalling()
           ) {
+            scheduleOtaBrowserRefresh();
             return true;
           }
         } else if (state.updateInstallMode === "build-switch") {
@@ -852,6 +854,7 @@ import { render } from "../core/render-scheduler.js";
             && !isFirmwareProgressActive()
             && !isFirmwareUpdateInstalling()
           ) {
+            scheduleOtaBrowserRefresh();
             return true;
           }
         } else if (
@@ -859,10 +862,12 @@ import { render } from "../core/render-scheduler.js";
           || isFirmwareInstallSettled()
           || (isFirmwareEffectivelyCurrent() && !isFirmwareProgressActive() && !isFirmwareUpdateInstalling())
         ) {
-            return true;
+          scheduleOtaBrowserRefresh();
+          return true;
         }
       } catch (error) {
         if (error?.firmwareInstallTerminal) {
+          clearOtaBrowserRefreshPending();
           throw error;
         }
         if (!waitingForReconnect) {

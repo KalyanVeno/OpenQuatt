@@ -3,6 +3,35 @@ import { render } from "./render-scheduler.js";
 import { updateFirmwareState } from "./feature-state.js";
 
 export const DEVICE_RECONNECT_RECOVERY_CLEAR_DELAY_MS = 1500;
+export const OTA_BROWSER_REFRESH_DELAY_MS = 1500;
+
+export function markOtaBrowserRefreshPending() {
+  state.otaBrowserRefreshPending = true;
+}
+
+export function clearOtaBrowserRefreshPending() {
+  if (state.otaBrowserRefreshTimer) {
+    window.clearTimeout(state.otaBrowserRefreshTimer);
+    state.otaBrowserRefreshTimer = null;
+  }
+  state.otaBrowserRefreshPending = false;
+}
+
+export function scheduleOtaBrowserRefresh(delayMs = OTA_BROWSER_REFRESH_DELAY_MS) {
+  if (!state.otaBrowserRefreshPending || state.otaBrowserRefreshTimer) {
+    return false;
+  }
+
+  state.otaBrowserRefreshTimer = window.setTimeout(() => {
+    state.otaBrowserRefreshTimer = null;
+    if (!state.otaBrowserRefreshPending) {
+      return;
+    }
+    state.otaBrowserRefreshPending = false;
+    window.location.reload();
+  }, Math.max(0, Number(delayMs) || 0));
+  return true;
+}
 
 export function clearDeviceReconnectRecoveryTimer() {
   if (!state.deviceReconnectRecoveryTimer) {
@@ -44,6 +73,7 @@ export function markDeviceReconnectRecovered() {
   state.deviceReconnectRecoveryStartedAt = Date.now();
   state.deviceReconnectLastError = "";
   state.entitySyncFailureCount = 0;
+  scheduleOtaBrowserRefresh();
 
   const recoveryStartedAt = state.deviceReconnectRecoveryStartedAt;
   state.deviceReconnectRecoveryTimer = window.setTimeout(() => {
