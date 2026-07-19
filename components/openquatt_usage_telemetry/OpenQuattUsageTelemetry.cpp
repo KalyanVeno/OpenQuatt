@@ -114,6 +114,28 @@ void append_json_optional_bool_(std::string &payload, const char *key, bool avai
   payload += value ? "true" : "false";
 }
 
+void append_json_boiler_connection_(std::string &payload, const select::Select *source) {
+  append_json_key_(payload, "boiler_connection");
+  if (source == nullptr) {
+    // Firmware without the OTB transport selector can only drive the R1 on/off route.
+    payload += R"("on_off")";
+    return;
+  }
+  if (!source->has_state()) {
+    payload += "null";
+    return;
+  }
+  const std::string &option = source->current_option();
+  // Keep the wire values independent from the user-facing select labels.
+  if (option == "R1") {
+    payload += R"("on_off")";
+  } else if (option == "OpenTherm") {
+    payload += R"("opentherm")";
+  } else {
+    payload += "null";
+  }
+}
+
 const char *reset_reason_name_(esp_reset_reason_t reason) {
   switch (reason) {
     case ESP_RST_POWERON:
@@ -468,6 +490,9 @@ void OpenQuattUsageTelemetry::finish_publish_session_(bool succeeded) {
     this->schedule_regular_publish_();
     ESP_LOGD(TAG, "Usage statistics published successfully");
   } else {
+    // A retry represents a new observation: rebuild both the payload and
+    // message ID when the next publish session starts.
+    this->payload_.clear();
     this->schedule_retry_();
     ESP_LOGW(TAG, "Usage statistics publish failed; a bounded retry was scheduled");
   }
@@ -518,6 +543,8 @@ void OpenQuattUsageTelemetry::build_payload_() {
   append_json_optional_bool_(this->payload_, "cic_polling_enabled", this->cic_polling_switch_);
   append_json_optional_bool_(this->payload_, "cic_compatibility_enabled", this->cic_compatibility_switch_);
   append_json_optional_bool_(this->payload_, "ot_thermostat_enabled", this->ot_thermostat_switch_);
+  append_json_optional_bool_(this->payload_, "boiler_assist_enabled", this->boiler_assist_switch_);
+  append_json_boiler_connection_(this->payload_, this->boiler_connection_select_);
   append_json_optional_bool_(this->payload_, "mqtt_inputs_enabled", this->mqtt_config_ != nullptr,
                              this->mqtt_config_ != nullptr && this->mqtt_config_->is_enabled());
   append_json_optional_bool_(this->payload_, "trend_ram_enabled", this->trend_ram_switch_);

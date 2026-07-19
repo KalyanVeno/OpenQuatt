@@ -1,6 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import binary_sensor, openquatt_mqtt_config, sensor, switch
+from esphome.components import binary_sensor, openquatt_mqtt_config, select, sensor, switch
 from esphome.components.esp32 import (
     add_idf_sdkconfig_option,
     add_idf_component,
@@ -34,6 +34,8 @@ CONF_WIFI_SIGNAL_SENSOR = "wifi_signal_sensor"
 CONF_CIC_POLLING_SWITCH = "cic_polling_switch"
 CONF_CIC_COMPATIBILITY_SWITCH = "cic_compatibility_switch"
 CONF_OT_THERMOSTAT_SWITCH = "ot_thermostat_switch"
+CONF_BOILER_ASSIST_SWITCH = "boiler_assist_switch"
+CONF_BOILER_CONNECTION_SELECT = "boiler_connection_select"
 CONF_MQTT_CONFIG = "mqtt_config"
 CONF_TREND_RAM_SWITCH = "trend_ram_switch"
 CONF_TREND_FLASH_SWITCH = "trend_flash_switch"
@@ -91,6 +93,8 @@ CONFIG_SCHEMA = cv.All(
             cv.Required(CONF_CIC_POLLING_SWITCH): cv.use_id(switch.Switch),
             cv.Optional(CONF_CIC_COMPATIBILITY_SWITCH): cv.use_id(switch.Switch),
             cv.Optional(CONF_OT_THERMOSTAT_SWITCH): cv.use_id(switch.Switch),
+            cv.Required(CONF_BOILER_ASSIST_SWITCH): cv.use_id(switch.Switch),
+            cv.Optional(CONF_BOILER_CONNECTION_SELECT): cv.use_id(select.Select),
             cv.Required(CONF_MQTT_CONFIG): cv.use_id(openquatt_mqtt_config.OpenQuattMqttConfig),
             cv.Required(CONF_TREND_RAM_SWITCH): cv.use_id(switch.Switch),
             cv.Required(CONF_TREND_FLASH_SWITCH): cv.use_id(switch.Switch),
@@ -150,6 +154,11 @@ async def to_code(config):
     if ot_thermostat_switch_id := config.get(CONF_OT_THERMOSTAT_SWITCH):
         ot_thermostat_switch = await cg.get_variable(ot_thermostat_switch_id)
         cg.add(var.set_ot_thermostat_switch(ot_thermostat_switch))
+    boiler_assist_switch = await cg.get_variable(config[CONF_BOILER_ASSIST_SWITCH])
+    cg.add(var.set_boiler_assist_switch(boiler_assist_switch))
+    if boiler_connection_select_id := config.get(CONF_BOILER_CONNECTION_SELECT):
+        boiler_connection_select = await cg.get_variable(boiler_connection_select_id)
+        cg.add(var.set_boiler_connection_select(boiler_connection_select))
     mqtt_config = await cg.get_variable(config[CONF_MQTT_CONFIG])
     cg.add(var.set_mqtt_config(mqtt_config))
     trend_ram_switch = await cg.get_variable(config[CONF_TREND_RAM_SWITCH])

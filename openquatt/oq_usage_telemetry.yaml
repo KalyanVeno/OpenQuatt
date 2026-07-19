@@ -35,6 +35,7 @@ openquatt_usage_telemetry:
   loop_time_sensor: oq_loop_time
   internal_temperature_sensor: oq_esp_internal_temperature
   cic_polling_switch: cic_enable
+  boiler_assist_switch: oq_boiler_assist_enabled
   mqtt_config: oq_mqtt_config
   trend_ram_switch: oq_trend_history_enabled_switch
   trend_flash_switch: oq_trend_history_flash_switch

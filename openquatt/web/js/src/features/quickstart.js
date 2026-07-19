@@ -750,7 +750,7 @@ import { escapeHtml } from "../core/html.js";
                 <li><strong>Software</strong><span>Versie en releasekanaal</span></li>
                 <li><strong>Platform</strong><span>Hardware, opstelling, verbinding en wifi-signaal</span></li>
                 <li><strong>Systeemstatus</strong><span>Geheugen, looptijd, chiptemperatuur en herstartreden</span></li>
-                <li><strong>Functies</strong><span>Aan/uit-status van CiC, OpenTherm-thermostaat, MQTT-inputs en lokale historie</span></li>
+                <li><strong>Functies</strong><span>Aan/uit-status van CiC, OpenTherm-thermostaat, ketelondersteuning, MQTT-inputs en lokale historie; plus de ketelaansluiting (aan/uit of OpenTherm)</span></li>
               </ul>
             </section>
             <section class="oq-usage-disclosure-column is-excluded" aria-labelledby="oq-usage-excluded-title">

@@ -9,6 +9,7 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 #include "esphome/components/binary_sensor/binary_sensor.h"
+#include "esphome/components/select/select.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/switch/switch.h"
 #include "esphome/core/component.h"
@@ -48,6 +49,10 @@ class OpenQuattUsageTelemetry : public switch_::Switch, public Component {
     this->cic_compatibility_switch_ = feature_switch;
   }
   void set_ot_thermostat_switch(switch_::Switch *feature_switch) { this->ot_thermostat_switch_ = feature_switch; }
+  void set_boiler_assist_switch(switch_::Switch *feature_switch) { this->boiler_assist_switch_ = feature_switch; }
+  void set_boiler_connection_select(select::Select *connection_select) {
+    this->boiler_connection_select_ = connection_select;
+  }
   void set_mqtt_config(openquatt_mqtt_config::OpenQuattMqttConfig *config) { this->mqtt_config_ = config; }
   void set_trend_ram_switch(switch_::Switch *feature_switch) { this->trend_ram_switch_ = feature_switch; }
   void set_trend_flash_switch(switch_::Switch *feature_switch) { this->trend_flash_switch_ = feature_switch; }
@@ -133,6 +138,8 @@ class OpenQuattUsageTelemetry : public switch_::Switch, public Component {
   switch_::Switch *cic_polling_switch_{nullptr};
   switch_::Switch *cic_compatibility_switch_{nullptr};
   switch_::Switch *ot_thermostat_switch_{nullptr};
+  switch_::Switch *boiler_assist_switch_{nullptr};
+  select::Select *boiler_connection_select_{nullptr};
   openquatt_mqtt_config::OpenQuattMqttConfig *mqtt_config_{nullptr};
   switch_::Switch *trend_ram_switch_{nullptr};
   switch_::Switch *trend_flash_switch_{nullptr};
