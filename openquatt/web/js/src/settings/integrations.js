@@ -477,6 +477,9 @@ import { escapeHtml } from "../core/html.js";
         const displayLabel = formatSourceOptionLabel(option, config);
         return `<option value="${escapeHtml(option)}" ${option === current ? "selected" : ""}>${escapeHtml(displayLabel)}</option>`;
       }).join("");
+      const unavailableCurrentPlaceholder = currentUnavailable && hideUnavailableCurrent
+        ? '<option value="" selected disabled>Kies een beschikbare bron</option>'
+        : "";
       return {
         markup: `
           <label class="oq-settings-source-select">
@@ -485,7 +488,7 @@ import { escapeHtml } from "../core/html.js";
               ${config.infoCopy ? renderSettingsInfoToggle(config.infoId || key, config.infoTitle || config.label || "Bron", config.infoCopy) : ""}
             </span>
             <select class="oq-helper-select" data-oq-field="${escapeHtml(key)}" ${state.loadingEntities ? "disabled" : ""}>
-              ${optionMarkup}
+              ${unavailableCurrentPlaceholder}${optionMarkup}
             </select>
           </label>
         `,

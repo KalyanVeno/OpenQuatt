@@ -82,7 +82,9 @@ test("MQTT verdwijnt uit alle bronselecties en metingen wanneer de integratie ui
   });
   const disabledCurrentMarkup = renderSettingsSensorSelectionSection();
   MQTT_SOURCE_SELECT_KEYS.forEach((key) => {
-    assert.doesNotMatch(getSelectMarkup(disabledCurrentMarkup, key), /<option value="MQTT"/);
+    const selectMarkup = getSelectMarkup(disabledCurrentMarkup, key);
+    assert.match(selectMarkup, /<option value="" selected disabled>Kies een beschikbare bron<\/option>/);
+    assert.doesNotMatch(selectMarkup, /<option value="MQTT"/);
   });
   assert.match(disabledCurrentMarkup, /Huidige bron niet beschikbaar: MQTT staat uit/);
   assert.doesNotMatch(disabledCurrentMarkup, /MQTT-topic staat uit/);
