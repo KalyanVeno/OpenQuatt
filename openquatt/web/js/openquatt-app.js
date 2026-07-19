@@ -2204,7 +2204,7 @@ Kenmerken: Flowmeter in de buitenunit ge\xEFntegreerd. Onder CV-ketel enkel een 
       <p>Voorbeeldwaarden; de velden en vorm komen overeen met het werkelijke bericht.</p>
       <pre><code>${s(zq)}</code></pre>
     </details>
-    <p class="oq-usage-network-note">${de("server","oq-usage-network-note-icon")} De OpenQuatt-loggingserver kan, zoals iedere internetdienst, technisch wel het bron-IP-adres zien.</p>
+    <p class="oq-usage-network-note">${de("server","oq-usage-network-note-icon")} De OpenQuatt-loggingserver kan, zoals iedere internetdienst, technisch wel het bron-IP-adres zien. OpenQuatt slaat dit IP-adres niet op.</p>
   `;return e?`
       <details class="oq-settings-section oq-settings-section--collapsible oq-usage-disclosure oq-usage-disclosure--collapsible"${r?" open":""}>
         <summary class="oq-settings-section-summary" data-oq-action="toggle-usage-telemetry-details">

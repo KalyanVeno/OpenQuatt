@@ -94,5 +94,6 @@ test("usage telemetry disclosure matches the hourly payload scope", async () => 
   assert.match(disclosureSource, /oq-usage-disclosure--collapsible/);
   assert.match(disclosureSource, /data-oq-action="toggle-usage-telemetry-details"/);
   assert.match(disclosureSource, /technisch wel het bron-IP-adres zien/);
+  assert.match(disclosureSource, /OpenQuatt slaat dit IP-adres niet op/);
   assert.doesNotMatch(disclosureSource, /poort 1883|brokercredential|MQTT-broker|startvertraging|jitter/);
 });
