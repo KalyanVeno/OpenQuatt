@@ -1459,6 +1459,10 @@ import { render } from "../core/render-scheduler.js";
     return shouldCompleteSetup && !setupWasComplete;
   }
 
+  export function isUsageTelemetrySetupCompletionSafe(shouldCompleteSetup, setupWasComplete, telemetryAvailable) {
+    return !shouldDisableUsageTelemetryForSetupRestore(shouldCompleteSetup, setupWasComplete) || telemetryAvailable;
+  }
+
   export async function restoreSettingsBackup() {
     const draft = state.settingsBackupDraft;
     if (!draft || state.settingsBackupBusy) {
@@ -1643,7 +1647,18 @@ import { render } from "../core/render-scheduler.js";
         }
       }
 
-      if (shouldDisableUsageTelemetryForSetupRestore(shouldCompleteSetup, setupWasComplete) && hasEntity("usageTelemetryEnabled")) {
+      const shouldDisableUsageTelemetry = shouldDisableUsageTelemetryForSetupRestore(shouldCompleteSetup, setupWasComplete);
+      const usageTelemetryAvailable = hasEntity("usageTelemetryEnabled");
+      if (!isUsageTelemetrySetupCompletionSafe(shouldCompleteSetup, setupWasComplete, usageTelemetryAvailable)) {
+        setupCompletionSafe = false;
+        skipped.push(createSettingsBackupRestoreItem(
+          "usageTelemetryEnabled",
+          "Installatie",
+          "Gebruiksstatistieken niet beschikbaar",
+          "Setup kan niet veilig worden afgerond zolang deze instelling ontbreekt.",
+          "error",
+        ));
+      } else if (shouldDisableUsageTelemetry) {
         try {
           await setEntityBackupValue("usageTelemetryEnabled", false);
           applied.push("usageTelemetryEnabled");
