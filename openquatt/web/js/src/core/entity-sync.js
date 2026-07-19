@@ -7,7 +7,7 @@ import { updateWebServerLogState } from "./feature-state.js";
 import { getDefaultAppView, getUrlAppView, setAppView } from "./navigation.js";
 import { isFirmwareOtaQuietActive } from "./firmware-quiet.js";
 import { getInstallationMonitoringModel, syncInstallationMonitoringDetailsState } from "./installation-monitoring.js";
-import { beginDeviceReconnect, clearDeviceReconnect, markDeviceReconnectRecovered, scheduleOtaBrowserRefresh } from "./device-reconnect.js";
+import { beginDeviceReconnect, clearDeviceReconnect, markDeviceReconnectRecovered } from "./device-reconnect.js";
 import { getSettingsRenderSignature } from "./render-signatures.js";
 import { isSystemSettingsGroupActive } from "./surface-state.js";
 import { getHeaderRenderSignature, patchHeaderDom } from "./header-render-controls.js";
@@ -526,9 +526,6 @@ import { fetchWithTimeout } from "./browser-utils.js";
     const reconnectRecovered = wasReconnectActive && typeof markDeviceReconnectRecovered === "function"
       ? markDeviceReconnectRecovered()
       : false;
-    if (!wasReconnectActive && state.otaBrowserRefreshPending) {
-      scheduleOtaBrowserRefresh();
-    }
     if (reconnectRecovered) {
       state.lastFastEntitySyncAt = 0;
       state.lastBulkEntitySyncAt = 0;

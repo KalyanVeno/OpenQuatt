@@ -69,11 +69,14 @@ export function markDeviceReconnectRecovered() {
     return false;
   }
 
+  const recoveredAfterConnectionFailure = state.deviceReconnectFailureObserved === true;
   clearDeviceReconnectRecoveryTimer();
   state.deviceReconnectRecoveryStartedAt = Date.now();
   state.deviceReconnectLastError = "";
   state.entitySyncFailureCount = 0;
-  scheduleOtaBrowserRefresh();
+  if (recoveredAfterConnectionFailure) {
+    scheduleOtaBrowserRefresh();
+  }
 
   const recoveryStartedAt = state.deviceReconnectRecoveryStartedAt;
   state.deviceReconnectRecoveryTimer = window.setTimeout(() => {
@@ -88,13 +91,20 @@ export function markDeviceReconnectRecovered() {
 }
 
 export function beginDeviceReconnect(mode = "reconnect", error = "") {
-  if (!state.deviceReconnectMode) {
+  const wasReconnectActive = Boolean(state.deviceReconnectMode);
+  if (!wasReconnectActive) {
     state.deviceReconnectStartedAt = Date.now();
   }
   clearDeviceReconnectRecoveryTimer();
   state.deviceReconnectMode = mode;
   state.deviceReconnectRecoveryStartedAt = 0;
-  state.deviceReconnectLastError = error ? String(error) : state.deviceReconnectLastError;
+  if (error) {
+    state.deviceReconnectLastError = String(error);
+    state.deviceReconnectFailureObserved = true;
+  } else if (!wasReconnectActive) {
+    state.deviceReconnectLastError = "";
+    state.deviceReconnectFailureObserved = false;
+  }
   state.systemModal = "";
   updateFirmwareState({ updateModalOpen: false });
   state.controlError = "";
@@ -109,6 +119,7 @@ export function clearDeviceReconnect() {
   state.deviceReconnectStartedAt = 0;
   state.deviceReconnectRecoveryStartedAt = 0;
   state.deviceReconnectLastError = "";
+  state.deviceReconnectFailureObserved = false;
   state.entitySyncFailureCount = 0;
 }
 
