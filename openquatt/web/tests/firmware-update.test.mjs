@@ -12,6 +12,7 @@ globalThis.window = {
 const { state } = await import("../js/src/core/state.js");
 const {
   getFirmwareProgressModel,
+  isFirmwareInstallCompletionConfirmed,
   primeFirmwareInstallProgressHints,
 } = await import("../js/src/features/firmware-update.js");
 
@@ -89,4 +90,22 @@ test("local OTA hints do not create optional progress entities", () => {
   assert.equal(state.entities.firmwareUpdateProgress, undefined);
   assert.equal(getFirmwareProgressModel().phaseLabel, "Installeren");
   assert.equal(getFirmwareProgressModel().percent, 0);
+});
+
+test("manual OTA does not complete while live progress remains active", () => {
+  state.entities = {
+    firmwareUpdate: {
+      current_version: "v0.42.0",
+      latest_version: "v0.42.0",
+    },
+    firmwareUpdateProgress: { state: 100, value: 100 },
+    firmwareUpdateStatus: { state: "Rebooting", value: "Rebooting" },
+    projectVersionText: { state: "v0.42.0", value: "v0.42.0" },
+  };
+  state.updateInstallBusy = true;
+  state.updateInstallMode = "";
+  state.updateInstallTargetVersion = "v0.42.0";
+  state.updateInstallStatusPollObserved = true;
+
+  assert.equal(isFirmwareInstallCompletionConfirmed(), false);
 });

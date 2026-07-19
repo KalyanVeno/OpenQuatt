@@ -3,6 +3,7 @@ import test from "node:test";
 
 const timers = [];
 let reloadCount = 0;
+const originalFetch = globalThis.fetch;
 
 globalThis.__OQ_PREVIEW__ = false;
 globalThis.window = {
@@ -25,6 +26,7 @@ globalThis.window = {
 
 const { state } = await import("../js/src/core/state.js");
 const { noteEntityRefreshSuccess } = await import("../js/src/core/entity-sync.js");
+const { requestFirmwareOta } = await import("../js/src/features/firmware-actions.js");
 const {
   OTA_BROWSER_REFRESH_DELAY_MS,
   beginDeviceReconnect,
@@ -40,6 +42,7 @@ test.afterEach(() => {
   clearOtaBrowserRefreshPending();
   timers.length = 0;
   reloadCount = 0;
+  globalThis.fetch = originalFetch;
 });
 
 test("a recovered OTA reconnect reloads the page once", () => {
@@ -92,4 +95,25 @@ test("a rejected OTA cancels its pending page reload", () => {
 
   assert.equal(refreshTimer.cancelled, true);
   assert.equal(reloadCount, 0);
+});
+
+test("a lost OTA acknowledgement enters reconnect recovery", async () => {
+  globalThis.fetch = async () => {
+    throw new TypeError("Failed to fetch");
+  };
+
+  await assert.rejects(requestFirmwareOta("/ota", { method: "POST" }), /Failed to fetch/);
+
+  assert.equal(state.otaBrowserRefreshPending, true);
+  assert.equal(state.deviceReconnectMode, "ota");
+  assert.equal(state.deviceReconnectFailureObserved, true);
+});
+
+test("an explicit OTA rejection clears its pending refresh", async () => {
+  globalThis.fetch = async () => ({ ok: false, status: 503 });
+
+  await assert.rejects(requestFirmwareOta("/ota", { method: "POST" }), /HTTP 503/);
+
+  assert.equal(state.otaBrowserRefreshPending, false);
+  assert.equal(state.deviceReconnectMode, "");
 });

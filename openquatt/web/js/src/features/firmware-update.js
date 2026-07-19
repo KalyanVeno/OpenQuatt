@@ -289,6 +289,16 @@ import { render } from "../core/render-scheduler.js";
       && !isFirmwareUpdateAvailable();
   }
 
+  export function isFirmwareInstallCompletionConfirmed() {
+    return !isFirmwareProgressActive()
+      && !isFirmwareUpdateInstalling()
+      && (
+        hasInstalledFirmwareTargetVersion()
+        || isFirmwareInstallSettled()
+        || isFirmwareEffectivelyCurrent()
+      );
+  }
+
   export function isFirmwareUpdateJustCompleted() {
     return (state.updateInstallCompleted || isFirmwareInstallSettled())
       && !isFirmwareUpdateChecking()
@@ -857,11 +867,7 @@ import { render } from "../core/render-scheduler.js";
             scheduleOtaBrowserRefresh();
             return true;
           }
-        } else if (
-          hasInstalledFirmwareTargetVersion()
-          || isFirmwareInstallSettled()
-          || (isFirmwareEffectivelyCurrent() && !isFirmwareProgressActive() && !isFirmwareUpdateInstalling())
-        ) {
+        } else if (isFirmwareInstallCompletionConfirmed()) {
           scheduleOtaBrowserRefresh();
           return true;
         }

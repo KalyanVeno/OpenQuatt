@@ -5,11 +5,29 @@ import { buildEntityPath } from "../core/domain-helpers.js";
 import { setEntityBackupValue } from "../core/entity-backup.js";
 import { getEntityValue } from "../core/entity-store.js";
 import { isLikelyDeviceConnectionError, refreshEntities } from "../core/entity-sync.js";
-import { markOtaBrowserRefreshPending } from "../core/device-reconnect.js";
+import { beginDeviceReconnect, clearOtaBrowserRefreshPending, markOtaBrowserRefreshPending } from "../core/device-reconnect.js";
 import { state } from "../core/state.js";
 import { getFirmwareConnectionLabel, getFirmwareTopologyLabel, getInstallationTopology } from "./device-context.js";
 import { beginFirmwareOtaQuietWindow, getFirmwareBuildSwitchModel, getFirmwareConnectionSwitchModel, getFirmwareCurrentVersion, getFirmwareLatestVersion, getFirmwareTestAssetUrls, getFirmwareTestPrNumber, getFirmwareTestTargetModel, getFirmwareTopologySwitchModel, getFirmwareUpdateEntity, pollFirmwareInstallState, pollFirmwareUpdateState, primeFirmwareInstallProgressHints, primeFirmwareUpdateState, resetFirmwareInstallUiState, resetFirmwareManualUploadSelection, resetFirmwareTestSelection } from "./firmware-update.js";
 import { render } from "../core/render-scheduler.js";
+
+  export async function requestFirmwareOta(path, options = {}) {
+    markOtaBrowserRefreshPending();
+    try {
+      const response = await fetch(path, options);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return response;
+    } catch (error) {
+      if (isLikelyDeviceConnectionError(error.message)) {
+        beginDeviceReconnect("ota", error.message);
+      } else {
+        clearOtaBrowserRefreshPending();
+      }
+      throw error;
+    }
+  }
 
   export async function triggerFirmwareUpdateCheck() {
     const entity = ENTITY_DEFS.checkFirmwareUpdates;
@@ -125,13 +143,9 @@ import { render } from "../core/render-scheduler.js";
       const installPath = installButtonEntity && hasEntity("installFirmwareUpdateTarget")
         ? buildEntityPath(installButtonEntity.domain, installButtonEntity.name, "press")
         : buildEntityPath("update", "Firmware Update", "install");
-      const response = await fetch(installPath, {
+      await requestFirmwareOta(installPath, {
         method: "POST",
       });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      markOtaBrowserRefreshPending();
       const completed = await pollFirmwareInstallState({
         initialDelayMs: FIRMWARE_OTA_START_QUIET_MS,
         pollDelayMs: FIRMWARE_OTA_INSTALL_POLL_INTERVAL_MS,
@@ -192,13 +206,9 @@ import { render } from "../core/render-scheduler.js";
       render();
 
       beginFirmwareOtaQuietWindow();
-      const response = await fetch(buildEntityPath(buttonEntity.domain, buttonEntity.name, "press"), {
+      await requestFirmwareOta(buildEntityPath(buttonEntity.domain, buttonEntity.name, "press"), {
         method: "POST",
       });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      markOtaBrowserRefreshPending();
 
       const completed = await pollFirmwareInstallState({
         initialDelayMs: FIRMWARE_OTA_START_QUIET_MS,
@@ -264,13 +274,9 @@ import { render } from "../core/render-scheduler.js";
       render();
 
       beginFirmwareOtaQuietWindow();
-      const response = await fetch(buildEntityPath(buttonEntity.domain, buttonEntity.name, "press"), {
+      await requestFirmwareOta(buildEntityPath(buttonEntity.domain, buttonEntity.name, "press"), {
         method: "POST",
       });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      markOtaBrowserRefreshPending();
 
       const completed = await pollFirmwareInstallState({
         initialDelayMs: FIRMWARE_OTA_START_QUIET_MS,
@@ -328,11 +334,7 @@ import { render } from "../core/render-scheduler.js";
       render();
 
       beginFirmwareOtaQuietWindow();
-      const response = await fetch(buildEntityPath(buttonEntity.domain, buttonEntity.name, "press"), { method: "POST" });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      markOtaBrowserRefreshPending();
+      await requestFirmwareOta(buildEntityPath(buttonEntity.domain, buttonEntity.name, "press"), { method: "POST" });
 
       const completed = await pollFirmwareInstallState({
         initialDelayMs: FIRMWARE_OTA_START_QUIET_MS,
@@ -488,13 +490,9 @@ import { render } from "../core/render-scheduler.js";
 
       flashRequested = true;
       beginFirmwareOtaQuietWindow();
-      const response = await fetch(buildEntityPath(buttonEntity.domain, buttonEntity.name, "press"), {
+      await requestFirmwareOta(buildEntityPath(buttonEntity.domain, buttonEntity.name, "press"), {
         method: "POST",
       });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      markOtaBrowserRefreshPending();
 
       const completed = await pollFirmwareInstallState({
         initialDelayMs: FIRMWARE_OTA_START_QUIET_MS,
@@ -545,14 +543,10 @@ import { render } from "../core/render-scheduler.js";
     try {
       const formData = new FormData();
       formData.append("update", file, file.name || "firmware.bin");
-      const response = await fetch("/update", {
+      await requestFirmwareOta("/update", {
         method: "POST",
         body: formData,
       });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      markOtaBrowserRefreshPending();
 
       state.updateManualUploadOpen = false;
       resetFirmwareManualUploadSelection();
