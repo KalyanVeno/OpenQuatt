@@ -77,6 +77,7 @@ export function createDiagnosticsState(debugRecordingAcknowledgedId) {
     webServerLogHistoryError: "",
     webServerLogHistoryRequestToken: 0,
     webServerLogHistoryLoaded: false,
+    webServerLogCsrfToken: "",
     webServerLogScrollRestoreToken: 0,
     cm100CommissioningScrollRestoreToken: 0,
     serviceTaskModalScrollRestoreToken: 0,

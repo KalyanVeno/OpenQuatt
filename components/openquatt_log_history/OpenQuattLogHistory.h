@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <string>
 
 #include <esp_http_server.h>
 
@@ -29,6 +30,7 @@ class OpenQuattLogHistory : public Component {
 
   void set_enabled(bool enabled);
   void clear_history();
+  const std::string &get_csrf_token() const { return this->csrf_token_; }
   void write_recent_logs(httpd_req_t *req) const;
 
  protected:
@@ -51,6 +53,7 @@ class OpenQuattLogHistory : public Component {
   size_t head_{0};
   size_t count_{0};
   uint32_t next_seq_{1};
+  std::string csrf_token_;
 
 #ifdef USE_ESP32_CRASH_HANDLER
   bool pending_crash_report_{false};
@@ -68,6 +71,7 @@ class OpenQuattLogHistory : public Component {
   uint64_t current_epoch_offset_ms_() const;
   void sync_time_state_();
   void rebase_history_(uint32_t offset_s);
+  void rotate_csrf_token_();
 
 #ifdef USE_ESP32_CRASH_HANDLER
   void load_crash_time_breadcrumb_();

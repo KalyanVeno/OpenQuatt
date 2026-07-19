@@ -367,6 +367,7 @@ export async function refreshWebServerLogHistory(options = {}) {
       return;
     }
 
+    state.webServerLogCsrfToken = String(payload.csrf_token || "");
     const recentEntries = normalizeRecentWebServerLogPayload(payload);
     state.webServerLogHistoryLoaded = true;
     if (recentEntries.length > 0) {
@@ -487,7 +488,7 @@ export function clearWebServerLogOutput() {
 }
 
 export async function clearWebServerLogHistory() {
-  if (state.busyAction === "clear-webserver-log-history") {
+  if (state.busyAction) {
     return false;
   }
 
@@ -502,12 +503,21 @@ export async function clearWebServerLogHistory() {
     return false;
   }
 
+  const csrfToken = String(state.webServerLogCsrfToken || "");
+  if (!csrfToken) {
+    state.webServerLogHistoryError = "De beveiligingstoken voor de RAM-logbuffer ontbreekt. Open het logboek opnieuw.";
+    render();
+    return false;
+  }
+
   state.busyAction = "clear-webserver-log-history";
   state.webServerLogHistoryError = "";
   render();
 
   try {
-    const response = await window.fetch(getWebServerLogClearUrl(), { method: "POST" });
+    const body = new URLSearchParams();
+    body.set("csrf_token", csrfToken);
+    const response = await window.fetch(getWebServerLogClearUrl(), { method: "POST", body });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
@@ -527,7 +537,7 @@ export async function clearWebServerLogHistory() {
 export function resetWebServerLogRecoveryState() {
   const scrollState = captureWebServerLogScrollState();
   closeWebServerLogStream();
-  updateWebServerLogState({ webServerLogEnabled: null, webServerLogConnected: false });
+  updateWebServerLogState({ webServerLogEnabled: null, webServerLogConnected: false, webServerLogCsrfToken: "" });
   clearWebServerLogOutput();
   if (state.systemModal === "webserver-logs") {
     void refreshWebServerLogHistory({ scrollState });
@@ -867,7 +877,7 @@ export function renderWebServerLogStatusBanner() {
 
 export function renderWebServerLogHistoryControls() {
   const enabled = isWebServerLogHistoryEnabled();
-  const busy = state.loadingEntities || state.busyAction === "switch-webServerLogHistoryEnabled";
+  const busy = state.loadingEntities || Boolean(state.busyAction);
   const label = getWebServerLogHistoryStatusLabel();
   const copy = getWebServerLogHistoryInfoCopy();
   const loggerLevelControl = renderWebServerLoggerLevelControl();
@@ -904,7 +914,7 @@ export function renderWebServerLoggerLevelControl() {
 
   const options = getWebServerLoggerLevelOptions(entity);
   const value = getWebServerLoggerLevelValue(entity);
-  const busy = state.loadingEntities || state.busyAction === "save-debugLevel";
+  const busy = state.loadingEntities || Boolean(state.busyAction);
 
   return `
     ${renderSettingsSystemRow({
@@ -974,6 +984,8 @@ export function handleWebServerLogAction(action) {
 export function renderWebServerLogsModal() {
   const demoMode = isWebServerLogDemoMode();
   const clearBusy = state.busyAction === "clear-webserver-log-history";
+  const clearDisabled = Boolean(state.busyAction) || state.webServerLogHistoryLoading ||
+    (!demoMode && !state.nativeOpen && !state.webServerLogCsrfToken);
   return renderModalShell({
     id: "system",
     titleId: "oq-webserver-log-modal-title",
@@ -995,7 +1007,7 @@ export function renderWebServerLogsModal() {
         </div>`,
     actions: `
       <button class="oq-helper-button oq-helper-button--ghost" type="button" data-oq-action="copy-webserver-log-output" ${state.webServerLogEntries.length === 0 ? "disabled" : ""}>Kopieer log</button>
-      <button class="oq-helper-button oq-helper-button--ghost" type="button" data-oq-action="clear-webserver-log-output" ${clearBusy ? "disabled" : ""}>${clearBusy ? "Legen..." : "Legen"}</button>
+      <button class="oq-helper-button oq-helper-button--ghost" type="button" data-oq-action="clear-webserver-log-output" ${clearDisabled ? "disabled" : ""}>${clearBusy ? "Legen..." : "Legen"}</button>
       <button class="oq-helper-button oq-helper-button--primary" type="button" data-oq-action="close-system-modal">Gereed</button>
     `,
   });

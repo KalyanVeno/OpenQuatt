@@ -1,10 +1,12 @@
 #include "OpenQuattLogHistory.h"
 
 #include <algorithm>
+#include <array>
 #include <cinttypes>
 #include <cstdio>
 #include <cstring>
 
+#include "esp_random.h"
 #include "esphome/core/defines.h"
 #ifdef USE_ESP32_CRASH_HANDLER
 #include <esp_attr.h>
@@ -27,6 +29,54 @@ static constexpr uint32_t MIN_VALID_EPOCH_S = 1704067200UL;  // 2024-01-01 00:00
 static constexpr uint32_t MAX_VALID_EPOCH_S = 2082758400UL;  // 2036-01-01 00:00:00 UTC
 
 static bool epoch_is_sane(uint32_t epoch_s) { return epoch_s >= MIN_VALID_EPOCH_S && epoch_s < MAX_VALID_EPOCH_S; }
+
+static std::string base64_encode_bytes_(const uint8_t *data, size_t length) {
+  static constexpr char TABLE[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  std::string out;
+  out.reserve(((length + 2U) / 3U) * 4U);
+
+  for (size_t index = 0; index < length; index += 3U) {
+    const uint32_t byte_a = data[index];
+    const uint32_t byte_b = index + 1U < length ? data[index + 1U] : 0U;
+    const uint32_t byte_c = index + 2U < length ? data[index + 2U] : 0U;
+    const uint32_t triple = (byte_a << 16U) | (byte_b << 8U) | byte_c;
+
+    out.push_back(TABLE[(triple >> 18U) & 0x3FU]);
+    out.push_back(TABLE[(triple >> 12U) & 0x3FU]);
+    out.push_back(index + 1U < length ? TABLE[(triple >> 6U) & 0x3FU] : '=');
+    out.push_back(index + 2U < length ? TABLE[triple & 0x3FU] : '=');
+  }
+
+  return out;
+}
+
+static void fill_random_token_(std::array<uint8_t, 32> *token) {
+  if (token == nullptr) {
+    return;
+  }
+  for (size_t index = 0; index < token->size(); index += sizeof(uint32_t)) {
+    const uint32_t random = esp_random();
+    for (size_t byte_index = 0; byte_index < sizeof(uint32_t) && index + byte_index < token->size(); ++byte_index) {
+      (*token)[index + byte_index] = static_cast<uint8_t>(random >> (byte_index * 8U));
+    }
+  }
+}
+
+static bool header_matches_host_(const std::string &header_value, const std::string &host) {
+  if (host.empty() || header_value.empty()) {
+    return false;
+  }
+
+  size_t authority_start = 0;
+  const size_t scheme_pos = header_value.find("://");
+  if (scheme_pos != std::string::npos) {
+    authority_start = scheme_pos + 3U;
+  }
+  const size_t authority_end = header_value.find_first_of("/?#", authority_start);
+  const std::string authority = header_value.substr(
+      authority_start, authority_end == std::string::npos ? std::string::npos : authority_end - authority_start);
+  return authority == host;
+}
 
 #ifdef USE_ESP32_CRASH_HANDLER
 static constexpr uint32_t CRASH_TIME_BREADCRUMB_MAGIC = 0x4F514348UL;  // OQCH
@@ -241,6 +291,30 @@ class OpenQuattLogHistoryRequestHandler : public AsyncWebHandler {
  public:
   explicit OpenQuattLogHistoryRequestHandler(OpenQuattLogHistory *parent) : parent_(parent) {}
 
+  bool passes_same_origin_(AsyncWebServerRequest *request) const {
+    const auto host = request->get_header("Host");
+    if (!host.has_value() || host->empty()) {
+      return false;
+    }
+
+    const auto origin = request->get_header("Origin");
+    if (origin.has_value() && !header_matches_host_(origin.value(), host.value())) {
+      return false;
+    }
+
+    const auto referer = request->get_header("Referer");
+    if (referer.has_value() && !header_matches_host_(referer.value(), host.value())) {
+      return false;
+    }
+
+    return true;
+  }
+
+  bool passes_csrf_(AsyncWebServerRequest *request) const {
+    const std::string csrf_token = request->arg("csrf_token");
+    return !csrf_token.empty() && csrf_token == this->parent_->get_csrf_token();
+  }
+
   bool canHandle(AsyncWebServerRequest *request) const override {
     char url_buf[AsyncWebServerRequest::URL_BUF_SIZE];
     request->url_to(url_buf);
@@ -254,6 +328,10 @@ class OpenQuattLogHistoryRequestHandler : public AsyncWebHandler {
     char url_buf[AsyncWebServerRequest::URL_BUF_SIZE];
     request->url_to(url_buf);
     if (url_path_matches(url_buf, "/openquatt/logs/clear")) {
+      if (!this->passes_same_origin_(request) || !this->passes_csrf_(request)) {
+        request->send(403, "application/json", R"({"ok":false,"error":"forbidden"})");
+        return;
+      }
       this->parent_->clear_history();
     }
 
@@ -593,6 +671,12 @@ void OpenQuattLogHistory::clear_history() {
   this->next_seq_ = 1;
 }
 
+void OpenQuattLogHistory::rotate_csrf_token_() {
+  std::array<uint8_t, 32> token_bytes{};
+  fill_random_token_(&token_bytes);
+  this->csrf_token_ = base64_encode_bytes_(token_bytes.data(), token_bytes.size());
+}
+
 void OpenQuattLogHistory::setup() {
   if (logger::global_logger == nullptr) {
     ESP_LOGE(TAG, "global_logger is unavailable");
@@ -610,6 +694,7 @@ void OpenQuattLogHistory::setup() {
   if (!this->entries_.allocate(ENTRY_CAPACITY)) {
     ESP_LOGE(TAG, "Failed to allocate log history buffer in PSRAM");
   }
+  this->rotate_csrf_token_();
 
   logger::global_logger->add_log_callback(this, [](void *self, uint8_t level, const char *tag, const char *message,
                                                    size_t message_len) {
@@ -655,6 +740,8 @@ void OpenQuattLogHistory::write_recent_logs(httpd_req_t *req) const {
 
   ChunkedJsonWriter writer(req);
   if (!writer.write_literal("{\"enabled\":") || !writer.write_literal(this->enabled_ ? "true" : "false") ||
+      !writer.write_literal(",\"csrf_token\":") ||
+      !writer.write_json_string(this->csrf_token_.c_str(), this->csrf_token_.size()) ||
       !writer.write_literal(",\"entries\":[")) {
     ESP_LOGW(TAG, "Failed to start recent log response");
     return;
