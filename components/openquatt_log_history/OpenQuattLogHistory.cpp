@@ -244,10 +244,19 @@ class OpenQuattLogHistoryRequestHandler : public AsyncWebHandler {
   bool canHandle(AsyncWebServerRequest *request) const override {
     char url_buf[AsyncWebServerRequest::URL_BUF_SIZE];
     request->url_to(url_buf);
-    return url_path_matches(url_buf, "/openquatt/logs/recent") && request->method() == HTTP_GET;
+    if (url_path_matches(url_buf, "/openquatt/logs/recent")) {
+      return request->method() == HTTP_GET;
+    }
+    return url_path_matches(url_buf, "/openquatt/logs/clear") && request->method() == HTTP_POST;
   }
 
   void handleRequest(AsyncWebServerRequest *request) override {
+    char url_buf[AsyncWebServerRequest::URL_BUF_SIZE];
+    request->url_to(url_buf);
+    if (url_path_matches(url_buf, "/openquatt/logs/clear")) {
+      this->parent_->clear_history();
+    }
+
     httpd_req_t *req = *request;
     httpd_resp_set_status(req, HTTPD_200);
     httpd_resp_set_type(req, "application/json; charset=utf-8");

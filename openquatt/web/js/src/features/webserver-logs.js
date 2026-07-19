@@ -48,6 +48,10 @@ export function getWebServerLogHistoryUrl() {
   return `${getBasePath()}/openquatt/logs/recent`;
 }
 
+export function getWebServerLogClearUrl() {
+  return `${getBasePath()}/openquatt/logs/clear`;
+}
+
 export function isWebServerLogHistoryEnabled() {
   const entity = state.entities?.webServerLogHistoryEnabled;
   if (!entity) {
@@ -479,6 +483,44 @@ export function clearWebServerLogOutput() {
   webServerLogScrollKeeper.invalidate();
   if (state.systemModal === "webserver-logs") {
     render();
+  }
+}
+
+export async function clearWebServerLogHistory() {
+  if (state.busyAction === "clear-webserver-log-history") {
+    return false;
+  }
+
+  if (state.nativeOpen || isWebServerLogDemoMode()) {
+    clearWebServerLogOutput();
+    return true;
+  }
+
+  if (typeof window.fetch !== "function") {
+    state.webServerLogHistoryError = "De RAM-logbuffer kan niet vanuit deze browser worden geleegd.";
+    render();
+    return false;
+  }
+
+  state.busyAction = "clear-webserver-log-history";
+  state.webServerLogHistoryError = "";
+  render();
+
+  try {
+    const response = await window.fetch(getWebServerLogClearUrl(), { method: "POST" });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    clearWebServerLogOutput();
+    return true;
+  } catch (error) {
+    state.webServerLogHistoryError = `De RAM-logbuffer kon niet worden geleegd (${error instanceof Error ? error.message : "onbekende fout"}).`;
+    return false;
+  } finally {
+    state.busyAction = "";
+    if (state.systemModal === "webserver-logs") {
+      render();
+    }
   }
 }
 
@@ -921,7 +963,7 @@ export async function copyWebServerLogOutput() {
 
 const webServerLogActionHandlers = {
   "open-webserver-log-modal": () => openWebServerLogsModal(),
-  "clear-webserver-log-output": () => clearWebServerLogOutput(),
+  "clear-webserver-log-output": () => clearWebServerLogHistory(),
   "copy-webserver-log-output": () => copyWebServerLogOutput(),
 };
 
@@ -931,6 +973,7 @@ export function handleWebServerLogAction(action) {
 
 export function renderWebServerLogsModal() {
   const demoMode = isWebServerLogDemoMode();
+  const clearBusy = state.busyAction === "clear-webserver-log-history";
   return renderModalShell({
     id: "system",
     titleId: "oq-webserver-log-modal-title",
@@ -952,7 +995,7 @@ export function renderWebServerLogsModal() {
         </div>`,
     actions: `
       <button class="oq-helper-button oq-helper-button--ghost" type="button" data-oq-action="copy-webserver-log-output" ${state.webServerLogEntries.length === 0 ? "disabled" : ""}>Kopieer log</button>
-      <button class="oq-helper-button oq-helper-button--ghost" type="button" data-oq-action="clear-webserver-log-output">Legen</button>
+      <button class="oq-helper-button oq-helper-button--ghost" type="button" data-oq-action="clear-webserver-log-output" ${clearBusy ? "disabled" : ""}>${clearBusy ? "Legen..." : "Legen"}</button>
       <button class="oq-helper-button oq-helper-button--primary" type="button" data-oq-action="close-system-modal">Gereed</button>
     `,
   });
