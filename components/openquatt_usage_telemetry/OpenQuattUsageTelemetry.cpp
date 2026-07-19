@@ -9,9 +9,9 @@
 
 #include "esp_crt_bundle.h"
 #include "esp_heap_caps.h"
-#if defined(CONFIG_IDF_TARGET_ESP32S3)
-#include "esp_efuse.h"
-#include "esp_efuse_table.h"
+#if defined(CONFIG_IDF_TARGET_ESP32S3) && __has_include("heatpump_controller_q_hardware_revision.h")
+#include "heatpump_controller_q_hardware_revision.h"
+#define OPENQUATT_HAS_Q_HARDWARE_REVISION
 #endif
 #include "esp_system.h"
 #include "esp_timer.h"
@@ -565,17 +565,16 @@ std::string OpenQuattUsageTelemetry::read_hardware_revision_() const {
   if (this->hardware_profile_ != "heatpump_controller_q") {
     return "";
   }
-#if defined(CONFIG_IDF_TARGET_ESP32S3)
-  uint16_t raw = 0;
-  const esp_err_t error = esp_efuse_read_field_blob(ESP_EFUSE_USER_DATA, &raw, 14);
-  raw &= 0x3FFFU;
-  if (error != ESP_OK || raw == 0U) {
+#if defined(OPENQUATT_HAS_Q_HARDWARE_REVISION)
+  const auto revision = oq_hardware::read_hardware_revision_efuse();
+  if (revision.error != ESP_OK || !revision.programmed) {
     return "";
   }
-  char revision[8];
-  std::snprintf(revision, sizeof(revision), "%u.%u", static_cast<unsigned>(raw & 0x0FU),
-                static_cast<unsigned>((raw >> 4U) & 0x0FU));
-  return revision;
+  char revision_text[32];
+  std::snprintf(revision_text, sizeof(revision_text), "%u.%u (batch %u)",
+                static_cast<unsigned>(revision.major), static_cast<unsigned>(revision.minor),
+                static_cast<unsigned>(revision.batch));
+  return revision_text;
 #else
   return "";
 #endif
