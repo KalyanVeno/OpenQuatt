@@ -7,7 +7,7 @@ import { updateWebServerLogState } from "./feature-state.js";
 import { getDefaultAppView, getUrlAppView, setAppView } from "./navigation.js";
 import { isFirmwareOtaQuietActive } from "./firmware-quiet.js";
 import { getInstallationMonitoringModel, syncInstallationMonitoringDetailsState } from "./installation-monitoring.js";
-import { beginDeviceReconnect, clearDeviceReconnect, markDeviceReconnectRecovered } from "./device-reconnect.js";
+import { beginDeviceReconnect, clearDeviceReconnect, markDeviceReconnectRecovered, reconcileOtaEvidence } from "./device-reconnect.js";
 import { getSettingsRenderSignature } from "./render-signatures.js";
 import { isSystemSettingsGroupActive } from "./surface-state.js";
 import { getHeaderRenderSignature, patchHeaderDom } from "./header-render-controls.js";
@@ -522,6 +522,7 @@ import { fetchWithTimeout } from "./browser-utils.js";
     state.lastEntitySyncAt = now;
     state.lastEntitySyncSuccessAt = now;
     state.entitySyncFailureCount = 0;
+    reconcileOtaEvidence();
     const wasReconnectActive = Boolean(state.deviceReconnectMode);
     const reconnectRecovered = wasReconnectActive && typeof markDeviceReconnectRecovered === "function"
       ? markDeviceReconnectRecovered()
@@ -563,11 +564,11 @@ import { fetchWithTimeout } from "./browser-utils.js";
       || state.busyAction === "restartAction"
       || state.updateInstallBusy
       || state.updateInstallPhaseHint
-      || state.otaBrowserRefreshPending
+      || state.otaRefresh.pending
       || state.entitySyncFailureCount >= 2
     ) {
       beginDeviceReconnect(
-        state.updateInstallBusy || state.updateInstallPhaseHint || state.otaBrowserRefreshPending
+        state.updateInstallBusy || state.updateInstallPhaseHint || state.otaRefresh.pending
           ? "ota"
           : state.busyAction === "restartAction" ? "restart" : "reconnect",
         message,
@@ -1084,7 +1085,7 @@ import { fetchWithTimeout } from "./browser-utils.js";
         }
         return;
       }
-      await refreshEntities([...new Set([...keys, ...quickStartSetupKeys, ...quickStartFlowSourceKeys, ...quickStartThermostatSourceKeys])], isPrefetchOverview ? "state" : appView === "settings" || quickStartSetupKeys.length ? "all" : "state", {
+      await refreshEntities([...new Set([...keys, ...(state.otaRefresh.wait ? ["uptime", "projectVersionText"] : []), ...quickStartSetupKeys, ...quickStartFlowSourceKeys, ...quickStartThermostatSourceKeys])], isPrefetchOverview ? "state" : appView === "settings" || quickStartSetupKeys.length ? "all" : "state", {
         concurrency: forceFast && isOverviewLike ? FAST_VIEW_ENTITY_REFRESH_CONCURRENCY : ENTITY_REFRESH_CONCURRENCY,
       });
       state.lastFastEntitySyncAt = Date.now();

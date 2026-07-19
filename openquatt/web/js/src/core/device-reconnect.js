@@ -3,34 +3,84 @@ import { render } from "./render-scheduler.js";
 import { updateFirmwareState } from "./feature-state.js";
 
 export const DEVICE_RECONNECT_RECOVERY_CLEAR_DELAY_MS = 1500;
-export const OTA_BROWSER_REFRESH_DELAY_MS = 1500;
+export const OTA_REFRESH_DELAY_MS = 1500;
 
-export function markOtaBrowserRefreshPending() {
-  state.otaBrowserRefreshPending = true;
+function getOtaEvidence() {
+  const uptime = state.entities.uptime;
+  const version = state.entities.projectVersionText;
+  return [
+    +(uptime?.state || uptime?.value),
+    version?.state || version?.value || "",
+  ];
 }
 
-export function clearOtaBrowserRefreshPending() {
-  if (state.otaBrowserRefreshTimer) {
-    window.clearTimeout(state.otaBrowserRefreshTimer);
-    state.otaBrowserRefreshTimer = null;
-  }
-  state.otaBrowserRefreshPending = false;
+export function armOtaRefresh() {
+  clearOtaRefresh();
+  state.otaRefresh.pending = true;
+  state.otaRefresh.base = getOtaEvidence();
 }
 
-export function scheduleOtaBrowserRefresh(delayMs = OTA_BROWSER_REFRESH_DELAY_MS) {
-  if (!state.otaBrowserRefreshPending || state.otaBrowserRefreshTimer) {
-    return false;
+export function clearOtaRefresh() {
+  const refresh = state.otaRefresh;
+  if (refresh.timer) {
+    window.clearTimeout(refresh.timer);
+    refresh.timer = null;
+  }
+  refresh.pending = false;
+  refresh.wait = false;
+  refresh.base = null;
+}
+
+export function awaitOtaEvidence(timeoutMs = 300000) {
+  const refresh = state.otaRefresh;
+  if (!refresh.pending) {
+    return;
+  }
+  if (refresh.timer) {
+    window.clearTimeout(refresh.timer);
+  }
+  refresh.wait = true;
+  refresh.timer = window.setTimeout(() => {
+    refresh.timer = null;
+    if (refresh.wait) {
+      clearOtaRefresh();
+    }
+  }, timeoutMs);
+}
+
+export function reconcileOtaEvidence() {
+  const refresh = state.otaRefresh;
+  if (!refresh.pending || !refresh.wait) {
+    return;
   }
 
-  state.otaBrowserRefreshTimer = window.setTimeout(() => {
-    state.otaBrowserRefreshTimer = null;
-    if (!state.otaBrowserRefreshPending) {
+  const evidence = getOtaEvidence();
+  if (
+    evidence[0] < refresh.base[0]
+    || (refresh.base[1] && evidence[1] && evidence[1] !== refresh.base[1])
+  ) {
+    scheduleOtaRefresh();
+  }
+}
+
+export function scheduleOtaRefresh(delayMs = OTA_REFRESH_DELAY_MS) {
+  const refresh = state.otaRefresh;
+  if (!refresh.pending || (refresh.timer && !refresh.wait)) {
+    return;
+  }
+
+  if (refresh.timer) {
+    window.clearTimeout(refresh.timer);
+  }
+  refresh.wait = false;
+  refresh.timer = window.setTimeout(() => {
+    refresh.timer = null;
+    if (!refresh.pending) {
       return;
     }
-    state.otaBrowserRefreshPending = false;
+    clearOtaRefresh();
     window.location.reload();
-  }, Math.max(0, Number(delayMs) || 0));
-  return true;
+  }, delayMs);
 }
 
 export function clearDeviceReconnectRecoveryTimer() {
@@ -69,15 +119,10 @@ export function markDeviceReconnectRecovered() {
     return false;
   }
 
-  const recoveredAfterConnectionFailure = state.deviceReconnectFailureObserved === true;
   clearDeviceReconnectRecoveryTimer();
   state.deviceReconnectRecoveryStartedAt = Date.now();
   state.deviceReconnectLastError = "";
   state.entitySyncFailureCount = 0;
-  if (recoveredAfterConnectionFailure) {
-    scheduleOtaBrowserRefresh();
-  }
-
   const recoveryStartedAt = state.deviceReconnectRecoveryStartedAt;
   state.deviceReconnectRecoveryTimer = window.setTimeout(() => {
     if (state.deviceReconnectMode && Number(state.deviceReconnectRecoveryStartedAt || 0) === recoveryStartedAt) {
@@ -91,20 +136,13 @@ export function markDeviceReconnectRecovered() {
 }
 
 export function beginDeviceReconnect(mode = "reconnect", error = "") {
-  const wasReconnectActive = Boolean(state.deviceReconnectMode);
-  if (!wasReconnectActive) {
+  if (!state.deviceReconnectMode) {
     state.deviceReconnectStartedAt = Date.now();
   }
   clearDeviceReconnectRecoveryTimer();
   state.deviceReconnectMode = mode;
   state.deviceReconnectRecoveryStartedAt = 0;
-  if (error) {
-    state.deviceReconnectLastError = String(error);
-    state.deviceReconnectFailureObserved = true;
-  } else if (!wasReconnectActive) {
-    state.deviceReconnectLastError = "";
-    state.deviceReconnectFailureObserved = false;
-  }
+  state.deviceReconnectLastError = error ? String(error) : state.deviceReconnectLastError;
   state.systemModal = "";
   updateFirmwareState({ updateModalOpen: false });
   state.controlError = "";
@@ -119,7 +157,6 @@ export function clearDeviceReconnect() {
   state.deviceReconnectStartedAt = 0;
   state.deviceReconnectRecoveryStartedAt = 0;
   state.deviceReconnectLastError = "";
-  state.deviceReconnectFailureObserved = false;
   state.entitySyncFailureCount = 0;
 }
 

@@ -109,3 +109,38 @@ test("manual OTA does not complete while live progress remains active", () => {
 
   assert.equal(isFirmwareInstallCompletionConfirmed(), false);
 });
+
+test("manual OTA does not complete from an unchanged version without progress evidence", () => {
+  state.entities = {
+    firmwareUpdate: {
+      current_version: "v0.42.0",
+      latest_version: "v0.42.0",
+    },
+    projectVersionText: { state: "v0.42.0", value: "v0.42.0" },
+  };
+  state.updateInstallBusy = true;
+  state.updateInstallMode = "";
+  state.updateInstallTargetVersion = "v0.42.0";
+  state.otaRefresh.pending = true;
+  state.otaRefresh.timer = {};
+  state.otaRefresh.wait = true;
+
+  assert.equal(isFirmwareInstallCompletionConfirmed(), false);
+});
+
+test("normal OTA completes after its target version is inactive and installed", () => {
+  state.entities = {
+    firmwareUpdate: {
+      current_version: "v0.43.0",
+      latest_version: "v0.43.0",
+      state: "up_to_date",
+    },
+    firmwareUpdateStatus: { state: "Idle", value: "Idle" },
+    projectVersionText: { state: "v0.43.0", value: "v0.43.0" },
+  };
+  state.updateInstallBusy = true;
+  state.updateInstallMode = "normal";
+  state.updateInstallTargetVersion = "v0.43.0";
+
+  assert.equal(isFirmwareInstallCompletionConfirmed(), true);
+});
