@@ -6,7 +6,7 @@ import { buildEntityPath } from "../core/domain-helpers.js";
 import { getEnergyHistoryRequestQuery } from "../core/energy-history-query.js";
 import { getEnergyHistoryDateKeyFromDate, parseEnergyHistoryDateKey } from "../core/energy-history-domain.js";
 import { updateEnergyHistoryState } from "../core/feature-state.js";
-import { setEntityBackupValue } from "../core/entity-backup.js";
+import { setEntityBackupValue, verifyEntityBackupSwitchState } from "../core/entity-backup.js";
 import { formatValue, getEntityValue, normalizeDateTimeValue, normalizeTimeValue, parseLooseNumber } from "../core/entity-store.js";
 import { refreshEntities, syncEntities } from "../core/entity-sync.js";
 import { buildSettingsBackupMqttConfig, collectUnknownSettingsBackupItems, isSettingsBackupMqttSourceSelection, normalizeSettingsBackupMqttConfig, SETTINGS_BACKUP_MIN_SCHEMA_VERSION, SETTINGS_BACKUP_MQTT_INPUT_KEYS, SETTINGS_BACKUP_MQTT_RETAINED_KEYS, settingsBackupMqttNeedsPassword } from "../core/settings-backup-domain.js";
@@ -1661,6 +1661,10 @@ import { render } from "../core/render-scheduler.js";
       } else if (shouldDisableUsageTelemetry) {
         try {
           await setEntityBackupValue("usageTelemetryEnabled", false);
+          const telemetryDisabled = await verifyEntityBackupSwitchState("usageTelemetryEnabled", false);
+          if (!telemetryDisabled) {
+            throw new Error("De controller bevestigde niet dat gebruiksstatistieken uitstaan.");
+          }
           applied.push("usageTelemetryEnabled");
         } catch (error) {
           setupCompletionSafe = false;

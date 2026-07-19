@@ -345,8 +345,11 @@ bool OpenQuattUsageTelemetry::is_setup_complete_() const {
 }
 
 void OpenQuattUsageTelemetry::apply_storage_(const Storage &storage) {
-  this->installation_id_bytes_ = storage.installation_id;
-  this->installation_id_ = storage.installation_id_present != 0U ? format_uuid_(storage.installation_id) : "";
+  // The ID is immutable across enable/disable writes. Avoid rewriting the string while MQTT callbacks may read it.
+  if (this->installation_id_bytes_ != storage.installation_id) {
+    this->installation_id_bytes_ = storage.installation_id;
+    this->installation_id_ = storage.installation_id_present != 0U ? format_uuid_(storage.installation_id) : "";
+  }
   const bool enabled = storage.enabled != 0U && !this->installation_id_.empty();
   this->enabled_.store(enabled);
   this->publish_state(enabled);
