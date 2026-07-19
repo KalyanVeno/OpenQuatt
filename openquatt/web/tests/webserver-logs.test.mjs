@@ -16,6 +16,7 @@ function seedLogState() {
   state.webServerLogHistoryError = "";
   state.webServerLogHistoryLoaded = true;
   state.webServerLogCsrfToken = "test-csrf-token";
+  state.webServerLogHistoryNeedsReconcile = false;
   state.webServerLogEntries = [{ raw: "old log entry", text: "old log entry" }];
 }
 
@@ -35,7 +36,6 @@ test("clearWebServerLogHistory clears firmware history before local entries", as
       return {
         ok: true,
         status: 200,
-        json: async () => ({ enabled: true, csrf_token: "test-csrf-token", entries: [] }),
       };
     },
   };
@@ -48,6 +48,7 @@ test("clearWebServerLogHistory clears firmware history before local entries", as
   assert.equal(requests[0].options.body.get("csrf_token"), "test-csrf-token");
   assert.deepEqual(state.webServerLogEntries, []);
   assert.equal(state.webServerLogHistoryLoaded, false);
+  assert.equal(state.webServerLogHistoryNeedsReconcile, false);
   assert.equal(state.webServerLogHistoryError, "");
   assert.equal(state.busyAction, "");
 });
@@ -66,7 +67,8 @@ test("clearWebServerLogHistory preserves visible entries when firmware clearing 
 
   assert.equal(await clearWebServerLogHistory(), false);
   assert.equal(state.webServerLogEntries.length, 1);
-  assert.equal(state.webServerLogHistoryLoaded, true);
+  assert.equal(state.webServerLogHistoryLoaded, false);
+  assert.equal(state.webServerLogHistoryNeedsReconcile, true);
   assert.match(state.webServerLogHistoryError, /HTTP 500/);
   assert.equal(state.busyAction, "");
 });
@@ -99,7 +101,10 @@ test("clearWebServerLogHistory backfills the closed live-stream gap after failur
         json: async () => ({
           enabled: true,
           csrf_token: "test-csrf-token",
-          entries: [{ raw: "missed while clearing", ts: 2000, seq: 2 }],
+          entries: [
+            { raw: "old log entry", ts: 1000, seq: 1 },
+            { raw: "missed while clearing", ts: 2000, seq: 2 },
+          ],
         }),
       };
     },
@@ -107,6 +112,7 @@ test("clearWebServerLogHistory backfills the closed live-stream gap after failur
 
   assert.equal(await clearWebServerLogHistory(), false);
   assert.deepEqual(requests.map(({ url }) => url), [
+    "/openquatt/logs/clear",
     "/openquatt/logs/clear",
     "/openquatt/logs/recent",
   ]);
@@ -138,11 +144,6 @@ test("clearWebServerLogHistory reconciles entries produced after firmware cleari
         return {
           ok: true,
           status: 200,
-          json: async () => ({
-            enabled: true,
-            csrf_token: "test-csrf-token",
-            entries: [{ raw: "after clear 1", ts: 1000, seq: 1 }],
-          }),
         };
       }
       return {
@@ -205,6 +206,119 @@ test("clearWebServerLogHistory refreshes and retries after a rotated CSRF token"
   assert.deepEqual(postedTokens, ["test-csrf-token", "rotated-csrf-token"]);
   assert.equal(state.webServerLogCsrfToken, "rotated-csrf-token");
   assert.equal(state.webServerLogHistoryError, "");
+});
+
+test("clearWebServerLogHistory retries an ambiguous clear request once", async (t) => {
+  const originalWindow = globalThis.window;
+  t.after(() => {
+    globalThis.window = originalWindow;
+  });
+
+  seedLogState();
+  let postCount = 0;
+  globalThis.window = {
+    location: { pathname: "/" },
+    fetch: async () => {
+      postCount += 1;
+      if (postCount === 1) {
+        throw new TypeError("connection closed");
+      }
+      return { ok: true, status: 200 };
+    },
+  };
+
+  assert.equal(await clearWebServerLogHistory(), true);
+  assert.equal(postCount, 2);
+  assert.deepEqual(state.webServerLogEntries, []);
+  assert.equal(state.webServerLogHistoryNeedsReconcile, false);
+});
+
+test("clearWebServerLogHistory replaces stale rows after an ambiguous failure", async (t) => {
+  const originalWindow = globalThis.window;
+  t.after(() => {
+    globalThis.window = originalWindow;
+  });
+
+  seedLogState();
+  state.systemModal = "webserver-logs";
+  let postCount = 0;
+  globalThis.window = {
+    location: { pathname: "/" },
+    fetch: async (_url, options = {}) => {
+      if (options.method === "POST") {
+        postCount += 1;
+        throw new TypeError("connection closed");
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ enabled: true, csrf_token: "test-csrf-token", entries: [] }),
+      };
+    },
+  };
+
+  assert.equal(await clearWebServerLogHistory(), false);
+  assert.equal(postCount, 2);
+  assert.deepEqual(state.webServerLogEntries, []);
+  assert.equal(state.webServerLogHistoryLoaded, true);
+  assert.equal(state.webServerLogHistoryNeedsReconcile, false);
+  assert.match(state.webServerLogHistoryError, /connection closed/);
+});
+
+test("clearWebServerLogHistory keeps reconciliation pending when the modal closes", async (t) => {
+  const originalWindow = globalThis.window;
+  t.after(() => {
+    globalThis.window = originalWindow;
+  });
+
+  seedLogState();
+  state.systemModal = "webserver-logs";
+  let postCount = 0;
+  globalThis.window = {
+    location: { pathname: "/" },
+    fetch: async () => {
+      postCount += 1;
+      state.systemModal = null;
+      return { ok: false, status: 503 };
+    },
+  };
+
+  assert.equal(await clearWebServerLogHistory(), false);
+  assert.equal(postCount, 2);
+  assert.equal(state.webServerLogHistoryLoaded, false);
+  assert.equal(state.webServerLogHistoryNeedsReconcile, true);
+  assert.equal(state.webServerLogEntries.length, 1);
+});
+
+test("refreshWebServerLogHistory replaces stale rows without dropping concurrent live entries", async (t) => {
+  const originalWindow = globalThis.window;
+  t.after(() => {
+    globalThis.window = originalWindow;
+  });
+
+  seedLogState();
+  state.systemModal = "webserver-logs";
+  state.webServerLogHistoryNeedsReconcile = true;
+  const liveEntry = { raw: "live during refresh", text: "live during refresh", receivedAt: 3000 };
+  globalThis.window = {
+    location: { pathname: "/" },
+    fetch: async () => {
+      state.webServerLogEntries = [...state.webServerLogEntries, liveEntry];
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          enabled: true,
+          csrf_token: "test-csrf-token",
+          entries: [{ raw: "authoritative history", ts: 2000, seq: 1 }],
+        }),
+      };
+    },
+  };
+
+  await refreshWebServerLogHistory();
+  assert.deepEqual(state.webServerLogEntries.map(({ raw }) => raw), ["authoritative history", "live during refresh"]);
+  assert.equal(state.webServerLogHistoryNeedsReconcile, false);
 });
 
 test("clearWebServerLogHistory does not replace another pending action", async (t) => {

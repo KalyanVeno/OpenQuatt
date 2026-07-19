@@ -333,6 +333,8 @@ class OpenQuattLogHistoryRequestHandler : public AsyncWebHandler {
         return;
       }
       this->parent_->clear_history();
+      request->send(200, "application/json", R"({"ok":true})");
+      return;
     }
 
     httpd_req_t *req = *request;
@@ -764,22 +766,31 @@ void OpenQuattLogHistory::write_recent_logs(httpd_req_t *req) const {
     return;
   }
 
-  PsramBuffer<LogEntry> snapshot;
-  if (!snapshot.allocate(ENTRY_CAPACITY)) {
-    ESP_LOGW(TAG, "Failed to allocate recent log snapshot");
-    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Unable to snapshot recent logs");
-    return;
-  }
-
-  size_t snapshot_count = 0;
+  size_t snapshot_capacity = 0;
   if (!this->lock_history_()) {
     ESP_LOGW(TAG, "Failed to lock recent log history");
     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Unable to lock recent logs");
     return;
   }
-  snapshot_count = this->count_;
+  snapshot_capacity = this->count_;
+  this->unlock_history_();
+
+  PsramBuffer<LogEntry> snapshot;
+  if (!snapshot.allocate(snapshot_capacity)) {
+    ESP_LOGW(TAG, "Failed to allocate recent log snapshot");
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Unable to snapshot recent logs");
+    return;
+  }
+
+  if (!this->lock_history_()) {
+    ESP_LOGW(TAG, "Failed to lock recent log history");
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Unable to lock recent logs");
+    return;
+  }
+  const size_t snapshot_count = std::min(this->count_, snapshot_capacity);
+  const size_t start_offset = this->count_ - snapshot_count;
   for (size_t index = 0; index < snapshot_count; ++index) {
-    const size_t entry_index = (this->head_ + index) % ENTRY_CAPACITY;
+    const size_t entry_index = (this->head_ + start_offset + index) % ENTRY_CAPACITY;
     snapshot[index] = this->entries_[entry_index];
   }
   this->unlock_history_();

@@ -347,6 +347,8 @@ export async function refreshWebServerLogHistory(options = {}) {
   }
 
   const scrollState = options.scrollState || captureWebServerLogScrollState();
+  const replaceEntries = options.replaceEntries === true || state.webServerLogHistoryNeedsReconcile === true;
+  const entriesBeforeRequest = replaceEntries ? new Set(state.webServerLogEntries) : null;
   const requestToken = Number(state.webServerLogHistoryRequestToken || 0) + 1;
   state.webServerLogHistoryRequestToken = requestToken;
   state.webServerLogHistoryLoading = true;
@@ -369,11 +371,23 @@ export async function refreshWebServerLogHistory(options = {}) {
 
     state.webServerLogCsrfToken = String(payload.csrf_token || "");
     const recentEntries = normalizeRecentWebServerLogPayload(payload);
+    const liveEntries = replaceEntries
+      ? state.webServerLogEntries.filter((entry) => !entriesBeforeRequest.has(entry))
+      : [];
+    if (replaceEntries) {
+      state.webServerLogEntries = [];
+      state.webServerLogRecentTail = [];
+      state.webServerLogRecentAnchorAt = 0;
+    }
     state.webServerLogHistoryLoaded = true;
+    state.webServerLogHistoryNeedsReconcile = false;
     if (recentEntries.length > 0) {
       mergeWebServerLogEntries(recentEntries, { prepend: true });
       state.webServerLogRecentTail = recentEntries.slice(-4).map((entry) => String(entry.raw ?? entry.text ?? ""));
       state.webServerLogRecentAnchorAt = Date.now();
+    }
+    if (liveEntries.length > 0) {
+      mergeWebServerLogEntries(liveEntries);
     }
   } catch (error) {
     if (state.systemModal === "webserver-logs" && state.webServerLogHistoryRequestToken === requestToken) {
@@ -475,6 +489,7 @@ export function clearWebServerLogOutput() {
     webServerLogHistoryError: "",
     webServerLogHistoryLoading: false,
     webServerLogHistoryLoaded: false,
+    webServerLogHistoryNeedsReconcile: false,
     webServerLogCopyMessage: "",
     webServerLogCopyError: "",
     webServerLogHistoryRequestToken: state.webServerLogHistoryRequestToken + 1,
@@ -485,24 +500,6 @@ export function clearWebServerLogOutput() {
   if (state.systemModal === "webserver-logs") {
     render();
   }
-}
-
-function replaceWebServerLogOutput(payload) {
-  const recentEntries = normalizeRecentWebServerLogPayload(payload);
-  updateWebServerLogState({
-    webServerLogEntries: recentEntries,
-    webServerLogError: "",
-    webServerLogHistoryError: "",
-    webServerLogHistoryLoading: false,
-    webServerLogHistoryLoaded: false,
-    webServerLogCsrfToken: String(payload?.csrf_token || state.webServerLogCsrfToken || ""),
-    webServerLogCopyMessage: "",
-    webServerLogCopyError: "",
-    webServerLogHistoryRequestToken: state.webServerLogHistoryRequestToken + 1,
-    webServerLogRecentTail: recentEntries.slice(-4).map((entry) => String(entry.raw ?? entry.text ?? "")),
-    webServerLogRecentAnchorAt: recentEntries.length > 0 ? Date.now() : 0,
-  });
-  webServerLogScrollKeeper.invalidate();
 }
 
 export async function clearWebServerLogHistory() {
@@ -536,33 +533,52 @@ export async function clearWebServerLogHistory() {
   let cleared = false;
   try {
     let activeCsrfToken = csrfToken;
-    let response;
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    let csrfRefreshed = false;
+    let ambiguousRequestRetried = false;
+    while (true) {
       const body = new URLSearchParams();
       body.set("csrf_token", activeCsrfToken);
-      response = await window.fetch(getWebServerLogClearUrl(), { method: "POST", body });
-      if (response.status !== 403 || attempt > 0) {
-        break;
+      let response;
+      try {
+        response = await window.fetch(getWebServerLogClearUrl(), { method: "POST", body });
+      } catch (error) {
+        if (!ambiguousRequestRetried) {
+          ambiguousRequestRetried = true;
+          continue;
+        }
+        throw error;
       }
 
-      updateWebServerLogState({
-        webServerLogCsrfToken: "",
-        webServerLogHistoryLoaded: false,
-        webServerLogHistoryRequestToken: state.webServerLogHistoryRequestToken + 1,
-      });
-      await refreshWebServerLogHistory();
-      activeCsrfToken = String(state.webServerLogCsrfToken || "");
-      if (!activeCsrfToken) {
-        break;
+      if (response.status === 403 && !csrfRefreshed) {
+        csrfRefreshed = true;
+        updateWebServerLogState({
+          webServerLogCsrfToken: "",
+          webServerLogHistoryLoaded: false,
+          webServerLogHistoryRequestToken: state.webServerLogHistoryRequestToken + 1,
+        });
+        await refreshWebServerLogHistory();
+        activeCsrfToken = String(state.webServerLogCsrfToken || "");
+        if (activeCsrfToken) {
+          continue;
+        }
       }
-    }
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) {
+        if (response.status >= 500 && !ambiguousRequestRetried) {
+          ambiguousRequestRetried = true;
+          continue;
+        }
+        throw new Error(`HTTP ${response.status}`);
+      }
+      break;
     }
-    replaceWebServerLogOutput(await response.json());
+    clearWebServerLogOutput();
     cleared = true;
   } catch (error) {
+    updateWebServerLogState({
+      webServerLogHistoryLoaded: false,
+      webServerLogHistoryNeedsReconcile: true,
+    });
     state.webServerLogHistoryError = `De RAM-logbuffer kon niet worden geleegd (${error instanceof Error ? error.message : "onbekende fout"}).`;
   } finally {
     state.busyAction = "";
