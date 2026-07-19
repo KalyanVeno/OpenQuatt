@@ -534,20 +534,10 @@ export async function clearWebServerLogHistory() {
   try {
     let activeCsrfToken = csrfToken;
     let csrfRefreshed = false;
-    let ambiguousRequestRetried = false;
     while (true) {
       const body = new URLSearchParams();
       body.set("csrf_token", activeCsrfToken);
-      let response;
-      try {
-        response = await window.fetch(getWebServerLogClearUrl(), { method: "POST", body });
-      } catch (error) {
-        if (!ambiguousRequestRetried) {
-          ambiguousRequestRetried = true;
-          continue;
-        }
-        throw error;
-      }
+      const response = await window.fetch(getWebServerLogClearUrl(), { method: "POST", body });
 
       if (response.status === 403 && !csrfRefreshed) {
         csrfRefreshed = true;
@@ -564,10 +554,6 @@ export async function clearWebServerLogHistory() {
       }
 
       if (!response.ok) {
-        if (response.status >= 500 && !ambiguousRequestRetried) {
-          ambiguousRequestRetried = true;
-          continue;
-        }
         throw new Error(`HTTP ${response.status}`);
       }
       break;

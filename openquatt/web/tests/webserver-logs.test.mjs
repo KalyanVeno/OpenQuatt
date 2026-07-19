@@ -113,7 +113,6 @@ test("clearWebServerLogHistory backfills the closed live-stream gap after failur
   assert.equal(await clearWebServerLogHistory(), false);
   assert.deepEqual(requests.map(({ url }) => url), [
     "/openquatt/logs/clear",
-    "/openquatt/logs/clear",
     "/openquatt/logs/recent",
   ]);
   assert.deepEqual(state.webServerLogEntries.map(({ raw }) => raw), ["old log entry", "missed while clearing"]);
@@ -208,7 +207,7 @@ test("clearWebServerLogHistory refreshes and retries after a rotated CSRF token"
   assert.equal(state.webServerLogHistoryError, "");
 });
 
-test("clearWebServerLogHistory retries an ambiguous clear request once", async (t) => {
+test("clearWebServerLogHistory does not repeat an ambiguous clear request", async (t) => {
   const originalWindow = globalThis.window;
   t.after(() => {
     globalThis.window = originalWindow;
@@ -220,17 +219,14 @@ test("clearWebServerLogHistory retries an ambiguous clear request once", async (
     location: { pathname: "/" },
     fetch: async () => {
       postCount += 1;
-      if (postCount === 1) {
-        throw new TypeError("connection closed");
-      }
-      return { ok: true, status: 200 };
+      throw new TypeError("connection closed");
     },
   };
 
-  assert.equal(await clearWebServerLogHistory(), true);
-  assert.equal(postCount, 2);
-  assert.deepEqual(state.webServerLogEntries, []);
-  assert.equal(state.webServerLogHistoryNeedsReconcile, false);
+  assert.equal(await clearWebServerLogHistory(), false);
+  assert.equal(postCount, 1);
+  assert.equal(state.webServerLogEntries.length, 1);
+  assert.equal(state.webServerLogHistoryNeedsReconcile, true);
 });
 
 test("clearWebServerLogHistory replaces stale rows after an ambiguous failure", async (t) => {
@@ -258,7 +254,7 @@ test("clearWebServerLogHistory replaces stale rows after an ambiguous failure", 
   };
 
   assert.equal(await clearWebServerLogHistory(), false);
-  assert.equal(postCount, 2);
+  assert.equal(postCount, 1);
   assert.deepEqual(state.webServerLogEntries, []);
   assert.equal(state.webServerLogHistoryLoaded, true);
   assert.equal(state.webServerLogHistoryNeedsReconcile, false);
@@ -284,7 +280,7 @@ test("clearWebServerLogHistory keeps reconciliation pending when the modal close
   };
 
   assert.equal(await clearWebServerLogHistory(), false);
-  assert.equal(postCount, 2);
+  assert.equal(postCount, 1);
   assert.equal(state.webServerLogHistoryLoaded, false);
   assert.equal(state.webServerLogHistoryNeedsReconcile, true);
   assert.equal(state.webServerLogEntries.length, 1);
