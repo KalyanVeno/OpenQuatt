@@ -14,10 +14,37 @@ import {
 import { selectQuickStepByOffset } from "./quickstart.js";
 import { installQuickStartSetupSwitch } from "./firmware-actions.js";
 
+const USAGE_TELEMETRY_PREPARATION_ACTION = "quickstart-usage-telemetry-prepare";
+let quickStartPreparationId = 0;
+
 async function prepareQuickStartStep(stepId) {
-  await refreshQuickStartStepHydration(stepId);
-  if (stepId === "usage-telemetry") {
-    await initializeQuickStartUsageTelemetryChoice();
+  const preparationId = ++quickStartPreparationId;
+  const preparesUsageTelemetry = stepId === "usage-telemetry";
+  if (preparesUsageTelemetry) {
+    if (state.busyAction && state.busyAction !== USAGE_TELEMETRY_PREPARATION_ACTION) {
+      return;
+    }
+    state.busyAction = USAGE_TELEMETRY_PREPARATION_ACTION;
+    render();
+  } else if (state.busyAction === USAGE_TELEMETRY_PREPARATION_ACTION) {
+    state.busyAction = "";
+    render();
+  }
+
+  try {
+    await refreshQuickStartStepHydration(stepId);
+    if (preparationId !== quickStartPreparationId || state.currentStep !== stepId) {
+      return;
+    }
+    if (preparesUsageTelemetry) {
+      await initializeQuickStartUsageTelemetryChoice();
+    }
+  } finally {
+    if (preparationId === quickStartPreparationId
+      && state.busyAction === USAGE_TELEMETRY_PREPARATION_ACTION) {
+      state.busyAction = "";
+      render();
+    }
   }
 }
 

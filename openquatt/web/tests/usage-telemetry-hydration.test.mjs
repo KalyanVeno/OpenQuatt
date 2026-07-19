@@ -69,6 +69,17 @@ test("Quick Start applies default-on only while no telemetry choice is recorded"
   assert.equal(shouldInitializeQuickStartUsageTelemetryChoice({ ...base, stepId: "confirm", choiceValue: "OFF" }), false);
 });
 
+test("Quick Start locks telemetry consent before hydration starts", async () => {
+  const quickStartSource = await readFile(new URL("../js/src/features/quickstart.js", import.meta.url), "utf8");
+  const quickStartUiActionsSource = await readFile(new URL("../js/src/features/quickstart-ui-actions.js", import.meta.url), "utf8");
+  const preparationLockIndex = quickStartUiActionsSource.indexOf("state.busyAction = USAGE_TELEMETRY_PREPARATION_ACTION");
+  const hydrationIndex = quickStartUiActionsSource.indexOf("await refreshQuickStartStepHydration(stepId)");
+
+  assert.match(quickStartSource, /state\.loadingEntities \|\| Boolean\(state\.busyAction\)/);
+  assert.ok(preparationLockIndex >= 0 && preparationLockIndex < hydrationIndex);
+  assert.match(quickStartUiActionsSource, /preparationId !== quickStartPreparationId/);
+});
+
 test("usage telemetry disclosure matches the hourly payload scope", async () => {
   const quickStartSource = await readFile(new URL("../js/src/features/quickstart.js", import.meta.url), "utf8");
   const entityWriteSource = await readFile(new URL("../js/src/core/entity-write-actions.js", import.meta.url), "utf8");

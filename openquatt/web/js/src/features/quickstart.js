@@ -710,7 +710,7 @@ import { renderUsageTelemetryConsent, renderUsageTelemetryDisclosure } from "./u
   export function renderUsageTelemetryWorkspace() {
     const enabled = isEntityActive("usageTelemetryEnabled");
     const choiceConfigured = isEntityActive("usageTelemetryChoiceConfigured");
-    const busy = state.loadingEntities || state.busyAction === "switch-usageTelemetryEnabled";
+    const busy = state.loadingEntities || Boolean(state.busyAction);
     return `
       <section class="oq-helper-panel">
         <p class="oq-helper-label">${escapeHtml(getQuickStepKicker("usage-telemetry"))}</p>
