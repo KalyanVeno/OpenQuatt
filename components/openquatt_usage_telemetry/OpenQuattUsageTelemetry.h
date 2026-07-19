@@ -152,6 +152,7 @@ class OpenQuattUsageTelemetry : public switch_::Switch, public Component {
   std::string installation_id_;
   std::string publish_topic_;
   std::string payload_;
+  std::string payload_message_id_;
   esp_mqtt_client_handle_t mqtt_client_{nullptr};
   SemaphoreHandle_t runtime_lock_{nullptr};
   std::atomic<bool> enabled_{false};

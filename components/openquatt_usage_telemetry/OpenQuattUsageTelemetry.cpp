@@ -299,6 +299,7 @@ void OpenQuattUsageTelemetry::write_state(bool state) {
     this->next_publish_ms_ = 0;
     if (!this->session_active_.load()) {
       this->payload_.clear();
+      this->payload_message_id_.clear();
     }
     App.wake_loop_threadsafe();
   }
@@ -480,18 +481,20 @@ void OpenQuattUsageTelemetry::finish_publish_session_(bool succeeded) {
 
   if (!this->enabled_.load()) {
     this->payload_.clear();
+    this->payload_message_id_.clear();
     this->next_publish_ms_ = 0;
     this->consecutive_failures_ = 0;
     return;
   }
   if (succeeded) {
     this->payload_.clear();
+    this->payload_message_id_.clear();
     this->consecutive_failures_ = 0;
     this->schedule_regular_publish_();
     ESP_LOGD(TAG, "Usage statistics published successfully");
   } else {
-    // A retry represents a new observation: rebuild both the payload and
-    // message ID when the next publish session starts.
+    // Refresh volatile observations for the retry, but retain the logical
+    // message ID so a lost QoS 1 PUBACK remains idempotent for ingestion.
     this->payload_.clear();
     this->schedule_retry_();
     ESP_LOGW(TAG, "Usage statistics publish failed; a bounded retry was scheduled");
@@ -501,11 +504,14 @@ void OpenQuattUsageTelemetry::finish_publish_session_(bool succeeded) {
 void OpenQuattUsageTelemetry::build_payload_() {
   const uint64_t uptime_s = static_cast<uint64_t>(esp_timer_get_time()) / 1000000ULL;
   const std::string hardware_revision = this->read_hardware_revision_();
+  if (this->payload_message_id_.empty()) {
+    this->payload_message_id_ = random_message_id_();
+  }
 
   this->payload_.clear();
   this->payload_.reserve(960);
   this->payload_ += R"({"schema_version":1,"message_id":")";
-  this->payload_ += random_message_id_();
+  this->payload_ += this->payload_message_id_;
   this->payload_ += R"(","installation_id":")";
   this->payload_ += this->installation_id_;
   this->payload_ += R"(","uptime_s":)";
