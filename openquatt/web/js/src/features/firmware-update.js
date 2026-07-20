@@ -291,7 +291,7 @@ import { render } from "../core/render-scheduler.js";
 
   export function isFirmwareInstallCompletionConfirmed() {
     if (state.updateInstallMode === "" || state.updateInstallMode === "test-firmware") {
-      return Boolean(state.otaUi.timer && !state.otaUi.wait);
+      return Boolean(state.ota.id && !state.ota.wait);
     }
     return !isFirmwareProgressActive()
       && !isFirmwareUpdateInstalling()
@@ -814,7 +814,7 @@ import { render } from "../core/render-scheduler.js";
       await wait(attempt === 0 ? initialDelayMs : pollDelayMs);
       try {
         const statusEntityBeforePoll = state.entities.firmwareUpdateStatus;
-        const installPollKeys = state.otaUi.wait
+        const installPollKeys = state.ota.wait
           ? [...FIRMWARE_MODAL_KEYS, "uptime"]
           : FIRMWARE_MODAL_KEYS;
         await refreshEntities(installPollKeys, "all", { forceMissing: true });

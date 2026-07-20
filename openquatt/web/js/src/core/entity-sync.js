@@ -557,6 +557,9 @@ import { fetchWithTimeout } from "./browser-utils.js";
       clearDeviceReconnect();
       return;
     }
+    if (state.ota.ok === 1) {
+      state.ota.ok = 2;
+    }
     state.entitySyncFailureCount = Number(state.entitySyncFailureCount || 0) + 1;
     state.deviceReconnectLastError = String(message || "");
     if (
@@ -564,11 +567,11 @@ import { fetchWithTimeout } from "./browser-utils.js";
       || state.busyAction === "restartAction"
       || state.updateInstallBusy
       || state.updateInstallPhaseHint
-      || state.otaUi.on
+      || state.ota.on
       || state.entitySyncFailureCount >= 2
     ) {
       beginDeviceReconnect(
-        state.updateInstallBusy || state.updateInstallPhaseHint || state.otaUi.on
+        state.updateInstallBusy || state.updateInstallPhaseHint || state.ota.on
           ? "ota"
           : state.busyAction === "restartAction" ? "restart" : "reconnect",
         message,
@@ -1085,7 +1088,7 @@ import { fetchWithTimeout } from "./browser-utils.js";
         }
         return;
       }
-      await refreshEntities([...new Set([...keys, ...(state.otaUi.wait ? ["uptime", "projectVersionText"] : []), ...quickStartSetupKeys, ...quickStartFlowSourceKeys, ...quickStartThermostatSourceKeys])], isPrefetchOverview ? "state" : appView === "settings" || quickStartSetupKeys.length ? "all" : "state", {
+      await refreshEntities([...new Set([...keys, ...(state.ota.wait ? ["uptime", "projectVersionText"] : []), ...quickStartSetupKeys, ...quickStartFlowSourceKeys, ...quickStartThermostatSourceKeys])], isPrefetchOverview ? "state" : appView === "settings" || quickStartSetupKeys.length ? "all" : "state", {
         concurrency: forceFast && isOverviewLike ? FAST_VIEW_ENTITY_REFRESH_CONCURRENCY : ENTITY_REFRESH_CONCURRENCY,
       });
       state.lastFastEntitySyncAt = Date.now();

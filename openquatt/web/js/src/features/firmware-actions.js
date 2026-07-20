@@ -18,6 +18,7 @@ import { render } from "../core/render-scheduler.js";
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
+      state.ota.ok = 1;
     } catch (error) {
       if (isLikelyDeviceConnectionError(error.message)) {
         awaitOtaEvidence();
