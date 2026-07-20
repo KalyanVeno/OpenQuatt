@@ -48,7 +48,7 @@ export const state = {
   deviceReconnectRecoveryStartedAt: 0,
   deviceReconnectRecoveryTimer: null,
   deviceReconnectLastError: "",
-  otaRefresh: { pending: false, timer: null, wait: false, base: null },
+  otaRefresh: { on: false, timer: null, wait: false, base: null },
   firmwareOtaQuietUntil: 0,
   firmwareOtaQuietTimer: null,
   entitySyncFailureCount: 0,

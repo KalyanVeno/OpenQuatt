@@ -564,11 +564,11 @@ import { fetchWithTimeout } from "./browser-utils.js";
       || state.busyAction === "restartAction"
       || state.updateInstallBusy
       || state.updateInstallPhaseHint
-      || state.otaRefresh.pending
+      || state.otaRefresh.on
       || state.entitySyncFailureCount >= 2
     ) {
       beginDeviceReconnect(
-        state.updateInstallBusy || state.updateInstallPhaseHint || state.otaRefresh.pending
+        state.updateInstallBusy || state.updateInstallPhaseHint || state.otaRefresh.on
           ? "ota"
           : state.busyAction === "restartAction" ? "restart" : "reconnect",
         message,

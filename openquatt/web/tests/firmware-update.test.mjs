@@ -121,7 +121,7 @@ test("manual OTA does not complete from an unchanged version without progress ev
   state.updateInstallBusy = true;
   state.updateInstallMode = "";
   state.updateInstallTargetVersion = "v0.42.0";
-  state.otaRefresh.pending = true;
+  state.otaRefresh.on = true;
   state.otaRefresh.timer = {};
   state.otaRefresh.wait = true;
 
