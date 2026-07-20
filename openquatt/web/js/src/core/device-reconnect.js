@@ -10,19 +10,19 @@ function getOtaEvidence() {
   const version = state.entities.projectVersionText;
   return [
     // ESPHome's numeric value is unrounded; the display state is quantized and includes the unit.
-    +(uptime?.value ?? uptime?.state),
+    +(uptime?.value ?? uptime?.state) * (String(uptime?.state || uptime?.uom).endsWith("s") ? 1000 : 3600000),
     version?.state || version?.value || "",
   ];
 }
 
 export function armOtaRefresh() {
   clearOtaRefresh();
-  state.otaRefresh.on = true;
-  state.otaRefresh.base = [...getOtaEvidence(), performance.now()];
+  state.otaUi.on = true;
+  state.otaUi.base = [...getOtaEvidence(), performance.now()];
 }
 
 export function clearOtaRefresh() {
-  const refresh = state.otaRefresh;
+  const refresh = state.otaUi;
   if (refresh.timer) {
     window.clearTimeout(refresh.timer);
     refresh.timer = null;
@@ -33,7 +33,7 @@ export function clearOtaRefresh() {
 }
 
 export function awaitOtaEvidence(timeoutMs = 300000) {
-  const refresh = state.otaRefresh;
+  const refresh = state.otaUi;
   if (!refresh.on) {
     return;
   }
@@ -50,7 +50,7 @@ export function awaitOtaEvidence(timeoutMs = 300000) {
 }
 
 export function reconcileOtaEvidence() {
-  const refresh = state.otaRefresh;
+  const refresh = state.otaUi;
   if (!refresh.on || !refresh.wait) {
     return;
   }
@@ -58,8 +58,8 @@ export function reconcileOtaEvidence() {
   const evidence = getOtaEvidence();
   if (
     evidence[0] < refresh.base[0]
-    // The configured uptime entity reports hours. This proves its inferred boot happened after the OTA request.
-    || (isNaN(refresh.base[0]) && evidence[0] * 3600000 + 1000 <= performance.now() - refresh.base[2])
+    // A low post-boot uptime proves its boot happened after the OTA request.
+    || (isNaN(refresh.base[0]) && evidence[0] + 1000 <= performance.now() - refresh.base[2])
     || (refresh.base[1] && evidence[1] && evidence[1] !== refresh.base[1])
   ) {
     scheduleOtaRefresh();
@@ -67,7 +67,7 @@ export function reconcileOtaEvidence() {
 }
 
 export function scheduleOtaRefresh(delayMs = OTA_REFRESH_DELAY_MS) {
-  const refresh = state.otaRefresh;
+  const refresh = state.otaUi;
   if (!refresh.on || (refresh.timer && !refresh.wait)) {
     return;
   }

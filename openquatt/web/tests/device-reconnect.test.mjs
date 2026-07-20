@@ -46,7 +46,7 @@ test.afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
-test("a lost OTA acknowledgement reloads after a device reboot is observed", async () => {
+test("a reboot unit change overrides stale uptime metadata", async () => {
   state.entities = {
     firmwareUpdateStatus: { state: "Idle" },
     projectVersionText: { state: "v0.42.0" },
@@ -59,7 +59,7 @@ test("a lost OTA acknowledgement reloads after a device reboot is observed", asy
   await assert.rejects(requestFirmwareOta("/ota", { method: "POST" }), /Failed to fetch/);
 
   state.entities.firmwareUpdateStatus = { state: "Idle" };
-  state.entities.uptime = { state: "0.00 h", value: 4 / 3600 };
+  state.entities.uptime = { state: "4 s", value: 4, uom: "h" };
   noteEntityRefreshSuccess();
 
   const refreshTimer = timers.find((timer) => timer.delay === OTA_REFRESH_DELAY_MS && !timer.cancelled);
@@ -67,7 +67,7 @@ test("a lost OTA acknowledgement reloads after a device reboot is observed", asy
   refreshTimer.callback();
 
   assert.equal(reloadCount, 1);
-  assert.equal(state.otaRefresh.on, false);
+  assert.equal(state.otaUi.on, false);
 });
 
 test("an unreachable device recovery does not prove that OTA started", async () => {
@@ -86,15 +86,15 @@ test("an unreachable device recovery does not prove that OTA started", async () 
   state.entities.uptime = { state: "1.00 h", value: 3610 / 3600 };
   noteEntityRefreshSuccess();
 
-  assert.equal(state.otaRefresh.timer.delay, 300000);
-  assert.equal(state.otaRefresh.wait, true);
+  assert.equal(state.otaUi.timer.delay, 300000);
+  assert.equal(state.otaUi.wait, true);
   assert.equal(reloadCount, 0);
 
   const evidenceTimer = timers.find((timer) => timer.delay === 300000 && !timer.cancelled);
   assert.ok(evidenceTimer);
   evidenceTimer.callback();
 
-  assert.equal(state.otaRefresh.on, false);
+  assert.equal(state.otaUi.on, false);
   assert.equal(reloadCount, 0);
 });
 
@@ -109,12 +109,12 @@ test("missing baseline uptime accepts a boot inferred after the OTA request", as
 
   await assert.rejects(requestFirmwareOta("/ota", { method: "POST" }), /Failed to fetch/);
 
-  state.otaRefresh.base[2] = performance.now() - 120000;
-  state.entities.uptime = { state: "0.02 h", value: 0.02 };
+  state.otaUi.base[2] = performance.now() - 120000;
+  state.entities.uptime = { state: "60 s", value: 60 };
   noteEntityRefreshSuccess();
 
-  assert.equal(state.otaRefresh.timer.delay, OTA_REFRESH_DELAY_MS);
-  assert.equal(state.otaRefresh.wait, false);
+  assert.equal(state.otaUi.timer.delay, OTA_REFRESH_DELAY_MS);
+  assert.equal(state.otaUi.wait, false);
 });
 
 test("a rounded uptime state does not fake a post-request reboot", async () => {
@@ -128,12 +128,12 @@ test("a rounded uptime state does not fake a post-request reboot", async () => {
 
   await assert.rejects(requestFirmwareOta("/ota", { method: "POST" }), /Failed to fetch/);
 
-  state.otaRefresh.base[2] = performance.now() - 5000;
+  state.otaUi.base[2] = performance.now() - 5000;
   state.entities.uptime = { state: "0.00 h", value: 6 / 3600, uom: "h" };
   noteEntityRefreshSuccess();
 
-  assert.equal(state.otaRefresh.timer.delay, 300000);
-  assert.equal(state.otaRefresh.wait, true);
+  assert.equal(state.otaUi.timer.delay, 300000);
+  assert.equal(state.otaUi.wait, true);
 });
 
 test("a changed firmware version confirms an ambiguously acknowledged OTA", async () => {
@@ -150,8 +150,8 @@ test("a changed firmware version confirms an ambiguously acknowledged OTA", asyn
   state.entities.projectVersionText = { state: "v0.43.0" };
   noteEntityRefreshSuccess();
 
-  assert.equal(state.otaRefresh.timer.delay, OTA_REFRESH_DELAY_MS);
-  assert.equal(state.otaRefresh.wait, false);
+  assert.equal(state.otaUi.timer.delay, OTA_REFRESH_DELAY_MS);
+  assert.equal(state.otaUi.wait, false);
 });
 
 test("a proactive OTA reboot phase does not reload before a connection failure", () => {
@@ -159,8 +159,8 @@ test("a proactive OTA reboot phase does not reload before a connection failure",
   beginDeviceReconnect("ota");
 
   assert.equal(markDeviceReconnectRecovered(), true);
-  assert.equal(state.otaRefresh.on, true);
-  assert.equal(state.otaRefresh.timer, null);
+  assert.equal(state.otaUi.on, true);
+  assert.equal(state.otaUi.timer, null);
 });
 
 test("an OTA entity poll does not reload before install completion", () => {
@@ -168,15 +168,15 @@ test("an OTA entity poll does not reload before install completion", () => {
 
   noteEntityRefreshSuccess();
 
-  assert.equal(state.otaRefresh.on, true);
-  assert.equal(state.otaRefresh.timer, null);
+  assert.equal(state.otaUi.on, true);
+  assert.equal(state.otaUi.timer, null);
 });
 
 test("a normal restart recovery does not reload the page", () => {
   beginDeviceReconnect("restart");
 
   assert.equal(markDeviceReconnectRecovered(), true);
-  assert.equal(state.otaRefresh.on, false);
+  assert.equal(state.otaUi.on, false);
   assert.equal(reloadCount, 0);
 });
 
@@ -199,8 +199,8 @@ test("a lost OTA acknowledgement enters reconnect recovery", async () => {
 
   await assert.rejects(requestFirmwareOta("/ota", { method: "POST" }), /Failed to fetch/);
 
-  assert.equal(state.otaRefresh.on, true);
-  assert.equal(state.otaRefresh.wait, true);
+  assert.equal(state.otaUi.on, true);
+  assert.equal(state.otaUi.wait, true);
   assert.equal(state.deviceReconnectMode, "ota");
 });
 
@@ -209,6 +209,6 @@ test("an explicit OTA rejection clears its pending refresh", async () => {
 
   await assert.rejects(requestFirmwareOta("/ota", { method: "POST" }), /HTTP 503/);
 
-  assert.equal(state.otaRefresh.on, false);
+  assert.equal(state.otaUi.on, false);
   assert.equal(state.deviceReconnectMode, "");
 });
