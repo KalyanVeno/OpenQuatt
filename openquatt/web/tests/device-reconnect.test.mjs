@@ -117,7 +117,7 @@ test("missing baseline uptime accepts a boot inferred after the OTA request", as
   assert.equal(state.otaRefresh.wait, false);
 });
 
-test("missing baseline uptime rejects a boot inferred before the OTA request", async () => {
+test("a rounded uptime state does not fake a post-request reboot", async () => {
   state.entities = {
     projectVersionText: { state: "v0.42.0" },
     uptime: { state: "NA", value: null },
@@ -128,8 +128,8 @@ test("missing baseline uptime rejects a boot inferred before the OTA request", a
 
   await assert.rejects(requestFirmwareOta("/ota", { method: "POST" }), /Failed to fetch/);
 
-  state.otaRefresh.base[2] = performance.now() - 119000;
-  state.entities.uptime = { state: 0.03, value: 120 / 3600 };
+  state.otaRefresh.base[2] = performance.now() - 5000;
+  state.entities.uptime = { state: "0.00 h", value: 6 / 3600, uom: "h" };
   noteEntityRefreshSuccess();
 
   assert.equal(state.otaRefresh.timer.delay, 300000);

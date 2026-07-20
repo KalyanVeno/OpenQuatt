@@ -9,6 +9,7 @@ function getOtaEvidence() {
   const uptime = state.entities.uptime;
   const version = state.entities.projectVersionText;
   return [
+    // ESPHome's numeric value is unrounded; the display state is quantized and includes the unit.
     +(uptime?.value ?? uptime?.state),
     version?.state || version?.value || "",
   ];
