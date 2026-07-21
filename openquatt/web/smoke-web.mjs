@@ -314,7 +314,7 @@ async function checkWriteActionContracts() {
   assertContains(entityWriteActions, "export async function commitOpenQuattRegulationResumeNow", "OpenQuatt resume write helper");
   assertContains(namedButtonActions, 'ODU_RUNTIME_FREQUENCY_BUTTON_KEYS.has(buttonKey)', "ODU runtime named buttons");
   assertContains(entityWriteActions, "ODU_RUNTIME_FREQUENCY_BUTTON_KEYS.has(key)", "ODU runtime named button write helper");
-  assertContains(webServerLogs, "DEBUG kan bij veel Modbusverkeer de controller en verbindingen zwaar belasten.", "Debug logger safety warning");
+  assertContains(webServerLogs, "kan DEBUG zoveel logging produceren dat de web-app en Home Assistant traag of onbereikbaar worden.", "Debug logger safety warning");
 }
 
 async function checkStateSliceContracts() {
