@@ -221,6 +221,17 @@ void OpenQuattUsageTelemetry::setup() {
 }
 
 void OpenQuattUsageTelemetry::loop() {
+  if (this->cleanup_task_complete_.exchange(false)) {
+    this->complete_publish_session_();
+  }
+  if (this->finishing_session_.load()) {
+    if (!this->cleanup_task_running_.load() &&
+        time_reached_(millis(), this->next_cleanup_attempt_ms_)) {
+      this->start_cleanup_task_();
+    }
+    return;
+  }
+
   if (this->session_active_.load()) {
     if (this->start_task_running_.load()) {
       return;
@@ -421,6 +432,8 @@ void OpenQuattUsageTelemetry::start_publish_session_() {
   this->publish_failed_.store(false);
   this->pending_message_id_.store(-1);
   this->finishing_session_.store(false);
+  this->cleanup_task_complete_.store(false);
+  this->cleanup_succeeded_.store(false);
   this->session_started_ms_ = millis();
   this->session_active_.store(true);
 
@@ -494,25 +507,40 @@ bool OpenQuattUsageTelemetry::start_client_() {
 }
 
 void OpenQuattUsageTelemetry::finish_publish_session_(bool succeeded) {
-  if (!this->session_active_.load() || this->start_task_running_.load()) {
+  if (!this->session_active_.load() || this->start_task_running_.load() ||
+      this->finishing_session_.exchange(true)) {
     return;
   }
-  this->finishing_session_.store(true);
+  this->cleanup_succeeded_.store(succeeded);
+  this->next_cleanup_attempt_ms_ = millis();
+  this->start_cleanup_task_();
+}
 
-  if (this->runtime_lock_ != nullptr && xSemaphoreTake(this->runtime_lock_, portMAX_DELAY) == pdTRUE) {
-    if (this->mqtt_client_ != nullptr) {
-      esp_mqtt_client_stop(this->mqtt_client_);
-      esp_mqtt_client_destroy(this->mqtt_client_);
-      this->mqtt_client_ = nullptr;
-    }
-    xSemaphoreGive(this->runtime_lock_);
+void OpenQuattUsageTelemetry::start_cleanup_task_() {
+  if (!this->finishing_session_.load() || this->cleanup_task_running_.exchange(true)) {
+    return;
   }
+
+  const BaseType_t created = xTaskCreatePinnedToCore(&OpenQuattUsageTelemetry::cleanup_client_task_,
+                                                     "oq_usage_cleanup", MQTT_CLEANUP_TASK_STACK_SIZE, this, 4,
+                                                     nullptr, tskNO_AFFINITY);
+  if (created != pdPASS) {
+    this->cleanup_task_running_.store(false);
+    this->next_cleanup_attempt_ms_ = millis() + 1000U;
+    ESP_LOGE(TAG, "Failed to create usage telemetry MQTT cleanup task; retrying");
+  }
+}
+
+void OpenQuattUsageTelemetry::complete_publish_session_() {
+  const bool succeeded = this->cleanup_succeeded_.load();
 
   this->session_active_.store(false);
   this->publish_succeeded_.store(false);
   this->publish_failed_.store(false);
   this->pending_message_id_.store(-1);
   this->finishing_session_.store(false);
+  this->cleanup_succeeded_.store(false);
+  this->next_cleanup_attempt_ms_ = 0;
 
   if (!this->enabled_.load()) {
     this->payload_.clear();
@@ -655,6 +683,26 @@ void OpenQuattUsageTelemetry::start_client_task_(void *arg) {
       self->publish_failed_.store(true);
     }
     self->start_task_running_.store(false);
+    App.wake_loop_threadsafe();
+  }
+  vTaskDelete(nullptr);
+}
+
+void OpenQuattUsageTelemetry::cleanup_client_task_(void *arg) {
+  auto *self = static_cast<OpenQuattUsageTelemetry *>(arg);
+  if (self != nullptr) {
+    esp_mqtt_client_handle_t client = nullptr;
+    if (self->runtime_lock_ != nullptr && xSemaphoreTake(self->runtime_lock_, portMAX_DELAY) == pdTRUE) {
+      client = self->mqtt_client_;
+      self->mqtt_client_ = nullptr;
+      xSemaphoreGive(self->runtime_lock_);
+    }
+    if (client != nullptr) {
+      esp_mqtt_client_stop(client);
+      esp_mqtt_client_destroy(client);
+    }
+    self->cleanup_task_complete_.store(true);
+    self->cleanup_task_running_.store(false);
     App.wake_loop_threadsafe();
   }
   vTaskDelete(nullptr);
