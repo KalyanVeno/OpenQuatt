@@ -972,7 +972,7 @@ export function renderWebServerLoggerLevelControl() {
       dataValue: "debugLevel",
       label: "Logger level",
       value: value || "Onbekend",
-      note: "Past het runtime logniveau aan voor nieuwe firmwaremeldingen.",
+      note: "Geldt tot de volgende herstart. DEBUG kan bij veel Modbusverkeer de controller en verbindingen zwaar belasten.",
       action: `<label class="oq-webserver-log-level-control" aria-label="Logger level">
         <select class="oq-helper-select" data-oq-field="debugLevel" ${busy ? "disabled" : ""}>
           ${options.map((option) => `<option value="${escapeHtml(option)}" ${option === value ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}

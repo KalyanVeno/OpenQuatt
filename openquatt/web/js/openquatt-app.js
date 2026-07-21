@@ -373,7 +373,7 @@
       ${a}
     </div>
   `}function Rv(){let e=Pl();if(!e)return"";let t=Xp(e),r=ov(e),n=o.loadingEntities||!!o.busyAction;return`
-    ${Ie({dataValue:"debugLevel",label:"Logger level",value:r||"Onbekend",note:"Past het runtime logniveau aan voor nieuwe firmwaremeldingen.",action:`<label class="oq-webserver-log-level-control" aria-label="Logger level">
+    ${Ie({dataValue:"debugLevel",label:"Logger level",value:r||"Onbekend",note:"Geldt tot de volgende herstart. DEBUG kan bij veel Modbusverkeer de controller en verbindingen zwaar belasten.",action:`<label class="oq-webserver-log-level-control" aria-label="Logger level">
         <select class="oq-helper-select" data-oq-field="debugLevel" ${n?"disabled":""}>
           ${t.map(a=>`<option value="${s(a)}" ${a===r?"selected":""}>${s(a)}</option>`).join("")}
         </select>
