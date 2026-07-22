@@ -117,7 +117,7 @@ class OpenQuattUsageTelemetry : public switch_::Switch, public Component {
   void start_publish_session_();
   bool start_client_();
   void finish_publish_session_(bool succeeded);
-  void start_cleanup_task_();
+  bool prepare_cleanup_task_();
   void complete_publish_session_();
   void build_payload_();
   std::string read_hardware_revision_() const;
@@ -179,8 +179,8 @@ class OpenQuattUsageTelemetry : public switch_::Switch, public Component {
   std::atomic<int> pending_message_id_{-1};
   uint32_t session_started_ms_{0};
   uint32_t next_publish_ms_{0};
-  uint32_t next_cleanup_attempt_ms_{0};
   uint8_t consecutive_failures_{0};
+  std::atomic<TaskHandle_t> cleanup_task_handle_{nullptr};
 };
 
 }  // namespace openquatt_usage_telemetry
