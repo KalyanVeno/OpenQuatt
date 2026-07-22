@@ -1357,9 +1357,7 @@ interval:
           id(${hp_id}_last_offline_probe_ms) = now == 0U ? 1U : now;
           auto probe = esphome::modbus_controller::ModbusCommandItem::create_read_command(
               id(${hp_id}), esphome::modbus::ModbusRegisterType::HOLDING, 2099, 1,
-              [=](esphome::modbus::ModbusRegisterType register_type, uint16_t start_address,
-                  const std::vector<uint8_t> &data) {
+              [=](esphome::modbus::ModbusRegisterType, uint16_t, const std::vector<uint8_t> &) {
                 id(${hp_id}_is_online) = true;
-                id(${hp_id}).on_register_data(register_type, start_address, data);
               });
           id(${hp_id}).queue_command(probe);
