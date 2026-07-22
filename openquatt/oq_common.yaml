@@ -19,6 +19,7 @@ esphome:
       - lambda: |-
           // Always start from a clean paused state after reboot or OTA.
           id(oq_runtime_polling_paused).publish_state(false);
+          id(oq_http_ota_begin_observed) = false;
           id(oq_ota_phase_code) = 0;
           id(oq_ota_progress_pct) = 0.0f;
           id(oq_firmware_update_status).publish_state("Idle");
@@ -143,6 +144,7 @@ ota:
     on_begin:
       then:
         - lambda: |-
+            id(oq_http_ota_begin_observed) = true;
             id(oq_runtime_polling_paused).publish_state(true);
             ESP_LOGI("oq_fw", "Runtime polling paused for OTA.");
             id(oq_ota_phase_code) = 1;
@@ -281,6 +283,10 @@ globals:
     type: int
     restore_value: false
     initial_value: '0'
+  - id: oq_http_ota_begin_observed
+    type: bool
+    restore_value: false
+    initial_value: 'false'
   - id: oq_trend_capture_force_once
     type: bool
     restore_value: false
@@ -325,7 +331,9 @@ script:
     mode: restart
     then:
       - lambda: |-
-          // Clear a terminal phase from an earlier attempt before the web UI starts polling this install.
+          // Clear terminal and pre-OTA state from an earlier/restarted attempt.
+          id(oq_runtime_polling_paused).publish_state(false);
+          id(oq_http_ota_begin_observed) = false;
           id(oq_ota_phase_code) = 1;
           id(oq_firmware_update_status).publish_state("Starting");
           id(oq_firmware_update_progress).publish_state(0.0f);
@@ -378,6 +386,7 @@ script:
             - lambda: |-
                 id(oq_firmware_target_install_active) = true;
                 id(oq_firmware_target_install_attempt) = 1;
+                id(oq_http_ota_begin_observed) = false;
                 id(oq_runtime_polling_paused).publish_state(true);
                 ESP_LOGI("oq_fw", "Runtime polling paused before deferred OTA.");
                 id(oq_firmware_update_status).publish_state("Starting");
@@ -386,9 +395,28 @@ script:
             - update.perform:
                 id: oq_firmware_update
                 force_update: true
+            # set_url()/flash() can reject before OTA callbacks run. Do not
+            # leave runtime polling latched off in that failure mode.
+            - wait_until:
+                condition:
+                  lambda: |-
+                    return id(oq_http_ota_begin_observed);
+                timeout: 5s
+            - if:
+                condition:
+                  lambda: |-
+                    return !id(oq_http_ota_begin_observed);
+                then:
+                  - lambda: |-
+                      id(oq_firmware_target_install_active) = false;
+                      id(oq_runtime_polling_paused).publish_state(false);
+                      id(oq_ota_phase_code) = 5;
+                      id(oq_firmware_update_status).publish_state("Error");
+                      ESP_LOGE("oq_fw", "Firmware install did not reach the OTA start callback; polling resumed.");
           else:
             - lambda: |-
                 id(oq_firmware_target_install_active) = false;
+                id(oq_runtime_polling_paused).publish_state(false);
                 id(oq_ota_phase_code) = 5;
                 id(oq_firmware_update_status).publish_state("Error");
                 ESP_LOGE("oq_fw", "Firmware install blocked: target manifest check failed twice.");
@@ -953,8 +981,6 @@ binary_sensor:
     name: Runtime polling paused
     internal: true
     entity_category: diagnostic
-    lambda: |-
-      return false;
 
 sensor:
   - platform: debug
