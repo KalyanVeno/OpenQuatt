@@ -189,10 +189,16 @@ ota:
                   id(oq_firmware_update_progress).publish_state(0.0f);
                   ESP_LOGW("oq_fw", "Firmware download connection failed; retrying attempt %u/2 in 5 seconds.",
                            id(oq_firmware_target_install_attempt));
+              - script.execute: oq_watch_http_ota_start
               - delay: 5s
-              - update.perform:
-                  id: oq_firmware_update
-                  force_update: true
+              - if:
+                  condition:
+                    lambda: |-
+                      return id(oq_firmware_target_install_active);
+                  then:
+                    - update.perform:
+                        id: oq_firmware_update
+                        force_update: true
             else:
               - lambda: |-
                   id(oq_firmware_target_install_active) = false;
@@ -330,6 +336,30 @@ script:
                    target.c_str(), channel.c_str(), source_url);
           id(oq_firmware_update).set_source_url(source_url);
 
+  - id: oq_watch_http_ota_start
+    mode: restart
+    then:
+      # The retry arms this before its 5 s delay. Seventeen seconds covers that
+      # delay, the shared 10 s HTTP timeout and scheduling margin.
+      - wait_until:
+          condition:
+            lambda: |-
+              return id(oq_http_ota_begin_observed)
+                  || !id(oq_firmware_target_install_active);
+          timeout: 17s
+      - if:
+          condition:
+            lambda: |-
+              return !id(oq_http_ota_begin_observed)
+                  && id(oq_firmware_target_install_active);
+          then:
+            - lambda: |-
+                id(oq_firmware_target_install_active) = false;
+                id(oq_runtime_polling_paused).publish_state(false);
+                id(oq_ota_phase_code) = 5;
+                id(oq_firmware_update_status).publish_state("Error");
+                ESP_LOGE("oq_fw", "Firmware install did not reach the OTA start callback; polling resumed.");
+
   - id: oq_install_firmware_update_target_deferred
     mode: single
     then:
@@ -396,30 +426,10 @@ script:
                 id(oq_firmware_update_status).publish_state("Starting");
                 id(oq_firmware_update_progress).publish_state(0.0f);
             - delay: 1500ms
+            - script.execute: oq_watch_http_ota_start
             - update.perform:
                 id: oq_firmware_update
                 force_update: true
-            # set_url()/flash() can reject before OTA callbacks run. Do not
-            # leave runtime polling latched off in that failure mode.
-            - wait_until:
-                condition:
-                  lambda: |-
-                    return id(oq_http_ota_begin_observed)
-                        || !id(oq_firmware_target_install_active);
-                # Cover both 10 s connection attempts and the 5 s retry delay.
-                timeout: 30s
-            - if:
-                condition:
-                  lambda: |-
-                    return !id(oq_http_ota_begin_observed)
-                        && id(oq_firmware_target_install_active);
-                then:
-                  - lambda: |-
-                      id(oq_firmware_target_install_active) = false;
-                      id(oq_runtime_polling_paused).publish_state(false);
-                      id(oq_ota_phase_code) = 5;
-                      id(oq_firmware_update_status).publish_state("Error");
-                      ESP_LOGE("oq_fw", "Firmware install did not reach the OTA start callback; polling resumed.");
           else:
             - lambda: |-
                 // This script has not acquired the polling pause yet. Preserve
