@@ -383,7 +383,9 @@ script:
           condition:
             lambda: |-
               return id(oq_fw_check_completed_generation) == id(oq_fw_check_request_generation)
-                  && id(oq_fw_check_target_ready);
+                  && id(oq_fw_check_target_ready)
+                  && !id(oq_runtime_polling_paused).state
+                  && !id(oq_firmware_target_install_active);
           then:
             - lambda: |-
                 id(oq_firmware_target_install_active) = true;
@@ -404,7 +406,8 @@ script:
                   lambda: |-
                     return id(oq_http_ota_begin_observed)
                         || !id(oq_firmware_target_install_active);
-                timeout: 10s
+                # Cover both 10 s connection attempts and the 5 s retry delay.
+                timeout: 30s
             - if:
                 condition:
                   lambda: |-
@@ -419,11 +422,16 @@ script:
                       ESP_LOGE("oq_fw", "Firmware install did not reach the OTA start callback; polling resumed.");
           else:
             - lambda: |-
-                id(oq_firmware_target_install_active) = false;
-                id(oq_runtime_polling_paused).publish_state(false);
-                id(oq_ota_phase_code) = 5;
-                id(oq_firmware_update_status).publish_state("Error");
-                ESP_LOGE("oq_fw", "Firmware install blocked: target manifest check failed twice.");
+                // This script has not acquired the polling pause yet. Preserve
+                // any pause and status owned by an OTA that started while the
+                // manifest checks were running.
+                if (id(oq_runtime_polling_paused).state) {
+                  ESP_LOGW("oq_fw", "Firmware install request cancelled because another OTA became active.");
+                } else {
+                  id(oq_ota_phase_code) = 5;
+                  id(oq_firmware_update_status).publish_state("Error");
+                  ESP_LOGE("oq_fw", "Firmware install blocked: target manifest check failed twice.");
+                }
 
   - id: oq_capture_overview_trend_sample
     mode: single
