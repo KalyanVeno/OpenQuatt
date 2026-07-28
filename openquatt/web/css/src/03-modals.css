@@ -769,6 +769,12 @@
   color: #fff;
 }
 
+.oq-helper-button--warning {
+  background: #b45309;
+  border-color: #b45309;
+  color: #fff;
+}
+
 .oq-helper-button--ghost {
   background: var(--oq-helper-card);
 }
