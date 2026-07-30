@@ -39,4 +39,7 @@ python3 "${repo_root}/scripts/tests/test_incident_manager_action_contract.py"
 echo "[run] internal heap placement contract"
 python3 "${repo_root}/scripts/tests/test_internal_heap_contract.py"
 
+echo "[run] MQTT ingress lifecycle contract"
+python3 "${repo_root}/scripts/tests/test_mqtt_ingress_lifecycle_contract.py"
+
 echo "Host regression tests passed (${#sources[@]})."
