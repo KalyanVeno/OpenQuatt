@@ -427,20 +427,23 @@ import { escapeHtml } from "../core/html.js";
         }
         return isValidNumericSource("mqttCoolingDewPoint", "mqttCoolingDewPointValid") ? "MQTT" : "MQTT ontbreekt of verouderd";
       }
+      if (source === "API Input") {
+        const apiInputValid = isValidNumericSource("apiInputCoolingDewPoint", "apiInputCoolingDewPointValid")
+          || isValidNumericSource("apiInputCoolingDewPoint");
+        return apiInputValid ? "API Input" : "API Input ontbreekt of verouderd";
+      }
 
       const haValid = isValidNumericSource("coolingDewPointHa", "coolingDewPointHaValid");
       const mqttValid = isMqttInputTopicEnabled("cooling_dew_point") &&
         isValidNumericSource("mqttCoolingDewPoint", "mqttCoolingDewPointValid");
-      if (haValid && mqttValid) {
-        const ha = getNumericSourceValue("coolingDewPointHa");
-        const mqtt = getNumericSourceValue("mqttCoolingDewPoint");
-        return mqtt > ha ? "MQTT" : "HA-invoer";
-      }
-      if (haValid) {
-        return "HA-invoer";
-      }
-      if (mqttValid) {
-        return "MQTT";
+      const apiInputValid = isValidNumericSource("apiInputCoolingDewPoint", "apiInputCoolingDewPointValid");
+      const candidates = [
+        haValid ? { label: "HA-invoer", value: getNumericSourceValue("coolingDewPointHa") } : null,
+        mqttValid ? { label: "MQTT", value: getNumericSourceValue("mqttCoolingDewPoint") } : null,
+        apiInputValid ? { label: "API Input", value: getNumericSourceValue("apiInputCoolingDewPoint") } : null,
+      ].filter(Boolean);
+      if (candidates.length) {
+        return candidates.reduce((best, item) => (item.value > best.value ? item : best), candidates[0]).label;
       }
       return source ? formatSettingsOptionLabel(source) : "Auto";
     };
@@ -494,6 +497,23 @@ import { escapeHtml } from "../core/html.js";
         key: valueKey,
         value: valid ? value : "—",
         status: getMqttValidityLabel(validKey),
+        statusTone: valid ? "valid" : "invalid",
+        statusTitle,
+      })];
+    };
+    const renderApiInputSourceRows = ({ label = "API Input", valueKey = "", validKey = "", value = "" }) => {
+      if (!valueKey || !validKey || !hasEntity(valueKey) || !hasEntity(validKey)) {
+        return [];
+      }
+      const valid = isInstallationMonitoringBinaryActive(validKey);
+      const statusTitle = valid
+          ? "API Input heeft een geldige, recente waarde ontvangen. OpenQuatt mag deze API-invoer gebruiken."
+          : "API Input heeft nog geen geldige recente waarde ontvangen. OpenQuatt gebruikt deze API-invoer dan niet als bron.";
+      return [renderSourceRow({
+        label,
+        key: valueKey,
+        value: valid ? value : "—",
+        status: valid ? "Geldig" : "Ontbreekt of verouderd",
         statusTone: valid ? "valid" : "invalid",
         statusTitle,
       })];
@@ -835,8 +855,8 @@ import { escapeHtml } from "../core/html.js";
           mqttTopicKey: "cooling_dew_point",
           infoId: "coolingDewPointSource-info",
           infoCopy: mqttAvailable
-            ? "Auto gebruikt de hoogste geldige waarde als Home Assistant en MQTT tegelijk geldig zijn. Kies Home Assistant of MQTT om die bron expliciet te vereisen."
-            : "Auto gebruikt een geldige Home Assistant-waarde wanneer die beschikbaar is. Kies Home Assistant om die bron expliciet te vereisen.",
+            ? "Auto gebruikt de hoogste geldige waarde als Home Assistant, MQTT en API Input tegelijk geldig zijn. Kies Home Assistant, MQTT of API Input om die bron expliciet te vereisen."
+            : "Auto gebruikt de hoogste geldige waarde van Home Assistant en API Input wanneer die beschikbaar zijn. Kies Home Assistant of API Input om die bron expliciet te vereisen.",
         },
         activeRows: [
           renderSourceRow({ label: "Waarde", key: "coolingDewPointSelected" }),
@@ -844,6 +864,7 @@ import { escapeHtml } from "../core/html.js";
         ],
         measurementRows: [
           ...renderHaSourceRows({ valueKey: "coolingDewPointHa", validKey: "coolingDewPointHaValid" }),
+          ...renderApiInputSourceRows({ valueKey: "apiInputCoolingDewPoint", validKey: "apiInputCoolingDewPointValid" }),
           ...renderMqttSourceRows({ valueKey: "mqttCoolingDewPoint", validKey: "mqttCoolingDewPointValid" }),
         ],
       }),
