@@ -3,13 +3,14 @@
 # ==============================================================================
 #
 # Goal:
-#   Build the cooling safety layer from one HA-provided aggregate dew point and
-#   one optional MQTT-provided external dew point.
+#   Build the cooling safety layer from HA-, MQTT- or ESPHome-number-provided
+#   aggregate dew point inputs.
 #
 # Scope:
 #   - Home Assistant can calculate the highest valid dew point across configured
 #     cooling rooms.
 #   - MQTT can provide one external aggregate dew point on a fixed topic.
+#   - ESPHome can accept a dew point through a local Number entity.
 #   - ESPHome consumes the aggregate values and selects the configured source.
 #   - Derive the minimum safe supply temperature and fallback guardrails.
 #
@@ -59,6 +60,11 @@ globals:
     restore_value: false
     initial_value: '0'
 
+  - id: oq_cooling_api_input_dew_point_last_update_ms
+    type: uint32_t
+    restore_value: false
+    initial_value: '0'
+
 switch:
   - platform: template
     id: cooling_room_request_required
@@ -69,6 +75,24 @@ switch:
     entity_category: config
 
 number:
+  - platform: template
+    id: api_input_cooling_dew_point
+    name: "API Input Cooling Dew Point"
+    icon: mdi:water-thermometer
+    unit_of_measurement: "°C"
+    device_class: temperature
+    min_value: -20.0
+    max_value: 40.0
+    step: 0.1
+    mode: box
+    optimistic: true
+    restore_value: false
+    set_action:
+      - lambda: |-
+          id(oq_cooling_api_input_dew_point_last_update_ms) = (uint32_t) millis();
+          id(api_input_cooling_dew_point_age).publish_state(0.0f);
+          id(api_input_cooling_dew_point_valid).publish_state(true);
+
   - platform: template
     id: cooling_safety_margin
     name: "Cooling Safety Margin"
@@ -123,6 +147,7 @@ select:
       - "Auto"
       - "Home Assistant"
       - "MQTT"
+      - "API Input"
     initial_option: Auto
 
   - platform: template
@@ -139,6 +164,13 @@ select:
     initial_option: Dew point required
 
 binary_sensor:
+  - platform: template
+    id: api_input_cooling_dew_point_valid
+    name: "API Input Cooling Dew Point Valid"
+    icon: mdi:water-check
+    internal: true
+    device_class: connectivity
+
   - platform: template
     id: cooling_without_dew_point_enabled
     name: "Cooling Without Dew Point Enabled"
@@ -217,6 +249,19 @@ text_sensor:
       return {oq_cooling_safety::runtime().block_reason((float) ${oq_cm_min_flow_lph})};
 
 sensor:
+  - platform: template
+    id: api_input_cooling_dew_point_age
+    name: "API Input Cooling Dew Point Age"
+    icon: mdi:timer-outline
+    internal: true
+    unit_of_measurement: "s"
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: |-
+      const uint32_t last_ms = id(oq_cooling_api_input_dew_point_last_update_ms);
+      if (last_ms == 0) return NAN;
+      return (float)((uint32_t)(millis() - last_ms) / 1000UL);
+
   - platform: template
     id: cooling_safety_margin_selected
     name: "Cooling Safety Margin (Selected)"
@@ -306,6 +351,19 @@ sensor:
       return oq_cooling_safety::runtime().effective_min_supply_temp();
 
 interval:
+  - interval: 10s
+    then:
+      - lambda: |-
+          const uint32_t last_ms = id(oq_cooling_api_input_dew_point_last_update_ms);
+          bool valid = false;
+          if (last_ms > 0 &&
+              id(api_input_cooling_dew_point).has_state() &&
+              !isnan(id(api_input_cooling_dew_point).state)) {
+            const uint32_t stale_ms = (uint32_t)(${api_input_cooling_dew_point_stale_s}UL * 1000UL);
+            valid = stale_ms == 0 || (uint32_t)(millis() - last_ms) <= stale_ms;
+          }
+          id(api_input_cooling_dew_point_valid).publish_state(valid);
+
   - interval: 60s
     then:
       - lambda: |-
