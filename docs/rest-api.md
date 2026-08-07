@@ -17,7 +17,7 @@ Er komen later meer endpoints bij voor andere instellingen.
 De ESPHome REST API gebruikt digest-authenticatie (dezelfde inloggegevens als de web-app). Stuur een HTTP POST naar het endpoint:
 
 ```
-POST http://<ip-adres>/number/dew_point/set?value=15.6
+POST http://<ip-adres>/number/API%20Input%20Cooling%20Dew%20Point/set?value=15.6
 ```
 
 Of met `curl`:
@@ -25,7 +25,7 @@ Of met `curl`:
 ```sh
 curl -u openquatt:<wachtwoord> \
   -X POST \
-  "http://openquatt.local/number/API Input Cooling Dew Point/set?value=15.6"
+  "http://openquatt.local/number/API%20Input%20Cooling%20Dew%20Point/set?value=15.6"
 ```
 
 ## Geldigheid
@@ -34,7 +34,7 @@ Een via de API geschreven waarde blijft beperkt geldig. Komt er binnen de stale 
 
 - koelingsdauwpunt: **15 minuten**
 
-Stuur de waarde daarom periodiek, bijvoorbeeld elke 5–10 minuten.
+Stuur de waarde daarom periodiek, bijvoorbeeld elke minuut of telkens wanneer de bronwaarde verandert.
 
 ## Bronselectie
 
