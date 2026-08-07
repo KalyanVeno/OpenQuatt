@@ -163,6 +163,14 @@ Gebruik je MQTT voor het dauwpunt, controleer dan ook:
 
 Zie [MQTT inputbronnen](mqtt.md) voor topic en payload.
 
+Gebruik je de REST API (`API Input`) voor het dauwpunt, controleer dan ook:
+
+- stuur periodiek een waarde naar `/number/API Input Cooling Dew Point/set` via HTTP POST;
+- de waarde wordt ongeldig na 15 minuten zonder update;
+- kies `API Input` als bron in de web-app, of laat `Auto` staan om de waarde mee te nemen naast HA en MQTT.
+
+Zie [REST API inputbronnen](rest-api.md) voor endpoint en authenticatie.
+
 ## Firmware-update lijkt mislukt
 
 - laat de web-app open zolang er nog voortgang zichtbaar is en onderbreek de voeding dan niet;
