@@ -11,7 +11,7 @@ import { formatDiagnosticsDateTime, formatUptimeFromMeta, getDeviceIpAddress, ge
 import { getUpdateStatus } from "../features/firmware-update.js";
 import { getEspTemperatureLabel } from "../features/header-status.js";
 import { getWebServerLogStatusLabel } from "../features/webserver-logs.js";
-import { getSelectEntityOptions, renderNamedActionButton, renderSettingsChoiceOption, renderSettingsCompactSwitchControl, renderSettingsFieldCard, renderSettingsNumberField, renderSettingsSection, renderSettingsSliderField, renderSettingsSystemRow } from "./controls.js";
+import { getSelectEntityOptions, renderNamedActionButton, renderSettingsChoiceOption, renderSettingsCompactSwitchControl, renderSettingsFieldCard, renderSettingsNumberField, renderSettingsSection, renderSettingsSelectField, renderSettingsSliderField, renderSettingsSwitchField, renderSettingsSystemRow } from "./controls.js";
 import { renderSettingsHeatPumpLimiterCard } from "./heating.js";
 import { escapeHtml } from "../core/html.js";
 
@@ -660,6 +660,78 @@ import { escapeHtml } from "../core/html.js";
         ? "Geef aan of OpenQuatt een CV-ketel of boiler als ondersteuning mag gebruiken en hoeveel effectief vermogen die functie heeft."
         : "Geef aan of OpenQuatt een CV-ketel of boiler als ondersteuning mag gebruiken.",
       renderBoilerCvFields(),
+    );
+  }
+
+  export function formatAuxRelayStatus(status) {
+    const value = String(status || "").trim();
+    if (!value) {
+      return "";
+    }
+
+    const labels = {
+      Disabled: "Uitgeschakeld",
+      "No thermal demand": "Geen warmte- of koelvraag",
+      "No heating demand": "Geen warmtevraag",
+      "No cooling demand": "Geen koelvraag",
+      "Heating demand active": "Warmtevraag actief",
+      "Cooling demand active": "Koelvraag actief",
+      "Waiting for warm water": "Wacht op warm aanvoerwater",
+      "Waiting for cold water": "Wacht op koud aanvoerwater",
+      "Supply temperature unavailable": "Aanvoertemperatuur niet beschikbaar",
+    };
+
+    return labels[value] || value;
+  }
+
+  export function renderSettingsAuxRelaySection() {
+    if (!hasEntity("auxRelayFunction")) {
+      return "";
+    }
+
+    const tempGateEnabled = hasEntity("auxWaitForSupplyTemp") && isEntityActive("auxWaitForSupplyTemp");
+    const relayOn = hasEntity("auxRelayActive") && isEntityActive("auxRelayActive");
+    const statusText = hasEntity("auxRelayStatus") ? formatAuxRelayStatus(getEntityStateText("auxRelayStatus", "")) : "";
+    const statusPanel = hasEntity("auxRelayActive") || statusText ? renderSettingsFieldCard(
+      "auxRelayStatus",
+      "Huidige status",
+      "Actuele toestand van het hulprelais.",
+      `
+        <div class="oq-settings-aux-relay-status">
+          <strong>${escapeHtml(relayOn ? "Relais aan (COM–NO gesloten)" : "Relais uit (COM–NC gesloten)")}</strong>
+          ${statusText ? `<p>${escapeHtml(statusText)}</p>` : ""}
+        </div>
+      `,
+    ) : "";
+    const fields = [
+      renderSettingsSelectField(
+        "auxRelayFunction",
+        "Functie",
+        "Kies wat relais R2 volgt. R2 volgt de effectieve warmte- of koelvraag van OpenQuatt.",
+      ),
+      statusPanel,
+      renderSettingsSwitchField(
+        "auxWaitForSupplyTemp",
+        "Wacht op aanvoertemperatuur",
+        "Aan: R2 schakelt bij vraag pas in zodra het aanvoerwater op temperatuur is (warm genoeg bij verwarmen, koud genoeg bij koelen).",
+        "R2 wacht op de startdrempels hieronder.",
+        "R2 schakelt direct bij vraag, ongeacht de watertemperatuur.",
+        "oq-settings-field--span-2",
+      ),
+      tempGateEnabled ? renderSettingsNumberField("auxHeatingStartTemp", "Startdrempel verwarmen", "Bij warmtevraag schakelt R2 pas in zodra het aanvoerwater minstens deze temperatuur heeft.") : "",
+      tempGateEnabled ? renderSettingsNumberField("auxCoolingStartTemp", "Startdrempel koelen", "Bij koelvraag schakelt R2 pas in zodra het aanvoerwater maximaal deze temperatuur heeft.") : "",
+      tempGateEnabled ? renderSettingsNumberField("auxTempHysteresis", "Hysterese aanvoertemperatuur", "Marge waarmee de startdrempel weer verlaten moet worden voordat R2 uitschakelt. Voorkomt snel aan/uit schakelen rond de grens.") : "",
+    ].filter(Boolean);
+
+    return renderSettingsSection(
+      "Basis",
+      "Hulprelais (R2)",
+      "Gebruik het tweede potentiaalvrije relais van de controller als optionele hulpuitgang, bijvoorbeeld voor een fancoil, pomp of klep. Standaard staat deze functie uit.",
+      `
+        <div class="oq-settings-grid">
+          ${fields.join("")}
+        </div>
+      `,
     );
   }
 

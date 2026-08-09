@@ -312,6 +312,13 @@
     totalCoolingPower: { domain: "sensor", name: "Total Cooling Power", optional: true },
     boilerActive: { domain: "binary_sensor", name: "Boiler active", optional: true },
     boilerHeatPower: { domain: "sensor", name: "Boiler Heat Power", optional: true },
+    auxRelayFunction: { domain: "select", name: "Aux Relay Function", optional: true },
+    auxWaitForSupplyTemp: { domain: "switch", name: "Aux Relay Wait For Supply Temp", optional: true },
+    auxHeatingStartTemp: { domain: "number", name: "Aux Relay Heating Start Temp", optional: true },
+    auxCoolingStartTemp: { domain: "number", name: "Aux Relay Cooling Start Temp", optional: true },
+    auxTempHysteresis: { domain: "number", name: "Aux Relay Temp Hysteresis", optional: true },
+    auxRelayActive: { domain: "binary_sensor", name: "Aux relay active", optional: true },
+    auxRelayStatus: { domain: "text_sensor", name: "Aux relay status", optional: true },
     systemHeatPower: { domain: "sensor", name: "System Heat Power", optional: true },
     flowSelected: { domain: "sensor", name: "Flow average (Selected)" },
     flowLocal: { domain: "sensor", name: "Flow average (local)", optional: true },
@@ -1031,6 +1038,8 @@
   ];
   export const CURVE_SETTING_KEYS = [...CURVE_POINTS.map((point) => point.key), "curveFallbackSupply", "curveControlProfile"];
   export const COMPRESSOR_SETTING_KEYS = ["minRuntime", "hp1ExcludedA", "hp1ExcludedB", "hp2ExcludedA", "hp2ExcludedB"];
+  export const AUX_RELAY_SETTING_KEYS = ["auxRelayFunction", "auxWaitForSupplyTemp", "auxHeatingStartTemp", "auxCoolingStartTemp", "auxTempHysteresis"];
+  export const AUX_RELAY_STATE_KEYS = ["auxRelayActive", "auxRelayStatus"];
   export const SILENT_SETTING_KEYS = ["silentStartTime", "silentEndTime", "silentMax", "dayMax"];
   export const DEBUG_RECORDING_SAMPLE_INTERVAL_MS = 10000;
   export const DEBUG_RECORDING_BUSY_RETRY_MS = 1000;
@@ -1446,6 +1455,8 @@
     "openquattEnabled",
     "boilerCvAssistEnabled",
     "boilerRatedHeatPower",
+    ...AUX_RELAY_SETTING_KEYS,
+    ...AUX_RELAY_STATE_KEYS,
     ...COMMISSIONING_STATE_KEYS,
     "manualCoolingEnable",
     "usageTelemetryEnabled",
@@ -1508,6 +1519,7 @@
         "hpGeneration",
         "boilerCvAssistEnabled",
         "boilerRatedHeatPower",
+        ...AUX_RELAY_SETTING_KEYS,
       ],
     },
     {
