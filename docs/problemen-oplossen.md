@@ -80,6 +80,15 @@ Controleer vooral:
 
 De waarde met `Gekozen` of `Selected` is de waarde die OpenQuatt echt gebruikt. Als die niet klopt, reageert OpenQuatt logisch op verkeerde informatie.
 
+## Quick Start selecteert automatisch OpenTherm
+
+Controleer onder **Instellingen -> Installatie** hoe de CV-ketel fysiek is
+aangesloten. Wanneer de veilige opstartcontrole tijdens Quick Start een
+OpenTherm-ketel vindt, kiest OpenQuatt automatisch `OpenTherm (OTB)` en toont
+het daarvan een melding. Is de onboarding al afgerond, dan verandert OpenQuatt
+de opgeslagen keuze niet automatisch en blijft R1 uit totdat je de aansluiting
+handmatig corrigeert.
+
 ## Het huis wordt niet warm genoeg
 
 Controleer eerst:

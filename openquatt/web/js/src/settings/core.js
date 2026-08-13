@@ -12,11 +12,11 @@ import { getWebAuthStatusDetail, getWebAuthStatusLabel } from "../features/secur
 import { formatSettingsNumberValue, getCommissioningStatusValue, getSelectEntityOptions, getSettingsTemperatureValue, renderSettingsSection } from "./controls.js";
 import { renderSettingsCoolingSection } from "./cooling.js";
 import { renderSettingsFlowSection, renderSettingsHeatingSection } from "./heating.js";
-import { renderSettingsBoilerCvSection, renderSettingsCompressorSection, renderSettingsDiagnosticsSection, renderSettingsGenerationSection, renderSettingsInstallationMonitoringSection, renderSettingsOduRuntimeFrequencySection, renderSettingsQuickStartSection } from "./installation.js";
+import { renderSettingsAuxRelaySection, renderSettingsBoilerCvSection, renderSettingsCompressorSection, renderSettingsDiagnosticsSection, renderSettingsGenerationSection, renderSettingsInstallationMonitoringSection, renderSettingsOduRuntimeFrequencySection, renderSettingsQuickStartSection } from "./installation.js";
 import { renderSettingsMqttSection, renderSettingsOpenThermCicSection, renderSettingsSensorSelectionSection } from "./integrations.js";
 import { renderSettingsPrivacySection } from "./privacy.js";
 import { getApiSecurityStatusDetail, getApiSecurityStatusLabel, renderSettingsAccessSecuritySection } from "./security.js";
-import { renderSettingsServiceSection } from "./service.js";
+import { renderSettingsCounterServiceSection, renderSettingsServiceSection } from "./service.js";
 import { renderSettingsSilentSection } from "./silent.js";
 import { renderSettingsBackupSection, renderSettingsTrendSection } from "./storage.js";
 import { getHpWaterRawValue, renderSettingsWaterSection } from "./water.js";
@@ -50,6 +50,7 @@ import { escapeHtml } from "../core/html.js";
       ? [
           renderSettingsGenerationSection(),
           renderSettingsBoilerCvSection(),
+          renderSettingsAuxRelaySection(),
           renderSettingsFlowSection(),
           renderSettingsSilentSection(),
           renderSettingsWaterSection(),
@@ -60,6 +61,7 @@ import { escapeHtml } from "../core/html.js";
         ? [
             renderSettingsInstallationMonitoringSection(),
             renderSettingsServiceSection(),
+            renderSettingsCounterServiceSection(),
           ]
       : activeGroup === "heating"
         ? [renderSettingsHeatingSection()]

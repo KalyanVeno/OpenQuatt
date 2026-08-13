@@ -9,7 +9,8 @@
   const MOCK_TEST_VERSION = "v0.0.0-demo-pr.test";
   const mockFixtures = window.__OQ_MOCK_FIXTURES__;
   const mockEntityDefs = window.__OQ_MOCK_ENTITY_DEFS__;
-  if (!mockFixtures || !Array.isArray(mockEntityDefs)) {
+  const mockIncidentScenarios = window.__OQ_MOCK_INCIDENT_SCENARIOS__;
+  if (!mockFixtures || !Array.isArray(mockEntityDefs) || !mockIncidentScenarios) {
     throw new Error("OpenQuatt mockmetadata ontbreekt.");
   }
   const DOMAINS = new Set(mockEntityDefs.map(([domain]) => domain));
@@ -22,9 +23,20 @@
     connection: "wifi",
     boiler: "off",
     diagnostics: "clear",
+    auxTempGateOn: false,
+    auxRelayLastMode: 0,
     complete: true,
     tick: 0,
     autoAnimate: true,
+    incidentSimulation: {
+      scenario: "none",
+      phaseIndex: 0,
+      actionCsrfToken: "oq-mock-incident-token-1",
+      nextActionId: 1,
+      pendingAction: null,
+      lastActionResults: {},
+      rejectedCsrfActions: {},
+    },
     compressorCyclingAlert: {
       latched: false,
       firstSeenAt: 0,
@@ -157,6 +169,7 @@
     energyHistoryWrites: 0,
     energyHistoryLastWriteAt: Date.now() - (9 * 60 * 60 * 1000),
     energyHistoryHourRetention: "180 dagen",
+    energyCountersReset: false,
     logHistoryEnabled: true,
     logHistoryEntries: [],
     debugRecording: {
@@ -354,6 +367,217 @@
     }
     entity.value = Boolean(value);
     entity.state = Boolean(value);
+  }
+
+  function setSwitch(name, value) {
+    const entity = getEntity("switch", name);
+    if (!entity) {
+      return;
+    }
+    entity.value = Boolean(value);
+    entity.state = Boolean(value);
+  }
+
+  const FALLBACK_BLOCK_REASON_LABELS = [
+    "no block",
+    "manual override active",
+    "commissioning active",
+    "cooling active",
+    "frost protection active",
+    "no heating request",
+    "boiler fallback disabled",
+    "a heat pump is still available",
+    "heat-pump availability incomplete",
+    "fallback cause not confirmed",
+    "heat-pump stop not confirmed",
+    "flow unavailable",
+    "flow too low",
+    "supply temperature unavailable",
+    "boiler safety interlock",
+  ];
+
+  function getIncidentSimulationState() {
+    return mockIncidentScenarios.buildPhaseState(
+      state.incidentSimulation.scenario,
+      state.incidentSimulation.phaseIndex,
+      state.installation,
+    );
+  }
+
+  function isIncidentScenarioActive() {
+    return state.incidentSimulation.scenario !== "none";
+  }
+
+  function syncIncidentScenarioUrl() {
+    if (typeof window === "undefined" || !window.location || !window.history?.replaceState) {
+      return;
+    }
+    const url = new URL(window.location.href);
+    if (isIncidentScenarioActive()) {
+      url.searchParams.set("incident", state.incidentSimulation.scenario);
+      url.searchParams.set("incidentStep", String(state.incidentSimulation.phaseIndex));
+    } else {
+      url.searchParams.delete("incident");
+      url.searchParams.delete("incidentStep");
+    }
+    window.history.replaceState(window.history.state, "", url);
+  }
+
+  function resetIncidentActionState() {
+    state.incidentSimulation.pendingAction = null;
+    state.incidentSimulation.lastActionResults = {};
+    state.incidentSimulation.rejectedCsrfActions = {};
+  }
+
+  function configureIncidentScenario(scenarioId, phaseIndex = 0, options = {}) {
+    const selected = mockIncidentScenarios.getScenario(scenarioId);
+    const compatible = mockIncidentScenarios.isCompatible(selected, state.installation);
+    const next = compatible ? selected : mockIncidentScenarios.getScenario("none");
+    const selectedPhase = mockIncidentScenarios.getPhase(next, phaseIndex);
+    state.incidentSimulation.scenario = next.id;
+    state.incidentSimulation.phaseIndex = selectedPhase.index;
+    resetIncidentActionState();
+
+    if (next.id !== "none") {
+      state.scenario = next.base_scenario;
+      if (next.required_hardware) {
+        state.hardware = next.required_hardware;
+        setText("text_sensor", "OpenQuatt Hardware Profile", state.hardware);
+      }
+      if (next.boiler_transport) {
+        setText("select", "Boiler connection", next.boiler_transport);
+      }
+    } else {
+      state.boiler = "off";
+    }
+
+    if (options.syncUrl !== false) {
+      syncIncidentScenarioUrl();
+    }
+  }
+
+  function initializeIncidentScenarioFromUrl() {
+    if (typeof window === "undefined" || !window.location) {
+      return;
+    }
+    const url = new URL(window.location.href);
+    const selected = mockIncidentScenarios.getScenario(url.searchParams.get("incident"));
+    if (selected.id === "none") {
+      return;
+    }
+    if (selected.topology === "single" || selected.topology === "duo") {
+      state.installation = selected.topology;
+    }
+    if (selected.required_hardware) {
+      state.hardware = selected.required_hardware;
+    }
+    state.incidentSimulation.scenario = selected.id;
+    state.incidentSimulation.phaseIndex = mockIncidentScenarios.getPhase(
+      selected,
+      Number(url.searchParams.get("incidentStep") || 0),
+    ).index;
+    state.scenario = selected.base_scenario;
+  }
+
+  function controlModeLabel(controlMode) {
+    if (controlMode === 0) return "CM0 - Standby";
+    if (controlMode === 1) return "CM1 - Flow / transition";
+    if (controlMode === 2) return "CM2 - Heating - Heat Pump Only";
+    if (controlMode === 3) return "CM3 - Heating - Heat Pump + Boiler";
+    if (controlMode === 4) return "CM4 - Boiler Only - Fault fallback";
+    return `CM${controlMode}`;
+  }
+
+  function applyIncidentScenario() {
+    if (!isIncidentScenarioActive()) {
+      return;
+    }
+    const { scenario, phase } = getIncidentSimulationState();
+    const systemState = phase.system;
+    const boilerCommandActive = systemState.boiler_command_active === true;
+    const opentherm = scenario.boiler_transport === "OpenTherm";
+    state.boiler = boilerCommandActive ? "on" : "off";
+
+    if (scenario.required_hardware) {
+      state.hardware = scenario.required_hardware;
+      setText("text_sensor", "OpenQuatt Hardware Profile", state.hardware);
+    }
+    if (scenario.boiler_transport) {
+      setText("select", "Boiler connection", scenario.boiler_transport);
+    }
+
+    setText("text_sensor", "Control Mode (Label)", controlModeLabel(systemState.control_mode));
+    setBinary("Boiler command valid", true);
+    setBinary("Boiler command active", boilerCommandActive);
+    setBinary("Boiler active", boilerCommandActive);
+    setText(
+      "text_sensor",
+      "Boiler command source",
+      systemState.control_mode === 4
+        ? "Heat-pump incident fallback"
+        : systemState.control_mode === 3 ? "Boiler assist" : "None",
+    );
+    setText(
+      "text_sensor",
+      "Boiler block reason",
+      FALLBACK_BLOCK_REASON_LABELS[systemState.fallback_block_reason] || "unknown",
+    );
+    setNumber("Boiler command target temperature", boilerCommandActive ? 45 : 0, "°C");
+    setNumber("Boiler command requested power", boilerCommandActive ? 1800 : 0, "W");
+    setNumber("Boiler Heat Power", boilerCommandActive ? 1800 : 0, "W");
+
+    setBinary("OTB - Boiler Link Available", opentherm);
+    setSwitch("OTB - Central Heating Command", opentherm && boilerCommandActive);
+    setBinary("OTB - Central Heating Active", opentherm && boilerCommandActive);
+    setBinary("OTB - Flame On", opentherm && boilerCommandActive);
+    setNumber("OTB - Control Setpoint Command", opentherm && boilerCommandActive ? 45 : 0, "°C");
+    setNumber("OTB - Relative Modulation", opentherm && boilerCommandActive ? 42 : 0, "%");
+
+    let runningHeatPumpCount = 0;
+    let heatPumpHeatPower = 0;
+    let heatPumpInputPower = 0;
+    phase.heat_pumps.forEach((hp) => {
+      const name = `HP${hp.index}`;
+      const running = hp.run_state === "running";
+      const failureLabels = hp.incidents
+        .filter((item) => item.runtime?.confirmed_active || item.runtime?.latched)
+        .map((item) => item.definition?.key)
+        .filter(Boolean);
+      setText("text_sensor", `${name} - Active Failures List`, failureLabels.join(", ") || "None");
+      setText("text_sensor", `${name} - Working Mode Label`, running ? "Heating" : "Standby");
+      if (running) {
+        runningHeatPumpCount += 1;
+        heatPumpHeatPower += 3100;
+        heatPumpInputPower += 940;
+        setNumber(`${name} - Power Input`, 940, "W");
+        setNumber(`${name} - Heat Power`, 3100, "W");
+        setNumber(`${name} - COP`, 3.3, "");
+        setNumber(`${name} - Compressor frequency`, 49, "Hz");
+        setNumber(`${name} - Fan speed`, 640, "rpm");
+        setNumber(`${name} - Flow`, 760, "L/h");
+      } else {
+        heatPumpInputPower += 5.2;
+        setNumber(`${name} - Power Input`, 5.2, "W");
+        setNumber(`${name} - Heat Power`, 0, "W");
+        setNumber(`${name} - COP`, 0, "");
+        setNumber(`${name} - Compressor frequency`, 0, "Hz");
+        setNumber(`${name} - Fan speed`, 0, "rpm");
+        setNumber(`${name} - Flow`, 0, "L/h");
+      }
+    });
+
+    const boilerHeatPower = boilerCommandActive ? 1800 : 0;
+    const flow = Number.isFinite(phase.entity_patch?.flowLph)
+      ? Number(phase.entity_patch.flowLph)
+      : runningHeatPumpCount > 0 ? 760 : boilerCommandActive ? 700 : 0;
+    setNumber("Total Power Input", heatPumpInputPower, "W");
+    setNumber("Total Heat Power", heatPumpHeatPower, "W");
+    setNumber("Total COP", heatPumpInputPower >= 5 ? Number((heatPumpHeatPower / heatPumpInputPower).toFixed(1)) : 0, "");
+    setNumber("System Heat Power", heatPumpHeatPower + boilerHeatPower, "W");
+    setNumber("Flow average (Selected)", flow, "L/h");
+    setNumber("Flow average (local)", flow, "L/h");
+    setNumber("Controller Flow", Math.max(0, flow - 10), "L/h");
+    setBinary("Lowflow fault active", flow < 250 && phase.system.fallback_block_reason === 12);
   }
 
   function parseDemoLogEntry(raw, index, total) {
@@ -728,6 +952,113 @@
     });
   }
 
+  function completePendingIncidentActionIfReady() {
+    const pending = state.incidentSimulation.pendingAction;
+    if (!pending) {
+      return;
+    }
+    pending.readCount += 1;
+    if (pending.readCount < pending.completeAfterReads) {
+      return;
+    }
+
+    const selected = mockIncidentScenarios.getScenario(state.incidentSimulation.scenario);
+    const targetIndex = selected.phases.findIndex((item) => item.id === pending.targetPhase);
+    if (targetIndex >= 0) {
+      state.incidentSimulation.phaseIndex = targetIndex;
+    }
+    state.incidentSimulation.lastActionResults[pending.hp] = {
+      sequence: pending.actionId,
+      request_id: pending.actionId,
+      action: pending.action,
+      ok: pending.ok,
+      result: pending.result,
+      at_ms: getIncidentSimulationState().phase.elapsed_s * 1000,
+    };
+    state.incidentSimulation.pendingAction = null;
+    applyScenario(state.scenario);
+    updateSummary();
+    syncIncidentScenarioUrl();
+  }
+
+  function buildIncidentSnapshotPayload() {
+    completePendingIncidentActionIfReady();
+    const { phase } = getIncidentSimulationState();
+    const heatPumps = clone(phase.heat_pumps);
+    heatPumps.forEach((hp) => {
+      hp.last_action_result = clone(state.incidentSimulation.lastActionResults[hp.index] || null);
+    });
+    return {
+      schema_version: 1,
+      catalog_version: 1,
+      generated_at_s: Math.floor(Date.now() / 1000),
+      action_csrf_token: state.incidentSimulation.actionCsrfToken,
+      system: clone(phase.system),
+      heat_pumps: heatPumps,
+    };
+  }
+
+  function handleIncidentSnapshot() {
+    const { phase } = getIncidentSimulationState();
+    if (phase.incident_http_status !== 200) {
+      return mockResponse(phase.incident_http_status, {
+        error: "mock_incident_endpoint_unavailable",
+      });
+    }
+    return mockResponse(200, buildIncidentSnapshotPayload());
+  }
+
+  function handleIncidentAction(pathname, init) {
+    const action = pathname.endsWith("/retry-start")
+      ? "start_failure_retry"
+      : pathname.endsWith("/confirm-odu-power-cycle")
+        ? "confirm_odu_power_cycle"
+        : "";
+    const params = parseAuthFormBody(init);
+    const hp = Number(params.get("hp"));
+    const token = String(params.get("csrf_token") || "");
+    if (!action || (hp !== 1 && hp !== 2)) {
+      return mockResponse(400, { accepted: false, result: "invalid_hp" });
+    }
+    if (token !== state.incidentSimulation.actionCsrfToken) {
+      return mockResponse(403, { accepted: false, result: "forbidden" });
+    }
+
+    const { scenario, phase } = getIncidentSimulationState();
+    const actionConfig = phase.actions?.[action];
+    if (!actionConfig) {
+      return mockResponse(409, {
+        accepted: false,
+        result: action === "start_failure_retry" ? "no_start_failure" : "no_cleared_manual_reset_latch",
+      });
+    }
+
+    const rejectionKey = `${scenario.id}:${phase.id}:${action}`;
+    if (actionConfig.reject_csrf_once && !state.incidentSimulation.rejectedCsrfActions[rejectionKey]) {
+      state.incidentSimulation.rejectedCsrfActions[rejectionKey] = true;
+      state.incidentSimulation.actionCsrfToken = `oq-mock-incident-token-${Date.now()}`;
+      return mockResponse(403, { accepted: false, result: "forbidden" });
+    }
+
+    const actionId = state.incidentSimulation.nextActionId++;
+    state.incidentSimulation.pendingAction = {
+      hp,
+      action,
+      actionId,
+      targetPhase: actionConfig.target_phase,
+      completeAfterReads: Math.max(1, Number(actionConfig.complete_after_reads) || 1),
+      readCount: 0,
+      ok: actionConfig.ok === true,
+      result: String(actionConfig.result || ""),
+    };
+    return mockResponse(202, {
+      accepted: true,
+      hp,
+      action,
+      action_id: actionId,
+    });
+  }
+
   function handleDecisionLog(url = null) {
     const nowMs = Date.now();
     if (url?.searchParams?.get("meta")) {
@@ -750,7 +1081,7 @@
     const uptimeS = Math.max(0, Math.floor((nowMs - decisionLogBootedAt) / 1000));
     let seq = 1;
     const events = [];
-    const pushEvent = (ageMinutes, eventType, subject, reason, severity, cm, from, to, valueA = 0, valueB = 0, thresholdA = 0, durationS = 0) => {
+    const pushEvent = (ageMinutes, eventType, subject, reason, severity, cm, from, to, valueA = 0, valueB = 0, thresholdA = 0, durationS = 0, flags = 0) => {
       const epochS = Math.max(0, Math.floor((nowMs - (ageMinutes * 60000)) / 1000));
       events.push({
         seq: seq++,
@@ -767,10 +1098,11 @@
         value_b: valueB,
         threshold_a: thresholdA,
         duration_s: durationS,
-        flags: 0,
+        flags,
       });
     };
 
+    if (!isIncidentScenarioActive()) {
     if (state.scenario !== "cooling_limiter_log" && state.scenario !== "cooling_stop_reasons" && state.scenario !== "heating_stop_reasons") {
       pushEvent(6 * 24 * 60 + 9 * 60, "sticky_pump_run", "PUMP", "sticky_protection", "normal", 98, "standby", "active", 60, 0, 0, 60);
       pushEvent(4 * 24 * 60 + 13 * 60, "cooling_limited", "COOLING", "dew_stop", "limited", 5, "active", "limited", 0, 4, 2);
@@ -880,6 +1212,31 @@
 
     if (state.boiler === "on" && !isCoolingScenario() && state.scenario !== "summer_idle" && !isFlowHoldScenario() && !isCandidateBlockedScenario()) {
       pushEvent(42, "boiler_assist_start", "CV", "boiler_assist", "normal", 3, "standby", "active", 348);
+    }
+    }
+
+    if (isIncidentScenarioActive()) {
+      const { phase } = getIncidentSimulationState();
+      mockIncidentScenarios
+        .collectEvents(state.incidentSimulation.scenario, state.incidentSimulation.phaseIndex)
+        .forEach((item) => {
+          const ageMinutes = Math.max(0.05, (phase.elapsed_s - item.at_s + 3) / 60);
+          pushEvent(
+            ageMinutes,
+            item.event_type,
+            item.subject,
+            item.reason,
+            item.severity,
+            item.cm,
+            item.from,
+            item.to,
+            item.value_a,
+            item.value_b,
+            item.threshold_a,
+            item.duration_s,
+            item.flags,
+          );
+        });
     }
 
     events.sort((left, right) => left.uptime_s - right.uptime_s);
@@ -1277,7 +1634,11 @@
     setNumber("HP deficit (W)", Math.max(0, strategyRequested - capacity), "W");
 
     const boilerAssistEnabled = isSwitchEnabled("Boiler assist enabled");
-    const boilerActive = boilerAssistEnabled && state.boiler === "on";
+    const boilerConnection = String(getEntity("select", "Boiler connection")?.value || "R1");
+    const openthermSelected = boilerConnection === "OpenTherm";
+    const otbLinkAvailable = openthermSelected && state.hardware === "heatpump_controller_q";
+    const boilerRequested = boilerAssistEnabled && state.boiler === "on";
+    const boilerActive = boilerRequested && (!openthermSelected || otbLinkAvailable);
     const boilerDelta = Number.isNaN(supplyTemp) || Number.isNaN(hpOutlet) ? 0 : supplyTemp - hpOutlet;
     const boilerHeat = boilerActive && !Number.isNaN(flowLph)
       ? Number(Math.max(0, (flowLph / 3600) * 4186 * boilerDelta).toFixed(1))
@@ -1291,11 +1652,11 @@
     const systemDaily = Number((heatpumpDaily + boilerDaily).toFixed(1));
     const heatpumpCopDaily = electricalDaily > 0 ? Number((heatpumpDaily / electricalDaily).toFixed(2)) : 0;
     const heatpumpEerDaily = coolingElectricalDaily > 0 ? Number((coolingDaily / coolingElectricalDaily).toFixed(2)) : 0;
-    const electricalCumulative = single ? 286.4 : 469.5;
-    const heatpumpCumulative = single ? 1208.7 : 2048.6;
-    const coolingElectricalCumulative = coolingScenario ? (single ? 28.6 : 41.9) : 0.0;
-    const coolingCumulative = coolingScenario ? (single ? 109.4 : 163.7) : 0.0;
-    const boilerCumulative = boilerActive ? 114.8 : 0.0;
+    const electricalCumulative = state.energyCountersReset ? 0 : single ? 286.4 : 469.5;
+    const heatpumpCumulative = state.energyCountersReset ? 0 : single ? 1208.7 : 2048.6;
+    const coolingElectricalCumulative = state.energyCountersReset ? 0 : coolingScenario ? (single ? 28.6 : 41.9) : 0.0;
+    const coolingCumulative = state.energyCountersReset ? 0 : coolingScenario ? (single ? 109.4 : 163.7) : 0.0;
+    const boilerCumulative = state.energyCountersReset ? 0 : boilerActive ? 114.8 : 0.0;
     const systemCumulative = Number((heatpumpCumulative + boilerCumulative).toFixed(1));
     const heatpumpCopCumulative = electricalCumulative > 0 ? Number((heatpumpCumulative / electricalCumulative).toFixed(2)) : 0;
     const heatpumpEerCumulative = coolingElectricalCumulative > 0 ? Number((coolingCumulative / coolingElectricalCumulative).toFixed(2)) : 0;
@@ -1308,6 +1669,34 @@
 
     setNumber("Boiler Heat Power", boilerHeat, "W");
     setBinary("Boiler active", boilerActive);
+    setBinary("Boiler command valid", true);
+    setBinary("Boiler command active", boilerActive);
+    setBinary("OTB - Boiler Link Available", otbLinkAvailable);
+    setBinary("OTB - Central Heating Active", otbLinkAvailable && boilerActive);
+    setBinary("OTB - Domestic Hot Water Active", false);
+    setBinary("OTB - Flame On", otbLinkAvailable && boilerActive);
+    setNumber("Boiler command target temperature", boilerRequested ? 45 : 0, "°C");
+    setNumber("Boiler command requested power", boilerRequested ? 1800 : 0, "W");
+    setNumber("Boiler command age", 0.2, "s");
+    setNumber("OTB - Control Setpoint Command", boilerRequested && otbLinkAvailable ? 45 : 0, "°C");
+    setNumber("OTB - Relative Modulation", otbLinkAvailable && boilerActive ? 42 : 0, "%");
+    setNumber("OTB - CH Water Pressure", 1.6, "bar");
+    setNumber("OTB - Boiler Water Temperature", otbLinkAvailable ? (boilerActive ? supplyTemp + 4.8 : supplyTemp) : 0, "°C");
+    setNumber("OTB - Return Water Temperature", otbLinkAvailable ? hpOutlet : 0, "°C");
+    setNumber("OTB - Last Response Age", otbLinkAvailable ? 0.4 : 14.2, "s");
+    setText("text_sensor", "Boiler command source", "Power House");
+    setText(
+      "text_sensor",
+      "Boiler block reason",
+      boilerRequested && openthermSelected && !otbLinkAvailable
+        ? "selected boiler transport unavailable"
+        : (boilerRequested ? "" : "no boiler heat request"),
+    );
+    const otbChCommand = getEntity("switch", "OTB - Central Heating Command");
+    if (otbChCommand) {
+      otbChCommand.value = otbLinkAvailable && boilerActive;
+      otbChCommand.state = otbChCommand.value;
+    }
     setNumber("System Heat Power", systemHeat, "W");
     setNumber("Heating Power Input", coolingScenario ? 0 : (Number.isNaN(totalPower) ? 0 : totalPower), "W");
     setNumber("Cooling Power Input", coolingScenario ? (Number.isNaN(totalPower) ? 0 : totalPower) : 0, "W");
@@ -1331,6 +1720,68 @@
     setNumber("Boiler Thermal Energy Cumulative", boilerCumulative, "kWh");
     setNumber("System Thermal Energy Daily", systemDaily, "kWh");
     setNumber("System Thermal Energy Cumulative", systemCumulative, "kWh");
+    syncAuxRelayState(supplyTemp);
+  }
+
+  // Mirrors the firmware aux-relay decision (oq_aux_relay_control.yaml) for the demo.
+  function syncAuxRelayState(supplyTemp) {
+    const auxFunction = String(getEntity("select", "Aux Relay Function")?.value || "Disabled");
+    const cmLabel = String(getEntity("text_sensor", "Control Mode (Label)")?.value || "");
+    const heatingActive = cmLabel.startsWith("CM2") || cmLabel.startsWith("CM3") || cmLabel.startsWith("CM4");
+    const coolingActive = cmLabel.startsWith("CM5");
+    const modeCode = coolingActive ? 1 : (heatingActive ? 2 : 0);
+    if (modeCode !== state.auxRelayLastMode) {
+      state.auxTempGateOn = false;
+      state.auxRelayLastMode = modeCode;
+    }
+
+    let relayOn = false;
+    let status = "Disabled";
+    if (auxFunction === "External control") {
+      relayOn = isSwitchEnabled("Aux relay (R2)");
+      status = "External control";
+    } else if (auxFunction === "Heating demand") {
+      relayOn = heatingActive;
+      status = relayOn ? "Heating demand active" : "No heating demand";
+    } else if (auxFunction === "Cooling demand") {
+      relayOn = coolingActive;
+      status = relayOn ? "Cooling demand active" : "No cooling demand";
+    } else if (auxFunction === "Heating or cooling demand") {
+      relayOn = heatingActive || coolingActive;
+      status = heatingActive ? "Heating demand active" : coolingActive ? "Cooling demand active" : "No thermal demand";
+    }
+
+    const gateEnabled = isSwitchEnabled("Aux Relay Wait For Supply Temp");
+    if (!gateEnabled || !relayOn) {
+      state.auxTempGateOn = false;
+    } else if (Number.isNaN(supplyTemp)) {
+      state.auxTempGateOn = false;
+      status = "Supply temperature unavailable";
+      relayOn = false;
+    } else {
+      const hysteresis = Number(getEntity("number", "Aux Relay Temp Hysteresis")?.value ?? 2);
+      if (modeCode === 2) {
+        const startTemp = Number(getEntity("number", "Aux Relay Heating Start Temp")?.value ?? 30);
+        if (supplyTemp >= startTemp) {
+          state.auxTempGateOn = true;
+        } else if (supplyTemp <= startTemp - hysteresis) {
+          state.auxTempGateOn = false;
+        }
+        if (!state.auxTempGateOn) status = "Waiting for warm water";
+      } else {
+        const startTemp = Number(getEntity("number", "Aux Relay Cooling Start Temp")?.value ?? 18);
+        if (supplyTemp <= startTemp) {
+          state.auxTempGateOn = true;
+        } else if (supplyTemp >= startTemp + hysteresis) {
+          state.auxTempGateOn = false;
+        }
+        if (!state.auxTempGateOn) status = "Waiting for cold water";
+      }
+      relayOn = state.auxTempGateOn;
+    }
+
+    setBinary("Aux relay active", relayOn);
+    setText("text_sensor", "Aux relay status", status);
   }
 
   function seedEntities() {
@@ -1386,10 +1837,23 @@
       state: "Power House",
       option: ["Power House", "Water Temperature Control (heating curve)"],
     });
+    setEntity("select", "CM Override", {
+      value: "Auto",
+      state: "Auto",
+      option: ["Auto", "Force CM0", "Force CM1", "Force CM98"],
+    });
     setEntity("switch", "OpenQuatt Enabled", { value: true, state: true });
     setEntity("switch", "Boiler assist enabled", { value: true, state: true });
+    setEntity("switch", "Boiler fallback on heat-pump fault", { value: false, state: false });
+    setEntity("select", "Boiler connection", {
+      value: "OpenTherm",
+      state: "OpenTherm",
+      option: ["R1", "OpenTherm"],
+    });
     setEntity("switch", "Manual Cooling Enable", { value: false, state: false });
     setEntity("switch", "Cooling Room Request Required", { value: true, state: true });
+    setEntity("switch", "Aux Relay Wait For Supply Temp", { value: false, state: false });
+    setEntity("switch", "Aux relay (R2)", { value: false, state: false });
     setEntity("switch", "CIC - Enable polling", { value: false, state: false });
     setEntity("switch", "Status LEDs enabled", { value: true, state: true });
     setEntity("switch", "Usage statistics", { value: false, state: false });
@@ -1516,6 +1980,11 @@
       state: "Auto",
       option: ["Auto", "Local", "Outdoor unit"],
     });
+    setEntity("select", "Aux Relay Function", {
+      value: "Disabled",
+      state: "Disabled",
+      option: ["Disabled", "Heating demand", "Cooling demand", "Heating or cooling demand", "External control"],
+    });
     setEntity("select", "Outdoor Unit Flow Mode", {
       value: "Local aggregate HP1/HP2",
       state: "Local aggregate HP1/HP2",
@@ -1581,7 +2050,15 @@
       ["Manual iPWM", 400, 50, 850, 1, "iPWM"],
       ["Flow PI Kp", 0.35, 0, 5, 0.01, ""],
       ["Flow PI Ki", 0.05, 0, 5, 0.01, ""],
+      ["Heating Curve PID Kp", 0.28, 0, 0.8, 0.01, ""],
+      ["Heating Curve PID Ki", 0.0006, 0, 0.003, 0.0001, ""],
+      ["Heating Curve PID Kd", 0.2, 0, 0.4, 0.01, ""],
+      ["Cooling PID Kp", 3, 0, 10, 0.1, ""],
+      ["Cooling PID Ki", 0.12, 0, 2, 0.01, ""],
+      ["Cooling PID Kd", 0, 0, 2, 0.01, ""],
       ["Boiler rated heat power", 1800, 500, 10000, 100, "W"],
+      ["CM3 deficit ON threshold", 1000, 0, 10000, 50, "W"],
+      ["CM3 deficit OFF threshold", 400, 0, 10000, 50, "W"],
       ["Day max level", 10, 0, 10, 1, ""],
       ["Silent max level", 6, 0, 10, 1, ""],
       ["Maximum water temperature", 56, 25, 75, 1, "°C"],
@@ -1602,6 +2079,9 @@
       ["Cooling Request On Delta", 0.4, 0, 2, 0.1, "°C"],
       ["Cooling Request Off Delta", 0.1, 0, 2, 0.1, "°C"],
       ["Cooling Safety Margin", 2, 0, 4, 0.1, "°C"],
+      ["Aux Relay Heating Start Temp", 30, 20, 60, 0.5, "°C"],
+      ["Aux Relay Cooling Start Temp", 18, 8, 25, 0.5, "°C"],
+      ["Aux Relay Temp Hysteresis", 2, 0.5, 5, 0.5, "°C"],
       ["Curve Tsupply @ -20°C", 48, 20, 70, 1, "°C"],
       ["Curve Tsupply @ -10°C", 43, 20, 70, 1, "°C"],
       ["Curve Tsupply @ 0°C", 38, 20, 70, 1, "°C"],
@@ -1642,6 +2122,24 @@
       ["Total Heat Power", 0, "W"],
       ["Total Cooling Power", 0, "W"],
       ["Boiler Heat Power", 0, "W"],
+      ["Boiler command target temperature", 0, "°C"],
+      ["Boiler command requested power", 0, "W"],
+      ["Boiler command age", 0.2, "s"],
+      ["OTB - Relative Modulation", 0, "%"],
+      ["OTB - CH Water Pressure", 1.6, "bar"],
+      ["OTB - Boiler Water Temperature", 35.2, "°C"],
+      ["OTB - Return Water Temperature", 29.5, "°C"],
+      ["OTB - Domestic Hot Water Temperature", 48.0, "°C"],
+      ["OTB - OEM Fault Code", 0, ""],
+      ["OTB - OEM Diagnostic Code", 0, ""],
+      ["OTB - Maximum Boiler Capacity", 24, "kW"],
+      ["OTB - Minimum Modulation", 18, "%"],
+      ["OTB - OpenTherm Device Version", 2.2, ""],
+      ["OTB - Device Type", 1, ""],
+      ["OTB - Device Product Version", 1, ""],
+      ["OTB - Last Response Age", 0.4, "s"],
+      ["OTB - Valid Response Count", 1842, ""],
+      ["OTB - Last Response Message ID", 25, ""],
       ["System Heat Power", 0, "W"],
       ["Strategy requested power", 0, "W"],
       ["HP capacity (W)", 0, "W"],
@@ -1754,8 +2252,12 @@
       ["HP1 - Active Failures List", "None"],
       ["Room Temperature Effective Source", "OT thermostat"],
       ["Room Setpoint Effective Source", "OT thermostat"],
+      ["Water Supply Temp Effective Source", "Local - PT1000"],
       ["Heating Enable Effective Source", "None"],
       ["Cooling Enable Effective Source", "HA input"],
+      ["Boiler command source", "Power House"],
+      ["Boiler block reason", "no boiler heat request"],
+      ["Runtime lead HP", "HP2"],
     ].forEach(([name, value]) => {
       setEntity("text_sensor", name, { state: value, value });
     });
@@ -1770,12 +2272,29 @@
       ["Cooling Request Active", false],
       ["Cooling Permitted", false],
       ["Boiler active", false],
+      ["Boiler command valid", true],
+      ["Boiler command active", false],
+      ["OTB - Boiler Link Available", true],
+      ["OTB - Fault Indication", false],
+      ["OTB - Central Heating Active", false],
+      ["OTB - Domestic Hot Water Active", false],
+      ["OTB - Flame On", false],
+      ["OTB - Diagnostic Indication", false],
+      ["OTB - DHW Present", true],
+      ["OTB - Service Required", false],
+      ["OTB - Lockout Reset", false],
+      ["OTB - Low Water Pressure", false],
+      ["OTB - Flame Fault", false],
+      ["OTB - Air Pressure Fault", false],
+      ["OTB - Water Overtemperature", false],
       ["Compressor cycling warning 2h", false],
       ["Compressor cycling warning 72h", false],
       ["Alternating compressor starts warning", false],
       ["Compressor cycling alert latched", false],
       ["Compressor cycling alert alternating", false],
       ["Lowflow fault active", false],
+      ["PT1000 read problem", false],
+      ["Water Supply Temp Fallback Active", false],
       ["Flow mismatch (HP1 vs HP2)", false],
       ["OT - Thermostat CH Enable", false],
       ["OT - Thermostat Status Valid", true],
@@ -1816,6 +2335,8 @@
     seedOduRuntimeFrequencyEntities("HP1");
     seedHp2Entities();
     seedOduRuntimeFrequencyEntities("HP2");
+    syncRuntimeCounterEntities();
+    setEntity("button", "Reset Cumulative Energy Counters", { state: "", value: "" });
 
   }
 
@@ -1823,6 +2344,20 @@
     HP2_ENTITIES.forEach(([domain, name, payload]) => {
       setEntity(domain, name, clone(payload));
     });
+  }
+
+  function syncRuntimeCounterEntities() {
+    entities.delete(entityKey("button", "Reset Runtime Counters (HP1)"));
+    entities.delete(entityKey("button", "Reset Runtime Counters (HP1+HP2)"));
+    if (state.installation === "single") {
+      entities.delete(entityKey("text_sensor", "Runtime lead HP"));
+      setEntity("button", "Reset Runtime Counters (HP1)", { state: "", value: "" });
+      return;
+    }
+    setEntity("button", "Reset Runtime Counters (HP1+HP2)", { state: "", value: "" });
+    if (!getEntity("text_sensor", "Runtime lead HP")) {
+      setEntity("text_sensor", "Runtime lead HP", { state: "HP2", value: "HP2" });
+    }
   }
 
   function clearHp2Entities() {
@@ -1844,6 +2379,7 @@
       seedHp2Entities();
       seedOduRuntimeFrequencyEntities("HP2");
     }
+    syncRuntimeCounterEntities();
   }
 
   function syncDevMeta() {
@@ -1922,6 +2458,7 @@
     setText("text_sensor", "Summary", text);
     setText("select", "Preset", preset);
     applyDiagnosticScenario();
+    applyIncidentScenario();
   }
 
   function applyDiagnosticScenario() {
@@ -1999,6 +2536,11 @@
     setBinary("Heating blocked by thermostat", heatingEnabledScenario && !heatingEnableSelected);
     setText("text_sensor", "Room Temperature Effective Source", String(getEntity("select", "Room Temperature Source")?.value || "Unknown"));
     setText("text_sensor", "Room Setpoint Effective Source", String(getEntity("select", "Room Setpoint Source")?.value || "Unknown"));
+    const waterSupplySource = String(getEntity("select", "Water Supply Source")?.value || "Unknown");
+    const localWaterSupplySource = String(getEntity("select", "Local Water Supply Temp Source")?.value || "");
+    setText("text_sensor", "Water Supply Temp Effective Source", waterSupplySource === "Local" && localWaterSupplySource
+      ? `Local - ${localWaterSupplySource}`
+      : waterSupplySource);
     setText("text_sensor", "Heating Enable Effective Source", heatingEnableSource === "Disabled" ? "None" : heatingEnableSource);
     setText("text_sensor", "Cooling Enable Effective Source", coolingEnableEffectiveSource);
     setNumber("OT - Control Setpoint", coolingScenario ? 18.0 : 30.0, "\u00B0C");
@@ -3174,6 +3716,16 @@
       }
     }
 
+    const override = String(getEntity("select", "CM Override")?.value || "Auto");
+    if (!commissioningActive && override !== "Auto") {
+      const labels = {
+        "Force CM0": "CM0 - Standby (override)",
+        "Force CM1": "CM1 - Circulation (override)",
+        "Force CM98": "CM98 - Frost circulation (override)",
+      };
+      setText("text_sensor", "Control Mode (Label)", labels[override] || override);
+    }
+
     syncOverviewTelemetry(single);
   }
 
@@ -3338,6 +3890,9 @@
     entity.state = Boolean(enabled);
     if (name === "Usage statistics") {
       setEntity("binary_sensor", "Usage statistics choice configured", { value: true, state: true });
+    }
+    if (name === "Boiler assist enabled" && !enabled) {
+      setSwitch("Boiler fallback on heat-pump fault", false);
     }
     if (name === "Quick flow test") {
       handleButtonPress(enabled ? "Quick Flow Test Start" : "Quick Flow Test Abort");
@@ -4016,6 +4571,15 @@
       setBinary("Manual HP active", false);
       setNumber("HP1 compressor level", 0, "");
       setNumber("HP2 compressor level", 0, "");
+    } else if (name === "Reset Runtime Counters (HP1)" || name === "Reset Runtime Counters (HP1+HP2)") {
+      setNumber("HP1 - Runtime Hours", 0, "h");
+      if (name === "Reset Runtime Counters (HP1+HP2)") {
+        setNumber("HP2 - Runtime Hours", 0, "h");
+        setText("text_sensor", "Runtime lead HP", "HP1");
+      }
+    } else if (name === "Reset Cumulative Energy Counters") {
+      state.energyCountersReset = true;
+      syncOverviewTelemetry(state.installation === "single");
     } else if (name === "Complete setup") {
       state.complete = true;
     } else if (name === "Reset setup state") {
@@ -4450,6 +5014,16 @@
       if (url.pathname.endsWith("/openquatt/debug-recording/download") && method === "GET") {
         return handleDebugRecordingDownload();
       }
+      if (url.pathname.endsWith("/openquatt/incidents") && method === "GET") {
+        return handleIncidentSnapshot();
+      }
+      if (
+        (url.pathname.endsWith("/openquatt/incidents/retry-start")
+          || url.pathname.endsWith("/openquatt/incidents/confirm-odu-power-cycle"))
+        && method === "POST"
+      ) {
+        return handleIncidentAction(url.pathname, init || {});
+      }
       if (url.pathname.endsWith("/openquatt/service/status") && method === "GET") {
         return handleServiceStatus();
       }
@@ -4523,6 +5097,71 @@
       .join("");
   }
 
+  function renderIncidentScenarioOptions() {
+    const groups = new Map();
+    mockIncidentScenarios.scenarios
+      .filter((item) => mockIncidentScenarios.isCompatible(item, state.installation))
+      .forEach((item) => {
+        if (!groups.has(item.group)) {
+          groups.set(item.group, []);
+        }
+        groups.get(item.group).push(item);
+      });
+    return [...groups.entries()]
+      .map(([group, items]) => `
+        <optgroup label="${group}">
+          ${items.map((item) => `<option value="${item.id}">${item.label}</option>`).join("")}
+        </optgroup>
+      `)
+      .join("");
+  }
+
+  function renderIncidentPhaseOptions() {
+    const selected = mockIncidentScenarios.getScenario(state.incidentSimulation.scenario);
+    return selected.phases
+      .map((item, index) => `<option value="${index}">${index + 1}. ${item.label}</option>`)
+      .join("");
+  }
+
+  function renderIncidentSimulationMeta() {
+    const { scenario, phase, phaseIndex } = getIncidentSimulationState();
+    const hpBadges = phase.heat_pumps.map((hp) => (
+      `<span class="oq-helper-hub-dev-badge">HP${hp.index}: ${hp.link_state} · ${hp.availability}</span>`
+    )).join("");
+    const continuity = phase.system.boiler_output_continuous
+      ? '<span class="oq-helper-hub-dev-badge is-positive">Ketelopdracht continu</span>'
+      : "";
+    return `
+      <p class="oq-helper-hub-dev-copy">${phase.description}</p>
+      <div class="oq-helper-hub-dev-actions">
+        <button
+          class="oq-helper-hub-dev-button"
+          type="button"
+          data-oq-dev-incident-action="previous"
+          ${phaseIndex === 0 ? "disabled" : ""}
+        >Vorige</button>
+        <button
+          class="oq-helper-hub-dev-button"
+          type="button"
+          data-oq-dev-incident-action="next"
+          ${phaseIndex >= scenario.phases.length - 1 ? "disabled" : ""}
+        >Volgende</button>
+        <button
+          class="oq-helper-hub-dev-button"
+          type="button"
+          data-oq-dev-incident-action="reset"
+        >Reset storing</button>
+      </div>
+      <div class="oq-helper-hub-dev-meta">
+        <span class="oq-helper-hub-dev-badge">Stap ${phaseIndex + 1}/${scenario.phases.length}</span>
+        <span class="oq-helper-hub-dev-badge">t = ${phase.elapsed_s}s</span>
+        <span class="oq-helper-hub-dev-badge">CM${phase.system.control_mode}</span>
+        ${hpBadges}
+        ${continuity}
+      </div>
+    `;
+  }
+
   function renderDevControls() {
     return `
       <section class="oq-helper-hub-block oq-helper-hub-dev" data-oq-dev-controls>
@@ -4565,8 +5204,40 @@
             </select>
           </label>
         </div>
+        <div class="oq-helper-hub-dev-divider" role="presentation"></div>
+        <p class="oq-helper-hub-kicker">Warmtepompstoringssimulator</p>
+        <div class="oq-helper-hub-dev-grid">
+          <label class="oq-helper-hub-dev-row">
+            <span class="oq-helper-hub-dev-label">Storingsscenario</span>
+            <select class="oq-helper-hub-dev-select" data-oq-dev-control="incident-scenario">
+              ${renderIncidentScenarioOptions()}
+            </select>
+          </label>
+          <label class="oq-helper-hub-dev-row">
+            <span class="oq-helper-hub-dev-label">Fase</span>
+            <select class="oq-helper-hub-dev-select" data-oq-dev-control="incident-phase">
+              ${renderIncidentPhaseOptions()}
+            </select>
+          </label>
+        </div>
+        ${renderIncidentSimulationMeta()}
       </section>
     `;
+  }
+
+  function applyIncidentSimulationControlChange() {
+    applyScenario(state.scenario);
+    updateSummary();
+    syncIncidentScenarioUrl();
+    notifyMockUpdated();
+    notifyDevControlsChanged();
+  }
+
+  function setIncidentSimulationPhase(phaseIndex) {
+    const selected = mockIncidentScenarios.getScenario(state.incidentSimulation.scenario);
+    state.incidentSimulation.phaseIndex = mockIncidentScenarios.getPhase(selected, phaseIndex).index;
+    resetIncidentActionState();
+    applyIncidentSimulationControlChange();
   }
 
   function bindDevControls(root) {
@@ -4581,6 +5252,10 @@
       installation.value = state.installation;
       installation.onchange = () => {
         setInstallationMode(installation.value);
+        const selectedIncident = mockIncidentScenarios.getScenario(state.incidentSimulation.scenario);
+        if (!mockIncidentScenarios.isCompatible(selectedIncident, state.installation)) {
+          configureIncidentScenario("none");
+        }
         applyScenario(state.scenario);
         updateSummary();
         notifyMockUpdated();
@@ -4594,6 +5269,10 @@
       hardware.onchange = () => {
         state.hardware = hardware.value;
         setEntity("text_sensor", "OpenQuatt Hardware Profile", { state: state.hardware, value: state.hardware });
+        const selectedIncident = mockIncidentScenarios.getScenario(state.incidentSimulation.scenario);
+        if (selectedIncident.required_hardware && selectedIncident.required_hardware !== state.hardware) {
+          configureIncidentScenario("none");
+        }
         syncDevMeta();
         notifyMockUpdated();
         notifyDevControlsChanged();
@@ -4648,6 +5327,37 @@
       };
     }
 
+    const incidentScenario = controlsRoot.querySelector('[data-oq-dev-control="incident-scenario"]');
+    if (incidentScenario) {
+      incidentScenario.value = state.incidentSimulation.scenario;
+      incidentScenario.onchange = () => {
+        configureIncidentScenario(incidentScenario.value);
+        applyIncidentSimulationControlChange();
+      };
+    }
+
+    const incidentPhase = controlsRoot.querySelector('[data-oq-dev-control="incident-phase"]');
+    if (incidentPhase) {
+      incidentPhase.value = String(state.incidentSimulation.phaseIndex);
+      incidentPhase.onchange = () => {
+        setIncidentSimulationPhase(Number(incidentPhase.value));
+      };
+    }
+
+    controlsRoot.querySelectorAll("[data-oq-dev-incident-action]").forEach((button) => {
+      button.onclick = () => {
+        const action = button.dataset.oqDevIncidentAction;
+        if (action === "previous") {
+          setIncidentSimulationPhase(state.incidentSimulation.phaseIndex - 1);
+        } else if (action === "next") {
+          setIncidentSimulationPhase(state.incidentSimulation.phaseIndex + 1);
+        } else if (action === "reset") {
+          configureIncidentScenario("none");
+          applyIncidentSimulationControlChange();
+        }
+      };
+    });
+
   }
 
   window.__OQ_DEV_CONTROLS__ = {
@@ -4694,6 +5404,7 @@
   });
 
   seedEntities();
+  initializeIncidentScenarioFromUrl();
   refreshAuthToken();
   refreshMqttToken();
   setInstallationMode(state.installation);
