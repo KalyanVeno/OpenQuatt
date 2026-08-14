@@ -1,9 +1,4 @@
 ---
-BasedOnStyle: LLVM
-IndentWidth: 2
-TabWidth: 2
-UseTab: Never
+BasedOnStyle: Google
 ColumnLimit: 120
 SortIncludes: false
-PointerAlignment: Left
-ReferenceAlignment: Left
