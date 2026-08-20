@@ -7,9 +7,9 @@ substitutions:
   components_root: components
 
 packages:
-  openquatt: !include configs/heatpump_listener/single_wifi.yaml
+  # openquatt: !include configs/heatpump_listener/single_wifi.yaml
   # openquatt: !include configs/heatpump_listener/duo_wifi.yaml
-  # openquatt: !include configs/heatpump_controller_q/single_wifi.yaml
+  openquatt: !include configs/heatpump_controller_q/single_wifi.yaml
   # openquatt: !include configs/heatpump_controller_q/duo_wifi.yaml
   # openquatt: !include configs/heatpump_controller_q/single_eth.yaml
   # openquatt: !include configs/heatpump_controller_q/duo_eth.yaml
