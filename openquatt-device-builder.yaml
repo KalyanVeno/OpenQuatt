@@ -1,6 +1,6 @@
 # Place the OpenQuatt repository contents directly in the ESPHome config folder.
 # Enable exactly one profile below.
-# Nog een aanpassing
+# Nog een extra aanpassing
 substitutions:
   device_name: openquatt
   friendly_name: OpenQuatt
