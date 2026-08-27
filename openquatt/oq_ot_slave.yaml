@@ -48,6 +48,10 @@ switch:
 binary_sensor:
   - platform: openquatt_ot_slave
     openquatt_ot_slave_id: oq_ot_slave_hub
+    master_dhw_enable:
+      id: ot_thermostat_dhw_enable
+      name: "OT - Thermostat DHW Enable"
+      icon: mdi:water-boiler
     master_ch_enable:
       id: ot_thermostat_ch_enable
       name: "OT - Thermostat CH Enable"
