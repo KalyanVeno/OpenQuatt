@@ -28,6 +28,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional("enabled", True): cv.boolean,
             cv.Optional("response_enabled", True): cv.boolean,
             cv.Optional("ch_enable", True): cv.boolean,
+            cv.Optional("dhw_enable", True): cv.boolean,
             cv.Optional("cooling_enable", False): cv.boolean,
         }
     ).extend(cv.polling_component_schema("2s")),
