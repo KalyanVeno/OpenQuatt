@@ -47,6 +47,7 @@ namespace esphome {
 			void set_enabled(bool enabled) { set_enabled_(enabled); }
 			void set_response_enabled(bool enabled) { m_response_enabled = enabled; }
 			void set_ch_enable(bool bCHEnable) { m_master_state.ch_enable = bCHEnable; }
+			void set_dhw_enable(bool bDHWEnable) { m_master_state.dhw_enable = bDHWEnable; }
 			void set_cooling_enable(bool bCoolingEnable) { m_master_state.cooling_enable = bCoolingEnable; }
 			void set_slave_fault(bool value) { m_slave_state.fault = value; }
 			void set_slave_ch_active(bool value) { m_slave_state.ch_active = value; }
