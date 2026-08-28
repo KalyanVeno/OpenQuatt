@@ -301,7 +301,7 @@ namespace esphome {
 			if(dataID==OpenThermMessageID::Status)
 			{
 				m_master_state.ch_enable = message_data::parse_flag8_hb_0(data);
-				m_master_state.dhw_enable = message_data::parse_flag8_hb_1(data);
+				m_master_state.dhw_enable = message_data::parse_flag8_hb_0(data);
 				m_master_state.cooling_enable = message_data::parse_flag8_hb_2(data);
 				m_master_state.otc_active = message_data::parse_flag8_hb_3(data);
 				m_master_state.ch2_enable = message_data::parse_flag8_hb_4(data);
