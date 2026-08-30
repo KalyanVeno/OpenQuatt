@@ -166,6 +166,7 @@ namespace esphome {
 				int m_lastPublishedSlaveMemberID = -1;
 				int m_lastPublishedMasterMemberID = -1;
 				int8_t m_lastPublishedMasterCHEnableBinary = -1;
+				int8_t m_lastPublishedMasterDHWEnableBinary = -1;
 				int8_t m_lastPublishedMasterCoolingEnableBinary = -1;
 				int8_t m_lastPublishedMasterStatusValid = -1;
 				int8_t m_lastPublishedLinkProblem = -1;
