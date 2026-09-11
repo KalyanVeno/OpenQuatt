@@ -48,6 +48,17 @@ text:
     optimistic: true
     restore_value: true
     initial_value: "http://192.168.2.117:8080/beta/feed/data.json"
+    on_value:
+      - lambda: |-
+          // A URL change resets the connection state, but the single CIC keeps
+          // its source-type-bound calibration.
+          id(cic_component).notify_url_changed(x);
+          if (id(water_supply_source).has_state() &&
+              id(water_supply_source).current_option() == "CIC") {
+            id(oq_water_supply_temp_current_source_ready) = false;
+            if (id(oq_hp_water_calibration_active)) id(oq_hp_water_calibration_abort) = true;
+            id(water_supply_temp_selected).update();
+          }
 
 # ----------------------------
 # TELEMETRY
@@ -61,6 +72,17 @@ sensor:
     state_class: measurement
     accuracy_decimals: 2
     icon: mdi:water-thermometer
+    update_interval: never
+
+  - platform: template
+    id: cic_boiler_water_pressure
+    name: "CIC - Boiler Water Pressure"
+    unit_of_measurement: "bar"
+    device_class: pressure
+    state_class: measurement
+    accuracy_decimals: 2
+    icon: mdi:gauge
+    disabled_by_default: true
     update_interval: never
 
   - platform: template
@@ -109,11 +131,8 @@ sensor:
     name: "CIC - Polling interval"
     internal: true
     unit_of_measurement: "s"
-    device_class: duration
     state_class: measurement
     accuracy_decimals: 0
-    icon: mdi:timer-sand
-    disabled_by_default: true
     update_interval: never
 
   - platform: template
@@ -121,11 +140,8 @@ sensor:
     name: "CIC - Last success age"
     internal: true
     unit_of_measurement: "s"
-    device_class: duration
     state_class: measurement
     accuracy_decimals: 0
-    disabled_by_default: true
-    icon: mdi:timeline-clock-outline
     update_interval: never
 
 binary_sensor:
@@ -139,8 +155,6 @@ binary_sensor:
   - platform: template
     id: cic_ch_enable_valid
     name: "CIC - CH enable valid"
-    icon: mdi:check-decagram
-    entity_category: diagnostic
     internal: true
 
   - platform: template
@@ -181,6 +195,7 @@ openquatt_cic:
   response_buffer_size: 2048
   water_supply_temp: water_supply_temp_cic
   flow_rate: flow_rate_cic
+  cic_boiler_water_pressure: cic_boiler_water_pressure
   cic_control_setpoint: cic_control_setpoint
   cic_room_setpoint: cic_room_setpoint
   cic_room_temp: cic_room_temp

@@ -51,13 +51,16 @@ Deze groep bepaalt hoeveel ruimte OpenQuatt krijgt:
 - `OpenQuatt Enabled`
 - `Manual Cooling Enable`
 - `Silent Mode Override`
-- `Day max level`
-- `Silent max level`
+- `Day max frequency`
+- `Silent max frequency`
+- `Electrical current limit`
 - `Silent start time`
 - `Silent end time`
 - `CM Override`
 
 Gebruik deze groep vooral om gedrag te begrenzen of te verklaren, niet om fijn te tunen.
+
+`Electrical current limit` begrenst als `Maximale gezamenlijke netstroom` het gezamenlijke elektrische ingangsvermogen van de buitenunits. Standaard blijft de bestaande grens actief: 16 A voor Single en voor Duo V1/V1.5, 20 A voor Duo V2. Een hogere waarde is alleen mogelijk tot de absolute OpenQuatt-bovengrens, afgeleid van de gepubliceerde maximale stroom per buitenunit (2 × 10 A voor V1/V1.5, dus 20 A; 2 × 13 A voor V2, dus 26 A), en alleen wanneer beide buitenunits betrouwbaar als die familie zijn gedetecteerd. De officiële Quatt Duo-specificatie (16 A respectievelijk 20 A) blijft de standaard; gebruik daarboven vereist een daarvoor geschikte volledige elektrische installatie. Zonder bevestigde detectie blijft de installatieafhankelijke standaard (16 of 20 A) het plafond. Een hogere waarde toont direct een waarschuwing en vraagt een expliciete bevestiging. `Standaardwaarde herstellen` wist de handmatige override en volgt daarna weer automatisch de standaard. Power House gebruikt de grens voorspellend én via gemeten feedback; stooklijn en koelen alleen via gemeten feedback. Het is een softwarematige regelgrens en geen vervanging voor zekeringen, aardlekbeveiliging of load balancing; korte overschrijdingen door meetvertraging zijn niet volledig uit te sluiten.
 
 ### 2. Verwarmingsstrategie
 
@@ -94,10 +97,15 @@ Voor koeling zijn vooral belangrijk:
 
 - `Cooling Minimum Supply Temp`
 - `Cooling Demand Max`
+- `Cooling Restart Mode`
+- `Cooling Restart Delta`
+- `Cooling Minimum Off Time`
 - `Cooling Room Request Required`
 - `Cooling Request On Delta`
 - `Cooling Request Off Delta`
 - `Cooling Safety Margin`
+
+Met `Cooling Restart Mode` kies je tussen herstart op watertemperatuur en herstart na een minimale uit-tijd. In de eerste modus bepaalt `Cooling Restart Delta` hoeveel de aanvoer na een waterzijdige stop moet opwarmen. In de tweede modus bepaalt `Cooling Minimum Off Time` hoe lang een werkelijk gestopte koelcyclus uit blijft; bij Duo blokkeert die tijd beide warmtepompen. Los daarvan bewaakt OpenQuatt altijd de vaste minimale uit-tijd per compressor (4 minuten). Een compressor start dus pas wanneer zowel de gekozen koelherstartvoorwaarde als zijn eigen minimale uit-tijd is vrijgegeven. De normale dauwpunt-, flow- en veiligheidsgrenzen blijven in beide modi actief.
 
 ### 3. Duo en looptijdgedrag
 
@@ -123,12 +131,12 @@ Belangrijke instellingen:
 - `Cooling Flow Setpoint`
 - `Flow Control Mode`
 - `Manual iPWM`
-- `Frost Circulation iPWM`
-- `Flow AUTO start iPWM`
 - `Flow PI Kp`
 - `Flow PI Ki`
 
 `Flow Setpoint` geldt voor verwarmen en normaal automatisch bedrijf. `Cooling Flow Setpoint` geldt alleen tijdens koelen, zodat koeling een eigen hydraulisch werkpunt kan hebben zonder de verwarmingsflow te veranderen.
+
+CM98 gebruikt een vaste pompregeling van iPWM 800. AUTO start met de laatst bekende goede iPWM voor verwarmen of koelen en valt bij een ongeldige waarde terug op iPWM 440.
 
 Gebruik deze groep voorzichtig. Bij verkeerde bronwaarden of hydraulische problemen maak je hier snel meer ruis dan winst.
 
@@ -143,15 +151,41 @@ Belangrijke keuzes:
 - `Outside Temperature Source`
 - `Room Temperature Source`
 - `Room Setpoint Source`
+- `Heating Enable Source`
 - `Cooling Dew Point Source`
+- `External Heat Demand Source`
 
 En indirect alles wat bepaalt waar buiten-, kamer- en waterwaarden vandaan komen.
 
-Voor `Outside Temperature Source` is `Auto` meestal de verstandigste keuze. OpenQuatt kiest dan zelf een geldige bron en blijft minder gevoelig voor een buitenmeting die tijdelijk niet betrouwbaar is.
+#### Strategie-afhankelijke aanbevelingen
+
+De betekenis van dezelfde bron verschilt per verwarmingsstrategie:
+
+| Instelling | Power House | Water Temperature Control |
+|---|---|---|
+| Kamertemperatuur | Vereist / sterk aanbevolen | Aanbevolen (comfortcorrectie) |
+| Kamer-setpoint | Vereist / sterk aanbevolen | Aanbevolen |
+| Buitentemperatuur | Vereist | Vereist (fallback 40 °C) |
+| Aanvoertemperatuur | Nodig voor begrenzing | Vereist als PID-proceswaarde |
+| Flow | Vereist | Vereist |
+| Warmtetoestemming (`Heating Enable Source`) | Meestal `Niet gebruiken` | Meestal externe thermostaat/zonevraag |
+| Externe warmtevraag | Optioneel (`HA`/`API`) | Niet van toepassing |
+
+Tijdens Quick Start vervangt een strategieswitch de warmtetoestemming automatisch: `Heating Enable Source = Niet gebruiken` bij `Power House` (OpenQuatt bepaalt zelf de vraag), of de eerder gekozen, gekoppelde en actieve thermostaatbron bij `Water Temperature Control` (`OT thermostat` op Q-edition, anders `CIC`/`HA input`). Een uitgeschakelde of niet-geconfigureerde bron wordt niet automatisch als harde gate gekozen. Buiten Quick Start overschrijft de web-app een bestaande keuze niet stil; daar verschijnt alleen een advies met een knop om het over te nemen. Afwijkende combinaties blijven bewust mogelijk (bijv. Power House met zone-gate, stooklijn volledig weersafhankelijk).
+
+Voor `Outside Temperature Source` is `Auto` meestal de verstandigste keuze. OpenQuatt kiest dan zelf een geldige bron (normaliter de buitenunit) en blijft minder gevoelig voor een buitenmeting die tijdelijk niet betrouwbaar is.
 
 Kies je expliciet `MQTT`, houd er dan rekening mee dat de MQTT-buitentemperatuur na een (her)start pas geldig is zodra OpenQuatt een nieuwe live publicatie ontvangt. Tot die tijd kan de regeling naar `CM98` (antivriescirculatie) gaan. De wachttijd hangt af van het publicatie-interval van de zender.
 
-Voor `Cooling Dew Point Source` is `Auto` meestal ook de veiligste keuze. OpenQuatt gebruikt dan de hoogste geldige dauwpuntwaarde van Home Assistant en MQTT. Kies `Home Assistant` of `MQTT` alleen als je die bron expliciet wilt vereisen.
+Voor `Heating Enable Source` betekent `Niet gebruiken` / `Disabled`: geen externe warmtetoestemming gebruiken; de actieve verwarmingsstrategie mag zelf warmtevraag opbouwen. Dit staat dus niet voor verwarming uitschakelen. Bij `Power House` is dit meestal gewenst; bij `Water Temperature Control` met kamerthermostaat is meestal de gekoppelde thermostaatbron gewenst (`OT thermostat`, `CIC` of `HA input`). Zie [Power House](power-house.md) en [Water Temperature Control](water-temperature-control.md).
+
+Voor `Cooling Dew Point Source` is `Auto` meestal ook de veiligste keuze. OpenQuatt gebruikt dan de hoogste geldige dauwpuntwaarde van Home Assistant, API-invoer en MQTT. Kies `Home Assistant`, `API input` of `MQTT` alleen als je die bron expliciet wilt vereisen.
+
+Voor `External Heat Demand Source` is `Disabled` de standaard, en voor de meeste installaties ook de juiste keuze. Kies je `HA input` of `API input`, dan neemt een externe voorspelling de vermogensschatting van het huismodel in `Power House` over. De rest van de regeling blijft ongewijzigd, en bij een wegvallende of verouderde bron valt `Power House` terug op het eigen huismodel. Zie [Power House](power-house.md).
+
+De temperatuurkalibratie neemt ook de actieve aanvoertemperatuurbron mee. OpenQuatt bewaart daarvoor vier afzonderlijke offsets: voor de lokale PT1000, lokale DS18B20, CIC-feed en Home Assistant-invoer. Bij een bronwissel activeert OpenQuatt automatisch de eerder opgeslagen correctie voor die bron. De CIC-correctie blijft geldig na een gewijzigde feed-URL; na een andere Home Assistant-entiteit blijft die correctie uitgeschakeld totdat je de HA-invoer opnieuw kalibreert. Een tijdelijke automatische fallback naar de water-uitmeting van de warmtepomp gebruikt geen aanvoercorrectie en wist geen opgeslagen kalibratie.
+
+De instellingenbackup bevat de vier warmtepompoffsets en iedere geldige brongebonden aanvoercorrectie. Voor Home Assistant bewaart de backup ook een anonieme bronfingerprint, zodat een offset niet aan een andere HA-entiteit wordt gekoppeld; de firmware reconstrueert de checksum zelf. Kalibreer opnieuw wanneer de controller of temperatuursensor fysiek is vervangen of wanneer je een andere Home Assistant-invoer gebruikt.
 
 ### 6. Hulprelais R2 (alleen Heatpump Controller Q-edition)
 
@@ -183,6 +217,7 @@ Begin bijna altijd met:
 Controleer daarna:
 
 - `Water Supply Temp (Selected)`
+- `Water Supply Temperature Calibration Status`
 - `Maximum water temperature`
 - `Heating Curve Supply Target` als je stooklijn gebruikt
 
@@ -201,6 +236,22 @@ Alleen als het probleem daar lijkt te zitten:
 - opgenomen vermogen;
 - power cap;
 - gedrag rond stille uren of begrenzing.
+
+### Voor compressorpendelen
+
+De diagnostische pendelwaarschuwingen zijn in Home Assistant standaard
+uitgeschakeld. Schakel `Compressor cycling warning` in om één samengesteld
+signaal te krijgen zodra minimaal één actuele pendelwaarschuwing actief is. De
+oorzaak blijft na inschakelen van de bijbehorende detailentiteiten afzonderlijk
+zichtbaar via:
+
+- `Compressor cycling warning 2h`;
+- `Compressor cycling warning 72h`;
+- `Alternating compressor starts warning` bij een duo-installatie.
+
+De signalen kunnen gelijktijdig actief zijn en worden weer inactief zodra de
+bijbehorende actuele conditie is hersteld. Een eerder gedetecteerde maar alleen
+nog gelatchte melding houdt `Compressor cycling warning` niet actief.
 
 ## Wanneer zit je waarschijnlijk in de verkeerde laag?
 

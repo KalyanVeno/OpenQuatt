@@ -110,6 +110,8 @@ Standaard gebruikt OpenQuatt de kamertemperatuur en het setpoint om vast te stel
 
 Bij koelvraag kijkt OpenQuatt vervolgens naar de watertemperatuur. De regeling start rustig, bouwt alleen op als dat nodig is en remt af of stopt wanneer de aanvoer dicht bij de veilige ondergrens komt.
 
+Voor het opnieuw starten na een koelstop kun je kiezen tussen voldoende opwarming van het water en een vaste minimale uit-tijd. Die uit-tijd geldt bij Duo voor beide warmtepompen, zodat de tweede pomp niet direct de gestopte koelcyclus overneemt. Ook bij Single blijft de vaste minimale uit-tijd van de compressor (4 minuten) altijd gelden: OpenQuatt start pas wanneer alle relevante wachttijden en voorwaarden zijn vrijgegeven. De condens-, flow- en andere veiligheidsbewaking blijft altijd gelden.
+
 Wil je de exacte koelinstellingen, marges en begrenzingen begrijpen of wijzigen? Gebruik dan de technische naslag [Instellingen en meetwaarden](instellingen-en-meetwaarden.md#koeling).
 
 ### Waarom is dauwpunt zo belangrijk?
@@ -122,7 +124,7 @@ Daarom kijkt OpenQuatt bij koeling niet alleen naar comfort, maar ook naar veili
 - wat is dan de veilige ondergrens voor de watertemperatuur;
 - mag cooling op dit moment dus wel of niet vrijgegeven worden.
 
-Een dauwpunt kan uit Home Assistant of MQTT komen. In de web-app kies je de bron. Bij `Auto` gebruikt OpenQuatt de hoogste geldige dauwpuntwaarde, omdat die voor koeling de veiligste ondergrens geeft. Een externe waarde moet regelmatig worden bijgewerkt; bij een verouderde of ontbrekende waarde valt OpenQuatt terug op een andere geldige bron of blokkeert het koelen. Zie [MQTT inputbronnen](mqtt.md) voor de technische geldigheidsduur.
+Een dauwpunt kan uit Home Assistant, API-invoer of MQTT komen. In de web-app kies je de bron. Bij `Auto` gebruikt OpenQuatt de hoogste geldige dauwpuntwaarde, omdat die voor koeling de veiligste ondergrens geeft. Een externe waarde moet regelmatig worden bijgewerkt; bij een verouderde of ontbrekende waarde valt OpenQuatt terug op een andere geldige bron of blokkeert het koelen. Zie [API inputbronnen](api-input.md) en [MQTT inputbronnen](mqtt.md) voor de technische geldigheidsduur.
 
 ### Wat doet `Manual Cooling Enable`?
 

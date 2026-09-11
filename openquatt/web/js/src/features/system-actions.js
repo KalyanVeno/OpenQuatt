@@ -1,6 +1,9 @@
 import { hasEntity } from "../core/app-shared.js";
-import { getOpenQuattPauseDraftValue, getOpenQuattPausePresetValue } from "../core/entity-store.js";
-import { commitOpenQuattRegulationPause, commitOpenQuattRegulationResumeNow, commitSelect, triggerNamedButton } from "../core/entity-write-actions.js";
+import { setEntityBackupValue, verifyEntityBackupSelectState } from "../core/entity-backup.js";
+import { getOpenQuattPauseDraftValue, getOpenQuattPausePresetValue, getEntityValue, parseLooseNumber } from "../core/entity-store.js";
+import { commitNumber, commitOpenQuattRegulationPause, commitOpenQuattRegulationResumeNow, commitSelect, triggerNamedButton } from "../core/entity-write-actions.js";
+import { refreshEntities } from "../core/entity-sync.js";
+import { invokeActionMap } from "../core/action-router.js";
 import { render } from "../core/render-scheduler.js";
 import { state } from "../core/state.js";
 import { clearDebugRecordingDevicePollTimer, scheduleDebugRecordingDeviceStatusPoll } from "./debug-recording.js";
@@ -10,6 +13,7 @@ import { clearSettingsBackupDraft } from "./storage-history.js";
 function closeSystemModal() {
   stopLoginAuthStatusPolling();
   clearDebugRecordingDevicePollTimer();
+  const wasElectricalLimitConfirm = state.systemModal === "electrical-limit-confirm";
   state.systemModal = "";
   state.authDraftCurrentPassword = "";
   state.authDraftNewPassword = "";
@@ -19,6 +23,12 @@ function closeSystemModal() {
   state.apiSecurityNotice = "";
   state.apiSecurityError = "";
   state.pendingControlModeOverride = "";
+  if (wasElectricalLimitConfirm) {
+    // Annuleren zet het invoerveld terug op de bevestigde waarde.
+    delete state.drafts.electricalCurrentLimit;
+    delete state.inputDrafts.electricalCurrentLimit;
+    state.pendingElectricalLimit = null;
+  }
   clearSettingsBackupDraft();
   render();
   scheduleDebugRecordingDeviceStatusPoll();
@@ -26,7 +36,13 @@ function closeSystemModal() {
 
 const systemActionHandlers = {
   "open-connectivity-modal": () => {
+    state.controlError = "";
+    state.controlNotice = "";
     state.systemModal = "connectivity";
+    render();
+  },
+  "open-water-sensor-corrections-modal": () => {
+    state.systemModal = "water-sensor-corrections";
     render();
   },
   "open-restart-confirm": () => {
@@ -84,6 +100,36 @@ const systemActionHandlers = {
     successNotice: "De cumulatieve energietellers zijn teruggezet.",
     errorPrefix: "Energietellers resetten mislukt",
   }),
+  "confirm-electrical-limit": () => {
+    const pending = state.pendingElectricalLimit || {};
+    const toA = Number(pending.toA);
+    if (!Number.isFinite(toA)) {
+      closeSystemModal();
+      return;
+    }
+    state.pendingElectricalLimit = null;
+    state.systemModal = "";
+    return commitNumber("electricalCurrentLimit", toA, "Elektrische ingangsgrens bijgewerkt.");
+  },
+  "reset-electrical-limit-to-default": async () => {
+    state.pendingElectricalLimit = null;
+    if (state.systemModal === "electrical-limit-confirm") {
+      state.systemModal = "";
+    }
+    if (!hasEntity("electricalCurrentLimitReset")) {
+      // Oude firmware zonder reset-button: hooguit expliciet op de standaard zetten.
+      const { getElectricalLimitTopologyInfo } = await import("../settings/electrical-limit.js");
+      const info = getElectricalLimitTopologyInfo();
+      return commitNumber("electricalCurrentLimit", info.standardA, "Elektrische ingangsgrens teruggezet op de standaardwaarde.");
+    }
+    // Reset via firmware: clears the stored override back to NAN so the
+    // limit automatically follows the generation-dependent standard again.
+    return triggerNamedButton("electricalCurrentLimitReset", {
+      successNotice: "Elektrische ingangsgrens teruggezet op automatisch (standaardwaarde).",
+      errorPrefix: "Elektrische ingangsgrens resetten mislukt",
+      refreshKeys: ["electricalCurrentLimit"],
+    });
+  },
   "open-silent-settings-modal": () => {
     state.systemModal = "silent-settings";
     render();
@@ -92,6 +138,31 @@ const systemActionHandlers = {
     state.pauseResumeDraft = getOpenQuattPauseDraftValue();
     state.systemModal = "openquatt-pause";
     render();
+  },
+  "open-heating-strategy-advice-modal": () => {
+    state.systemModal = "heating-strategy-advice";
+    render();
+  },
+  "apply-heating-strategy-advice": async (button) => {
+    const target = String(button.dataset.heatingEnableTarget || "").trim() || "Disabled";
+    state.busyAction = "quickstart-heating-enable";
+    state.controlNotice = "";
+    state.controlError = "";
+    render();
+    try {
+      const applied = await setEntityBackupValue("heatingEnableSource", target);
+      if (!await verifyEntityBackupSelectState("heatingEnableSource", applied)) {
+        throw new Error("de controller heeft de gekozen bron niet bevestigd.");
+      }
+      state.entities.heatingEnableSource = { ...(state.entities.heatingEnableSource || {}), value: applied, state: applied };
+      state.controlNotice = target === "Disabled" ? "Warmtetoestemming op Niet gebruiken gezet — je ziet nu ‘Komt overeen’." : `Warmtetoestemming op ${target} gezet — je ziet nu ‘Komt overeen’.`;
+      await refreshEntities(["heatingEnableSource", "heatingEnableValid", "heatingEnableSelected"], "all");
+    } catch (error) {
+      state.controlError = `Warmtetoestemming kon niet worden opgeslagen. ${error.message}`;
+    } finally {
+      state.busyAction = "";
+      render();
+    }
   },
   "enable-openquatt-now": () => commitOpenQuattRegulationResumeNow(),
   "apply-openquatt-preset": (button) => {
@@ -119,4 +190,3 @@ const systemActionHandlers = {
 export function handleSystemAction(action, button) {
   return invokeActionMap(systemActionHandlers, action, button);
 }
-import { invokeActionMap } from "../core/action-router.js";

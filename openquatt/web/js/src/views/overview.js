@@ -1,6 +1,6 @@
 import { formatOverviewStatValue, getEntityNumericValue, getEntityStateText, hasEntity, isEntityActive, isTrendHistoryEnabled } from "../core/app-shared.js";
 import { isCurveMode } from "../core/domain-helpers.js";
-import { formatOpenQuattResumeDateTime, getEntityValue, hasOpenQuattResumeSchedule } from "../core/entity-store.js";
+import { formatOpenQuattResumeDateTime, getEntityValue, hasOpenQuattResumeSchedule, parseDeviceClockMinutes } from "../core/entity-store.js";
 import { getOverviewControlsRenderSignature, getRenderSignature } from "../core/render-signatures.js";
 import { formatDurationFromMinutes, formatNumericState } from "../core/formatting.js";
 import { escapeHtml } from "../core/html.js";
@@ -82,7 +82,7 @@ import { isSystemInStandby, replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfCh
     if (!sourceLabel || sourceLabel === "geen bron") {
       return copy;
     }
-    return `${copy} Toestemming: ${sourceLabel}.`;
+    return `${copy} Toestemming via ${sourceLabel}.`;
   }
 
   export function getHeatPumpPanelStatusLabel(mode, running) {
@@ -167,17 +167,7 @@ import { isSystemInStandby, replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfCh
   export const formatOverviewTrendDurationLabel = formatDurationFromMinutes;
 
   export function parseOverviewClockMinutes(rawValue) {
-    const value = String(rawValue || "").trim();
-    const match = value.match(/^(\d{1,2}):(\d{2})$/);
-    if (!match) {
-      return Number.NaN;
-    }
-    const hours = Number(match[1]);
-    const minutes = Number(match[2]);
-    if (Number.isNaN(hours) || Number.isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
-      return Number.NaN;
-    }
-    return (hours * 60) + minutes;
+    return parseDeviceClockMinutes(rawValue);
   }
 
   export function formatOverviewTrendClockLabel(totalMinutes) {
@@ -195,7 +185,7 @@ import { isSystemInStandby, replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfCh
   export function formatOverviewTrendPointTime(sampleTimestamp, endTime) {
     const ageMinutes = Math.max(0, (Number(endTime) - Number(sampleTimestamp)) / 60000);
     const ageLabel = formatOverviewTrendDurationLabel(ageMinutes);
-    const clockLabel = hasEntity("timeValid") && isEntityActive("timeValid") ? formatOverviewTrendClockLabel(ageMinutes) : "";
+    const clockLabel = formatOverviewTrendClockLabel(ageMinutes);
     if (clockLabel) {
       return {
         value: clockLabel,
@@ -617,19 +607,23 @@ import { isSystemInStandby, replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfCh
 
     let coolingStatus = "Uit";
     let coolingCopy = coolingConfiguredSourceRaw === "Disabled"
-      ? "Koeling is niet toegestaan: handmatig staat uit."
+      ? "Koeltoestemming is niet gegeven: handmatig staat uit."
       : coolingConfiguredSource && coolingConfiguredSource !== "geen bron"
-      ? `Koeling is niet toegestaan: ${coolingConfiguredSource} geeft geen toestemming en handmatig staat uit.`
-      : "Koeling is niet toegestaan.";
+      ? `Koeltoestemming is niet gegeven: ${coolingConfiguredSource} geeft geen toestemming en handmatig staat uit.`
+      : "Koeltoestemming is niet gegeven.";
+    const coolingIsReady = String(coolingBlockReasonRaw).trim().toLowerCase() === "ready" || String(coolingBlockReasonRaw).trim().toLowerCase() === "gereed" || String(coolingBlockReasonRaw).trim().toLowerCase() === "gereed om te koelen";
     if (coolingEnabled && coolingModeActive) {
       coolingStatus = "Actief";
       coolingCopy = appendCoolingPermissionSource("Koeling draait nu.", coolingEffectiveSource);
     } else if (coolingEnabled && coolingWaitingForRoomRequest) {
       coolingStatus = "Aan";
       coolingCopy = appendCoolingPermissionSource("Koeling is toegestaan en wacht op kamertemperatuur boven het koel-setpoint.", coolingEffectiveSource);
-    } else if (coolingEnabled && coolingBlocked) {
+    } else if (coolingEnabled && coolingBlocked && !coolingIsReady) {
       coolingStatus = "Geblokkeerd";
       coolingCopy = appendCoolingPermissionSource(formatCoolingBlockReason(coolingBlockReasonRaw || "Koeling wacht nog op veilige condities."), coolingEffectiveSource);
+    } else if (coolingEnabled && coolingBlocked && coolingIsReady) {
+      coolingStatus = "Aan";
+      coolingCopy = appendCoolingPermissionSource("Koeltoestemming is gegeven en wacht op koelvraag.", coolingEffectiveSource);
     } else if (coolingEnabled && coolingRequestActive) {
       coolingStatus = "Start bijna";
       coolingCopy = appendCoolingPermissionSource("Er is koelvraag. Koeling start zodra dat kan.", coolingEffectiveSource);
@@ -656,8 +650,8 @@ import { isSystemInStandby, replaceOuterHtmlIfSignatureChanged, setInnerHtmlIfCh
     }
 
     return [
-      { key: "openquattEnabled", label: "Openquatt regeling", status: openquattEnabled ? "Actief" : "Tijdelijk uit", copy: openquattEnabled ? "Verwarmen en koelen worden automatisch geregeld." : openquattResumeScheduled ? "Verwarming en koeling zijn tijdelijk uitgeschakeld. Beveiligingen blijven actief." : "Verwarming en koeling zijn uitgeschakeld. Beveiligingen blijven actief.", tone: openquattEnabled ? "green" : "orange", kind: "openquatt-control", meta: openquattEnabled ? [] : [openquattResumeLoading ? { label: "Hervatten", value: "Laden…", tone: "neutral", loading: true } : { label: openquattResumeScheduled ? "Hervat automatisch" : "Hervatten", value: openquattResumeScheduled ? formatOpenQuattResumeDateTime(openquattResumeAt, true) : "Handmatig", tone: openquattResumeScheduled ? "orange" : "neutral" }] },
-      { key: "manualCoolingEnable", label: "Koeling", status: coolingStatus, copy: coolingCopy, buttonLabel: manualCoolingEnabled ? "Handmatig uit" : "Handmatig aan", nextState: manualCoolingEnabled ? "off" : "on", tone: coolingEnabled ? (coolingModeActive ? "blue" : "sky") : "neutral" },
+      { key: "openquattEnabled", label: "Openquatt regeling", status: openquattEnabled ? "Actief" : "Tijdelijk uit", copy: openquattEnabled ? "Verwarmen en koelen worden automatisch geregeld." : openquattResumeScheduled ? "Verwarming en koeling zijn tijdelijk uitgeschakeld. Beveiligingen (inclusief vorstbeveiliging) blijven actief." : "Verwarming en koeling zijn uitgeschakeld. Beveiligingen (inclusief vorstbeveiliging) blijven actief.", tone: openquattEnabled ? "green" : "orange", kind: "openquatt-control", meta: openquattEnabled ? [] : [openquattResumeLoading ? { label: "Hervatten", value: "Laden…", tone: "neutral", loading: true } : { label: openquattResumeScheduled ? "Hervat automatisch" : "Hervatten", value: openquattResumeScheduled ? formatOpenQuattResumeDateTime(openquattResumeAt, true) : "Handmatig", tone: openquattResumeScheduled ? "orange" : "neutral" }] },
+      { key: "manualCoolingEnable", label: "Koeltoestemming", status: coolingStatus, copy: coolingCopy, buttonLabel: manualCoolingEnabled ? "Toestemming uit" : "Toestemming aan", nextState: manualCoolingEnabled ? "off" : "on", tone: coolingEnabled ? (coolingModeActive ? "blue" : "sky") : "neutral" },
       { key: "silentModeOverride", label: "Stille modus", status: silentStatus, copy: silentCopy, tone: silentTone, kind: "select", selectedOption: silentModeOverride, settingsAction: true, options: [{ value: "Off", label: "Uit" }, { value: "On", label: "Aan" }, { value: "Schedule", label: "Schema" }] },
     ].filter((card) => hasEntity(card.key));
   }

@@ -1,0 +1,230 @@
+# ==============================================================================
+# OpenQuatt - API Input Ingress
+# ==============================================================================
+#
+# Goal:
+#   Accept optional external input values via ESPHome API-exposed entities.
+#
+# Scope:
+#   - Mirrors the MQTT input model with value + age + valid triplets.
+#   - Source selection logic can use these signals as an alternative to MQTT.
+#   - Input entities are disabled by default to avoid unintended HA exposure.
+#   - Includes the optional Power House external heat demand feedforward input.
+#
+# ==============================================================================
+
+number:
+  - platform: template
+    id: api_input_cooling_dew_point
+    min_value: -20
+    max_value: 35
+    step: 0.1
+    restore_value: false
+    optimistic: true
+    on_value:
+      - lambda: |-
+          oq_api_ingress::runtime().observe(oq_api_ingress::Slot::COOLING_DEW_POINT, (uint32_t) millis());
+
+  - platform: template
+    id: api_input_outside_temperature
+    min_value: -40
+    max_value: 60
+    step: 0.1
+    restore_value: false
+    optimistic: true
+    on_value:
+      - lambda: |-
+          oq_api_ingress::runtime().observe(oq_api_ingress::Slot::OUTSIDE_TEMPERATURE, (uint32_t) millis());
+
+  - platform: template
+    id: api_input_room_temperature
+    min_value: 0
+    max_value: 50
+    step: 0.1
+    restore_value: false
+    optimistic: true
+    on_value:
+      - lambda: |-
+          oq_api_ingress::runtime().observe(oq_api_ingress::Slot::ROOM_TEMPERATURE, (uint32_t) millis());
+
+  - platform: template
+    id: api_input_room_setpoint
+    min_value: 5
+    max_value: 35
+    step: 0.1
+    restore_value: false
+    optimistic: true
+    on_value:
+      - lambda: |-
+          oq_api_ingress::runtime().observe(oq_api_ingress::Slot::ROOM_SETPOINT, (uint32_t) millis());
+
+  - platform: template
+    id: api_input_external_heat_demand
+    min_value: 0
+    max_value: 15000
+    step: 10
+    restore_value: false
+    optimistic: true
+    on_value:
+      - lambda: |-
+          oq_api_ingress::runtime().observe(oq_api_ingress::Slot::EXTERNAL_HEAT_DEMAND, (uint32_t) millis());
+
+switch:
+  - platform: template
+    id: api_input_heating_enable
+    restore_mode: ALWAYS_OFF
+    optimistic: true
+    turn_on_action:
+      - switch.template.publish:
+          id: api_input_heating_enable
+          state: ON
+      - lambda: |-
+          oq_api_ingress::runtime().observe(oq_api_ingress::Slot::HEATING_ENABLE, (uint32_t) millis());
+    turn_off_action:
+      - switch.template.publish:
+          id: api_input_heating_enable
+          state: OFF
+      - lambda: |-
+          oq_api_ingress::runtime().observe(oq_api_ingress::Slot::HEATING_ENABLE, (uint32_t) millis());
+
+  - platform: template
+    id: api_input_cooling_enable
+    restore_mode: ALWAYS_OFF
+    optimistic: true
+    turn_on_action:
+      - switch.template.publish:
+          id: api_input_cooling_enable
+          state: ON
+      - lambda: |-
+          oq_api_ingress::runtime().observe(oq_api_ingress::Slot::COOLING_ENABLE, (uint32_t) millis());
+    turn_off_action:
+      - switch.template.publish:
+          id: api_input_cooling_enable
+          state: OFF
+      - lambda: |-
+          oq_api_ingress::runtime().observe(oq_api_ingress::Slot::COOLING_ENABLE, (uint32_t) millis());
+
+esphome:
+  on_boot:
+    priority: -100
+    then:
+      - lambda: |-
+          const std::array<esphome::EntityBase*, 2> retired_api_preferences{{
+              id(api_input_heating_enable),
+              id(api_input_cooling_enable),
+          }};
+          oq_nvs_cleanup::erase_entity_preferences(
+              retired_api_preferences, "API ingress enable state");
+      - lambda: |-
+          // Ignore template component startup state until real API writes can arrive.
+          oq_api_ingress::runtime().reset();
+      - delay: 1s
+      - lambda: |-
+          oq_api_ingress::runtime().set_accept_updates(true);
+
+binary_sensor:
+  - platform: template
+    id: api_input_cooling_dew_point_valid
+    name: "API Input Cooling Dew Point Valid"
+    internal: true
+
+  - platform: template
+    id: api_input_outside_temperature_valid
+    name: "API Input Outside Temperature Valid"
+    internal: true
+
+  - platform: template
+    id: api_input_room_temperature_valid
+    name: "API Input Room Temperature Valid"
+    internal: true
+
+  - platform: template
+    id: api_input_room_setpoint_valid
+    name: "API Input Room Setpoint Valid"
+    internal: true
+
+  - platform: template
+    id: api_input_heating_enable_valid
+    name: "API Input Heating Enable Valid"
+    internal: true
+
+  - platform: template
+    id: api_input_cooling_enable_valid
+    name: "API Input Cooling Enable Valid"
+    internal: true
+
+  - platform: template
+    id: api_input_external_heat_demand_valid
+    name: "API Input External Heat Demand Valid"
+    internal: true
+
+sensor:
+  - platform: template
+    id: api_input_cooling_dew_point_age
+    name: "API Input Cooling Dew Point Age"
+    internal: true
+    unit_of_measurement: "s"
+    accuracy_decimals: 0
+    update_interval: never
+
+  - platform: template
+    id: api_input_outside_temperature_age
+    name: "API Input Outside Temperature Age"
+    internal: true
+    unit_of_measurement: "s"
+    accuracy_decimals: 0
+    update_interval: never
+
+  - platform: template
+    id: api_input_room_temperature_age
+    name: "API Input Room Temperature Age"
+    internal: true
+    unit_of_measurement: "s"
+    accuracy_decimals: 0
+    update_interval: never
+
+  - platform: template
+    id: api_input_room_setpoint_age
+    name: "API Input Room Setpoint Age"
+    internal: true
+    unit_of_measurement: "s"
+    accuracy_decimals: 0
+    update_interval: never
+
+  - platform: template
+    id: api_input_heating_enable_age
+    name: "API Input Heating Enable Age"
+    internal: true
+    unit_of_measurement: "s"
+    accuracy_decimals: 0
+    update_interval: never
+
+  - platform: template
+    id: api_input_cooling_enable_age
+    name: "API Input Cooling Enable Age"
+    internal: true
+    unit_of_measurement: "s"
+    accuracy_decimals: 0
+    update_interval: never
+
+  - platform: template
+    id: api_input_external_heat_demand_age
+    name: "API Input External Heat Demand Age"
+    internal: true
+    unit_of_measurement: "s"
+    accuracy_decimals: 0
+    update_interval: never
+
+interval:
+  - interval: 5s
+    then:
+      - lambda: |-
+          oq_api_ingress::runtime().tick(
+              (uint32_t) millis(),
+              {(uint32_t) ${api_input_cooling_dew_point_stale_s}UL,
+               (uint32_t) ${api_input_outside_temperature_stale_s}UL,
+               (uint32_t) ${api_input_room_temperature_stale_s}UL,
+               (uint32_t) ${api_input_room_setpoint_stale_s}UL,
+               (uint32_t) ${api_input_heating_enable_stale_s}UL,
+               (uint32_t) ${api_input_cooling_enable_stale_s}UL,
+               (uint32_t) ${api_input_external_heat_demand_stale_s}UL});

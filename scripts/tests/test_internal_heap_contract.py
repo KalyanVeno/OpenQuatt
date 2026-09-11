@@ -39,6 +39,21 @@ TELEMETRY_POLICY = (
     / "openquatt_usage_telemetry"
     / "OpenQuattUsageTelemetryPolicy.h"
 ).read_text()
+CRASH_TELEMETRY_HEADER = (
+    ROOT
+    / "components"
+    / "openquatt_crash_telemetry"
+    / "OpenQuattCrashTelemetry.h"
+).read_text()
+CRASH_TELEMETRY_CPP = (
+    ROOT
+    / "components"
+    / "openquatt_crash_telemetry"
+    / "OpenQuattCrashTelemetryMqtt.cpp"
+).read_text()
+CRASH_TELEMETRY_CODEGEN = (
+    ROOT / "components" / "openquatt_crash_telemetry" / "__init__.py"
+).read_text()
 LOG_HISTORY_CPP = (
     ROOT
     / "components"
@@ -59,6 +74,14 @@ LOG_HISTORY_HEADER = (
     / "components"
     / "openquatt_log_history"
     / "OpenQuattLogHistory.h"
+).read_text()
+HP_WATER_CALIBRATION_HEADER = (
+    ROOT
+    / "openquatt"
+    / "includes"
+    / "service"
+    / "tasks"
+    / "oq_hp_water_calibration_logic.h"
 ).read_text()
 
 
@@ -128,6 +151,7 @@ class InternalHeapPlacementContractTest(unittest.TestCase):
     def test_telemetry_cleanup_and_consent_fail_closed(self) -> None:
         self.assertIn("mqtt_cleanup_decision(", TELEMETRY_POLICY)
         self.assertIn("DESTROY_ALREADY_STOPPED", TELEMETRY_POLICY)
+        self.assertIn("disconnect_requested", TELEMETRY_POLICY)
         self.assertIn("xSemaphoreCreateMutexStatic", TELEMETRY_CPP)
         self.assertIn("consent_mutex_", TELEMETRY_HEADER)
         self.assertIn("consent_publish_blocked_", TELEMETRY_HEADER)
@@ -142,6 +166,43 @@ class InternalHeapPlacementContractTest(unittest.TestCase):
         self.assertIn("eSetValueWithOverwrite", TELEMETRY_CPP)
         self.assertNotIn("eSetValueWithoutOverwrite", TELEMETRY_CPP)
 
+    def test_crash_telemetry_worker_owns_mqtt_lifecycle(self) -> None:
+        self.assertIn("StaticTask worker_task_state_", CRASH_TELEMETRY_HEADER)
+        self.assertIn(
+            "MQTT_WORKER_STACK_IN_PSRAM = true",
+            CRASH_TELEMETRY_HEADER,
+        )
+        self.assertIn(
+            "MQTT_WORKER_STACK_IN_PSRAM = false",
+            CRASH_TELEMETRY_HEADER,
+        )
+        self.assertIn("psram.request_external_task_stack()", CRASH_TELEMETRY_CODEGEN)
+        self.assertIn(
+            "get_esp32_variant() == VARIANT_ESP32S3",
+            CRASH_TELEMETRY_CODEGEN,
+        )
+        self.assertNotIn("xTaskCreatePinnedToCore(", CRASH_TELEMETRY_CPP)
+        self.assertNotIn("vTaskDelete(", CRASH_TELEMETRY_CPP)
+        self.assertIn(
+            "this->worker_task_state_.deallocate();",
+            CRASH_TELEMETRY_CPP,
+        )
+        self.assertIn("eTaskGetState(handle) != eSuspended", CRASH_TELEMETRY_CPP)
+        # Every MQTT lifecycle call exists exactly once, inside the worker
+        # start/cleanup path. The main loop only notifies the worker.
+        for lifecycle_call in (
+            "esp_mqtt_client_init(",
+            "esp_mqtt_client_start(",
+            "esp_mqtt_client_stop(",
+            "esp_mqtt_client_destroy(",
+        ):
+            self.assertEqual(CRASH_TELEMETRY_CPP.count(lifecycle_call), 1)
+        self.assertIn("void OpenQuattCrashTelemetry::finalize_session_()", CRASH_TELEMETRY_CPP)
+        self.assertIn("this->finalize_session_();", CRASH_TELEMETRY_CPP)
+        self.assertIn("request_session_finish_(", CRASH_TELEMETRY_CPP)
+        self.assertIn("select_crash_session_action(", CRASH_TELEMETRY_CPP)
+        self.assertIn("select_crash_cleanup_decision(", CRASH_TELEMETRY_CPP)
+
     def test_large_diagnostic_buffers_never_fall_back_to_internal_heap(self) -> None:
         self.assertIn(
             "this->entries_.allocate_external(ENTRY_CAPACITY)",
@@ -152,7 +213,7 @@ class InternalHeapPlacementContractTest(unittest.TestCase):
             LOG_HISTORY_CPP,
         )
         self.assertIn(
-            "this->samples_.allocate_external(SAMPLE_CAPACITY)",
+            "this->samples_.allocate_external(BUFFER_BYTES)",
             DEBUG_RECORDER_CPP,
         )
         self.assertIn(
@@ -160,7 +221,19 @@ class InternalHeapPlacementContractTest(unittest.TestCase):
             DEBUG_RECORDER_CPP,
         )
         self.assertIn(
+            "this->pending_fields_.allocate_external(FIELD_CAPACITY)",
+            DEBUG_RECORDER_CPP,
+        )
+        self.assertIn(
             "this->string_entries_.allocate_external(STRING_ENTRY_CAPACITY)",
+            DEBUG_RECORDER_CPP,
+        )
+        self.assertIn(
+            "this->string_buckets_.allocate_external(STRING_BUCKET_CAPACITY)",
+            DEBUG_RECORDER_CPP,
+        )
+        self.assertIn(
+            "this->string_compaction_order_.allocate_external(STRING_ENTRY_CAPACITY)",
             DEBUG_RECORDER_CPP,
         )
         self.assertIn(
@@ -194,6 +267,25 @@ class InternalHeapPlacementContractTest(unittest.TestCase):
         self.assertLess(
             merge_archive.index("!this->flash_archive_available_()"),
             merge_archive.index("this->ram_head_ = 0"),
+        )
+
+    def test_hp_water_calibration_samples_are_task_scoped_psram(self) -> None:
+        self.assertIn(
+            "PsramBuffer<SampleSet> samples_",
+            HP_WATER_CALIBRATION_HEADER,
+        )
+        self.assertIn(
+            "samples_.allocate_external(MAX_WINDOW_SAMPLES)",
+            HP_WATER_CALIBRATION_HEADER,
+        )
+        self.assertIn(
+            'publish("REFUSED: calibration memory unavailable")',
+            HP_WATER_CALIBRATION_HEADER,
+        )
+        self.assertIn("release_samples();", HP_WATER_CALIBRATION_HEADER)
+        self.assertNotIn(
+            "SampleSet samples_[MAX_WINDOW_SAMPLES]",
+            HP_WATER_CALIBRATION_HEADER,
         )
 
 

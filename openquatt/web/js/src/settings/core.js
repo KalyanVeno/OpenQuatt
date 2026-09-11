@@ -2,16 +2,17 @@ import { getEntityStateText, hasEntity, isEntityActive } from "../core/app-share
 import { renderOqIcon, SETTINGS_GROUP_IDS, SETTINGS_GROUPS } from "../core/config.js";
 import { isCurveMode } from "../core/domain-helpers.js";
 import { getInputDraftValue } from "../core/control-drafts.js";
-import { formatValue, getEntityValue, getNumberMeta, normalizeNumber, parseLooseNumber } from "../core/entity-store.js";
+import { formatValue, getEntityValue, normalizeNumber } from "../core/entity-store.js";
 import { state } from "../core/state.js";
 import { setSettingsRenderControls } from "../core/settings-render-controls.js";
 import { formatDiagnosticsDateTime, formatUptimeFromMeta, getDeviceIpAddress, getInstallationLabel } from "../features/device-context.js";
 import { getUpdateStatus } from "../features/firmware-update.js";
 import { getEspTemperatureLabel } from "../features/header-status.js";
 import { getWebAuthStatusDetail, getWebAuthStatusLabel } from "../features/security-access.js";
-import { formatSettingsNumberValue, getCommissioningStatusValue, getSelectEntityOptions, getSettingsTemperatureValue, renderSettingsSection } from "./controls.js";
+import { getCommissioningStatusValue, getSelectEntityOptions, renderSettingsSection } from "./controls.js";
 import { renderSettingsCoolingSection } from "./cooling.js";
 import { renderSettingsFlowSection, renderSettingsHeatingSection } from "./heating.js";
+import { renderSettingsElectricalCurrentLimitSection } from "./electrical-limit.js";
 import { renderSettingsAuxRelaySection, renderSettingsBoilerCvSection, renderSettingsCompressorSection, renderSettingsDiagnosticsSection, renderSettingsGenerationSection, renderSettingsInstallationMonitoringSection, renderSettingsOduRuntimeFrequencySection, renderSettingsQuickStartSection } from "./installation.js";
 import { renderSettingsMqttSection, renderSettingsOpenThermCicSection, renderSettingsSensorSelectionSection } from "./integrations.js";
 import { renderSettingsPrivacySection } from "./privacy.js";
@@ -19,8 +20,35 @@ import { getApiSecurityStatusDetail, getApiSecurityStatusLabel, renderSettingsAc
 import { renderSettingsCounterServiceSection, renderSettingsServiceSection } from "./service.js";
 import { renderSettingsSilentSection } from "./silent.js";
 import { renderSettingsBackupSection, renderSettingsTrendSection } from "./storage.js";
-import { getHpWaterRawValue, renderSettingsWaterSection } from "./water.js";
+import { renderSettingsWaterSection } from "./water.js";
 import { escapeHtml } from "../core/html.js";
+
+function syncFrequencyRangeControl(control) {
+  const minInput = control?.querySelector('[data-oq-range-role="min"]');
+  const maxInput = control?.querySelector('[data-oq-range-role="max"]');
+  if (!minInput || !maxInput) {
+    return;
+  }
+  let minValue = Number(minInput.value);
+  let maxValue = Number(maxInput.value);
+  const scaleMin = Number(minInput.min);
+  const scaleMax = Number(minInput.max);
+  const span = Math.max(1, scaleMax - scaleMin);
+  const disabled = minValue === 0 || maxValue === 0;
+  if (disabled) {
+    minValue = maxValue = 0;
+    minInput.value = maxInput.value = "0";
+  }
+  const invalid = !disabled && minValue > maxValue;
+  control.classList.toggle("is-disabled", disabled);
+  control.classList.toggle("is-invalid", invalid);
+  control.style.setProperty("--oq-range-start", `${((minValue - scaleMin) / span) * 100}%`);
+  control.style.setProperty("--oq-range-end", `${((maxValue - scaleMin) / span) * 100}%`);
+  const value = control.querySelector("[data-oq-range-value]");
+  if (value) {
+    value.textContent = disabled ? "Geen uitsluiting" : invalid ? "Ongeldig bereik" : `${minValue}–${maxValue} Hz`;
+  }
+}
 
 
 
@@ -55,6 +83,7 @@ import { escapeHtml } from "../core/html.js";
           renderSettingsSilentSection(),
           renderSettingsWaterSection(),
           renderSettingsCompressorSection(),
+          renderSettingsElectricalCurrentLimitSection(),
           renderSettingsOduRuntimeFrequencySection(),
         ]
       : activeGroup === "service"
@@ -101,7 +130,7 @@ import { escapeHtml } from "../core/html.js";
     }
 
     const activeGroup = SETTINGS_GROUP_IDS.has(state.settingsGroup) ? state.settingsGroup : SETTINGS_GROUPS[0].id;
-    if (activeGroup === "service") {
+    if (activeGroup === "service" || (activeGroup === "integrations" && state.focusedField)) {
       return false;
     }
 
@@ -155,11 +184,17 @@ import { escapeHtml } from "../core/html.js";
 
       card.querySelectorAll('input[data-oq-field]').forEach((input) => {
         const fieldKey = String(input.dataset.oqField || key);
-        const value = String(getInputDraftValue(fieldKey) || "");
+        const value = String(getInputDraftValue(fieldKey) ?? "");
         if (input.value !== value) {
           input.value = value;
         }
       });
+
+      const frequencyRange = card.querySelector('[data-oq-dual-range="true"]');
+      if (frequencyRange) {
+        syncFrequencyRangeControl(frequencyRange);
+        return;
+      }
 
       const sliderValue = card.querySelector(".oq-helper-slider-meta strong");
       const rangeInput = card.querySelector('input[type="range"][data-oq-field]');
@@ -179,7 +214,7 @@ import { escapeHtml } from "../core/html.js";
       button.classList.toggle("is-active", active);
       button.setAttribute("aria-pressed", active ? "true" : "false");
       if (key === "strategy") {
-        button.disabled = state.loadingEntities || state.busyAction === "save-strategy";
+        button.disabled = state.loadingEntities || state.busyAction === "save-strategy" || state.busyAction === "save-heatingEnableSource";
       } else if (key === "hpGeneration") {
         button.disabled = state.loadingEntities || state.busyAction === "save-hpGeneration";
       } else if (key === "curveControlProfile") {
@@ -384,41 +419,6 @@ import { escapeHtml } from "../core/html.js";
         restartButton.textContent = busyRestart ? "Herstarten..." : "Herstarten";
       }
     }
-
-    stack.querySelectorAll(".oq-settings-hp-offset-row").forEach((row) => {
-      const offsetKey = String(row.dataset.oqSettingsField || "");
-      const rawKey = String(row.dataset.oqHpOffsetRawKey || "");
-      const finalKey = String(row.dataset.oqHpOffsetFinalKey || "");
-      if (!offsetKey || !rawKey || !finalKey) {
-        return;
-      }
-      const meta = getNumberMeta(offsetKey);
-      const raw = getHpWaterRawValue(rawKey, finalKey, offsetKey);
-      const offsetDraft = parseLooseNumber(getInputDraftValue(offsetKey));
-      const finalFromDraft = Number.isFinite(raw) && Number.isFinite(offsetDraft)
-        ? formatSettingsNumberValue(raw + offsetDraft, meta.uom || "°C", 2)
-        : getSettingsTemperatureValue(finalKey, 2);
-      const activeNode = row.querySelector("[data-oq-hp-offset-active]");
-      if (activeNode) {
-        const activeText = `${getSettingsTemperatureValue(finalKey, 2)} actief`;
-        if (activeNode.textContent !== activeText) {
-          activeNode.textContent = activeText;
-        }
-      }
-      const rawNode = row.querySelector("[data-oq-hp-offset-raw]");
-      if (rawNode) {
-        const rawText = Number.isFinite(raw)
-          ? formatSettingsNumberValue(raw, meta.uom || "°C", 2)
-          : getSettingsTemperatureValue(rawKey, 2);
-        if (rawNode.textContent !== rawText) {
-          rawNode.textContent = rawText;
-        }
-      }
-      const finalNode = row.querySelector("[data-oq-hp-offset-final]");
-      if (finalNode && finalNode.textContent !== finalFromDraft) {
-        finalNode.textContent = finalFromDraft;
-      }
-    });
 
     const curveShell = stack.querySelector(".oq-settings-curve-shell");
     const currentCurveMode = isCurveMode();

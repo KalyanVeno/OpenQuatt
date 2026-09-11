@@ -1,19 +1,23 @@
-export async function fetchWithTimeout(input, options = {}, timeoutMs = 0, timeoutMessage = "") {
+export async function fetchWithTimeout(input, options = {}, timeoutMs = 0, timeoutMessage = "", consumeResponse = null, runtime = {}) {
+  const fetchImplementation = typeof runtime.fetch === "function" ? runtime.fetch : fetch;
+  const timerHost = runtime.timerHost || window;
   if (typeof AbortController !== "function" || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
-    return fetch(input, options);
+    const response = await fetchImplementation(input, options);
+    return typeof consumeResponse === "function" ? consumeResponse(response) : response;
   }
 
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  const timeoutId = timerHost.setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(input, { ...options, signal: controller.signal });
+    const response = await fetchImplementation(input, { ...options, signal: controller.signal });
+    return typeof consumeResponse === "function" ? await consumeResponse(response) : response;
   } catch (error) {
     if (controller.signal.aborted) {
       throw new Error(timeoutMessage || `request timed out after ${timeoutMs}ms`);
     }
     throw error;
   } finally {
-    window.clearTimeout(timeoutId);
+    timerHost.clearTimeout(timeoutId);
   }
 }
 

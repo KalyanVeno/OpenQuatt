@@ -4,12 +4,45 @@ export const WEB_BUNDLE_GZIP_GROWTH_LIMIT = { bytes: 4_608, ratio: 0.03 };
 export const WEB_BUNDLE_BUDGETS = [
   {
     file: "js/openquatt-app.js",
-    // Raised for the HCQ R2 auxiliary-relay settings section (+~3 KB raw).
-    raw: 877_000,
+    // Includes HCQ R2 settings, bounded usage-telemetry confirmation polling,
+    // source-bound supply-temperature calibration status and results,
+    // its read-only sensor-correction summary, calibration backup/restore,
+    // the read-only ODU EEPROM service export, API ingress source controls,
+    // concise CM100 boiler test phase copy (FLOW_SETTLING/BOILER_SETTLING/MEASURING/COOLDOWN),
+    // advisory per-ODU generation detection with single bulk-detect button for onboarding and installation settings,
+    // the explicitly confirmed dev-to-main firmware downgrade flow,
+    // selectable cooling restart by water temperature or minimum off-time,
+    // instelbare elektrische ingangsgrens met topologie- en ODU-afhankelijk maximum,
+    // issue-615 verduidelijking met standaardreferentie, inline waarschuwing,
+    // expliciete bevestiging boven de standaard en standaard-herstelactie,
+    // ODU-detectie-gating voor verhoogde limieten, reset-naar-automatisch,
+    // restore-waarschuwing en live inline-feedback tijdens typen,
+    // toelichting lokale historie in Quick Start, plus fase-2 flash-I/O observability,
+    // bounded OTA app-shell cache refresh before reloading into newly installed firmware,
+    // strategie-afhankelijke warmtetoestemming-advies (Power House vs stooklijn, OT-voorkeur, centrale modal, auto-set in Quick Start),
+    // plus hervatbare, fail-closed Quick Start-OTA met main-/doelcontrole en duurzaam post-bootbewijs,
+    // afzonderlijke rollen voor een aangesloten aanvullende warmtebron, hybride verwarmen en overname,
+    // the issue-516 boiler/OpenTherm debug-recording fields,
+    // the issue-536 boiler-result quality and confirmed empirical Apply flow,
+    // the compact per-ODU compressor profile for safe manual F-levels,
+    // the unified Q-firmware network preference and active-connection controls,
+    // the issue-471 grouped source focus panel with configured/effective paths,
+    // relevant-source diagnostics, warnings and stable keyboard focus,
+    // and frequency-based day/silent limits and exclusion ranges per ODU.
+    // plus bounded webserver-log history polling (single scheduler, retry
+    // back-off and authoritative refresh without a second /events stream).
+    // The validated bundle is 987085 B; the raw budget keeps ~1.9 kB margin
+    // for build-environment variance.
+    raw: 989_000,
     // One-time migration ceiling for structured incident monitoring, replay,
     // the CSRF-protected deferred recovery actions, and their compact editor.
     // Once this bundle is the base, the normal gzip growth limit applies again.
     gzipBaselineCeiling: 238_000,
   },
-  { file: "css/openquatt-app.css", raw: 275_000 },
+  // Includes the compact, dark-safe ODU generation picker with unified header action and distinct badge/button,
+  // the warmtetoestemming-advies modal (3 summary cards, comparison, matrix, sticky footer),
+  // the issue-615 electrical-limit slider with red above-standard zone,
+  // matching estimate/entry boxes, label icons and aligned vertical rhythm,
+  // and the responsive issue-471 master/detail source focus panel.
+  { file: "css/openquatt-app.css", raw: 305_000 },
 ];

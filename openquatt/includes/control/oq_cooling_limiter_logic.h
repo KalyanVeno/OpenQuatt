@@ -24,6 +24,105 @@ enum ReasonCode {
   REASON_CAPACITY_CAP = 14,
 };
 
+enum WaterStopReasonCode {
+  WATER_STOP_NONE = 0,
+  WATER_STOP_LIMITER = 1,
+  WATER_STOP_DEW = 2,
+  WATER_STOP_FALLBACK = 3,
+  WATER_STOP_PROJECTED_FLOOR = 4,
+  WATER_STOP_REQUEST_CLEARED = 5,
+  WATER_STOP_FLOW_PERMISSION_LOST = 6,
+  WATER_STOP_CORE_PERMISSION_LOST = 7,
+};
+
+struct WaterCycleState {
+  bool active = false;
+  float stop_buffer_gap_c = 0.0f;
+  int stop_reason_code = WATER_STOP_NONE;
+};
+
+struct WaterRestartDecision {
+  WaterCycleState state;
+  bool reset_integral = false;
+  int limiter_reason_code = REASON_INACTIVE;
+};
+
+inline int inactive_stop_reason(bool cycle_was_active, bool request_cleared, bool sensor_missing,
+                                bool flow_permission_lost, bool core_permission_lost) {
+  if (cycle_was_active && request_cleared) return WATER_STOP_REQUEST_CLEARED;
+  if (cycle_was_active && sensor_missing) return WATER_STOP_FALLBACK;
+  if (flow_permission_lost) return WATER_STOP_FLOW_PERMISSION_LOST;
+  if (core_permission_lost) return WATER_STOP_CORE_PERMISSION_LOST;
+  return WATER_STOP_NONE;
+}
+
+inline bool record_pi_zero_stop(int previous_demand, int demand, float filtered_gap_c, WaterCycleState& state) {
+  if (!state.active || previous_demand <= 0 || demand > 0) return false;
+
+  state.active = false;
+  state.stop_buffer_gap_c = filtered_gap_c;
+  if (state.stop_reason_code == WATER_STOP_NONE) state.stop_reason_code = WATER_STOP_LIMITER;
+  return true;
+}
+
+inline bool water_restart_gap_recovered(const WaterCycleState& state, float filtered_gap_c, float restart_delta_c) {
+  if (state.stop_reason_code == WATER_STOP_NONE || state.stop_reason_code == WATER_STOP_PROJECTED_FLOOR) return true;
+  return filtered_gap_c >= state.stop_buffer_gap_c + restart_delta_c;
+}
+
+inline uint32_t global_minimum_off_time_remaining_ms(bool enabled, uint32_t now_ms, bool stop_seen,
+                                                     uint32_t last_stop_ms, bool boot_hold_elapsed,
+                                                     uint32_t minimum_off_ms) {
+  if (!enabled || minimum_off_ms == 0) return 0;
+
+  if (stop_seen) {
+    const uint32_t elapsed_ms = now_ms - last_stop_ms;
+    return elapsed_ms >= minimum_off_ms ? 0 : minimum_off_ms - elapsed_ms;
+  }
+
+  if (boot_hold_elapsed) return 0;
+  return now_ms >= minimum_off_ms ? 0 : minimum_off_ms - now_ms;
+}
+
+inline bool cooling_stop_is_planned(bool was_cooling, int previous_applied_level, int requested_level) {
+  return was_cooling && previous_applied_level > 0 && requested_level <= 0;
+}
+inline bool apply_hp2_before_hp1_for_cooling_handover(bool hp1_was_cooling, bool hp2_was_cooling) {
+  return !hp1_was_cooling && hp2_was_cooling;
+}
+inline bool next_applied_cooling(bool was_cooling, int applied_level, int request_mode_code) {
+  return applied_level > 0 && (request_mode_code == 1 || (request_mode_code != 2 && was_cooling));
+}
+inline int cooling_minimum_off_floor_s(int configured_floor_s) {
+  return std::max(1, std::min(3600, configured_floor_s));
+}
+inline bool cooling_stop_confirmation_blocks_start(bool confirmation_pending, bool armed_this_tick,
+                                                   int previous_applied_level) {
+  return previous_applied_level <= 0 && (confirmation_pending || armed_this_tick);
+}
+inline bool cooling_stop_requires_confirmation(bool was_cooling, int previous_applied_level, bool running_confirmed,
+                                               int applied_level) {
+  return was_cooling && applied_level <= 0 && (previous_applied_level > 0 || running_confirmed);
+}
+inline bool record_confirmed_cooling_stop(bool confirmation_pending, bool stop_confirmed, uint32_t now_ms,
+                                          uint32_t& last_confirmed_stop_ms, bool& confirmed_stop_seen) {
+  if (!confirmation_pending || !stop_confirmed) return false;
+  last_confirmed_stop_ms = now_ms;
+  confirmed_stop_seen = true;
+  return true;
+}
+
+inline bool global_minimum_off_time_blocks_start(uint32_t remaining_ms, bool stop_confirmation_pending,
+                                                 bool stop_planned_this_tick, int previous_applied_level) {
+  return previous_applied_level <= 0 && (remaining_ms > 0 || stop_confirmation_pending || stop_planned_this_tick);
+}
+
+inline bool cooling_minimum_off_stop_is_pending(bool enabled, bool water_cycle_active, int stop_reason_code,
+                                                bool cooling_stop_or_wait_active) {
+  return enabled && !water_cycle_active && cooling_stop_or_wait_active && stop_reason_code != WATER_STOP_NONE &&
+         stop_reason_code != WATER_STOP_REQUEST_CLEARED;
+}
+
 struct LimiterTuning {
   float hard_dew_stop_base_gap_c = 0.15f;
   float hard_dew_stop_margin_gain_c = 0.30f;
@@ -47,6 +146,26 @@ struct LimiterTuning {
   float capacity_fast_fall_rate_c_per_min = -0.15f;
   float capacity_slow_fall_rate_c_per_min = -0.05f;
   float capacity_recovery_min_rate_c_per_min = -0.02f;
+};
+
+struct OilReturnTuning {
+  uint32_t hold_ms = 1200000UL, recovery_stable_ms = 120000UL, recovery_cap_ms = 120000UL;
+  float recovery_dew_extra_c = 0.30f, recovery_projected_extra_c = 0.15f;
+  float recovery_min_rate_c_per_min = -0.05f;
+};
+
+struct OilReturnState {
+  uint32_t hold_since_ms = 0, recovery_stable_since_ms = 0, recovery_cap_since_ms = 0;
+  bool hold_expired_pending = false;
+};
+
+struct OilReturnInput {
+  uint32_t now_ms = 0;
+  bool control_active = false, oil_return_active = false;
+};
+
+struct OilReturnDecision {
+  bool mask_active = false, recovery_cap_active = false, reset_integral_and_dwell = false;
 };
 
 struct LimiterState {
@@ -85,12 +204,15 @@ struct LimiterOutput {
   bool clamp_integral_to_zero = false;
 };
 
-inline const char *reason_name(int reason) {
-  static const char *const names[] = {
-      "inactive", "full", "projected_floor", "simmer", "falling_gap",
-      "buffer_stop", "dew_stop", "fallback_floor", "restart_wait", "room_cap",
-      "fallback_cap1", "level1_hold", "oil_return_hold", "oil_return_recovery",
-      "capacity_cap"};
+inline const char* reason_name(int reason) {
+  static const char* const names[] = {"inactive",        "full",
+                                      "projected_floor", "simmer",
+                                      "falling_gap",     "buffer_stop",
+                                      "dew_stop",        "fallback_floor",
+                                      "restart_wait",    "room_cap",
+                                      "fallback_cap1",   "level1_hold",
+                                      "oil_return_hold", "oil_return_recovery",
+                                      "capacity_cap"};
   return reason >= 0 && reason < (int)(sizeof(names) / sizeof(names[0])) ? names[reason] : names[0];
 }
 
@@ -98,27 +220,125 @@ inline int clamp_level(int value, int min_value, int max_value) {
   return std::max(min_value, std::min(max_value, value));
 }
 
-inline bool finite_float(float value) {
-  return !isnan(value);
+inline bool finite_float(float value) { return isfinite(value); }
+
+inline float hard_dew_restart_gap(const LimiterInput& in, const LimiterTuning& tuning) {
+  return tuning.hard_dew_stop_base_gap_c + tuning.hard_dew_stop_margin_gain_c * in.safety_margin_c +
+         tuning.hard_dew_restart_hyst_c;
 }
+
+inline uint32_t nonzero_timestamp_ms(uint32_t now_ms) { return now_ms == 0 ? UINT32_MAX : now_ms; }
 
 inline bool elapsed(uint32_t now_ms, uint32_t since_ms, uint32_t duration_ms) {
-  return since_ms > 0 && now_ms > since_ms && (uint32_t)(now_ms - since_ms) >= duration_ms;
+  return since_ms > 0 && (uint32_t)(now_ms - since_ms) >= duration_ms;
 }
 
-inline void apply_cap(int cap, int reason, int &allowed_cap, int &reason_code) {
+inline bool window_active(uint32_t now_ms, uint32_t since_ms, uint32_t duration_ms) {
+  return duration_ms > 0 && since_ms > 0 && (uint32_t)(now_ms - since_ms) < duration_ms;
+}
+
+inline void reset_oil_return_recovery(OilReturnState& state) {
+  state.recovery_stable_since_ms = state.recovery_cap_since_ms = 0;
+}
+
+inline OilReturnDecision update_oil_return(const OilReturnInput& in, const LimiterInput& conditions,
+                                           const OilReturnTuning& tuning, const LimiterTuning& limiter_tuning,
+                                           OilReturnState& state) {
+  if (in.oil_return_active) {
+    state.hold_since_ms = nonzero_timestamp_ms(in.now_ms);
+    state.hold_expired_pending = false;
+    reset_oil_return_recovery(state);
+  }
+  if (!in.control_active) {
+    const bool hold_active = window_active(in.now_ms, state.hold_since_ms, tuning.hold_ms);
+    if (!in.oil_return_active && state.hold_since_ms != 0 && !hold_active) {
+      state.hold_since_ms = 0;
+      state.hold_expired_pending = true;
+    }
+    reset_oil_return_recovery(state);
+    return {in.oil_return_active || hold_active, false, false};
+  }
+  if (in.oil_return_active) return {true, false, false};
+
+  const bool hold_active = window_active(in.now_ms, state.hold_since_ms, tuning.hold_ms);
+  if (state.recovery_cap_since_ms != 0 &&
+      !window_active(in.now_ms, state.recovery_cap_since_ms, tuning.recovery_cap_ms))
+    state.recovery_cap_since_ms = 0;
+  const bool recovery_not_needed = !conditions.dew_mode && !conditions.fallback_mode;
+  const float hard_dew_restart_gap_c = hard_dew_restart_gap(conditions, limiter_tuning);
+  const float projected_gap_c =
+      conditions.filtered_gap_c + conditions.gap_rate_c_per_min * limiter_tuning.projection_horizon_min;
+  const bool recovery_safe =
+      !recovery_not_needed &&
+      (!conditions.dew_mode || (finite_float(conditions.dew_gap_c) &&
+                                conditions.dew_gap_c >= hard_dew_restart_gap_c + tuning.recovery_dew_extra_c)) &&
+      (!conditions.fallback_mode ||
+       conditions.filtered_gap_c >= limiter_tuning.fallback_cap1_gap_c + tuning.recovery_dew_extra_c) &&
+      (conditions.filtered_gap_c >= 0.0f ||
+       (conditions.filtered_gap_c > limiter_tuning.limiter_soft_stop_gap_c && conditions.gap_rate_c_per_min > 0.10f)) &&
+      projected_gap_c >= limiter_tuning.projected_floor_release_gap_c + tuning.recovery_projected_extra_c &&
+      conditions.gap_rate_c_per_min >= tuning.recovery_min_rate_c_per_min;
+  if (!hold_active || !recovery_safe) {
+    state.recovery_stable_since_ms = 0;
+  } else if (state.recovery_stable_since_ms == 0)
+    state.recovery_stable_since_ms = nonzero_timestamp_ms(in.now_ms);
+  const bool recovery_stable = elapsed(in.now_ms, state.recovery_stable_since_ms, tuning.recovery_stable_ms);
+
+  const bool release_hold = (hold_active && (recovery_not_needed || recovery_stable)) || state.hold_expired_pending ||
+                            (state.hold_since_ms != 0 && !hold_active);
+  bool reset_integral_and_dwell = false;
+  if (release_hold) {
+    reset_integral_and_dwell = !recovery_not_needed;
+    state = {0, 0, reset_integral_and_dwell ? nonzero_timestamp_ms(in.now_ms) : 0, false};
+  }
+  return {window_active(in.now_ms, state.hold_since_ms, tuning.hold_ms),
+          window_active(in.now_ms, state.recovery_cap_since_ms, tuning.recovery_cap_ms), reset_integral_and_dwell};
+}
+
+inline WaterRestartDecision evaluate_water_restart(bool restart_by_minimum_off_time, bool minimum_off_stop_pending,
+                                                   float restart_delta_c, const LimiterInput& conditions,
+                                                   const LimiterOutput& limiter, const LimiterTuning& tuning,
+                                                   const LimiterState& limiter_state, WaterCycleState state) {
+  if (state.active) return {state, false, limiter.reason_code};
+  if (state.stop_reason_code == WATER_STOP_REQUEST_CLEARED) state.stop_reason_code = WATER_STOP_NONE;
+  const bool safety_stop = limiter.reason_code == REASON_DEW_STOP || limiter.reason_code == REASON_FALLBACK_FLOOR;
+  if (state.stop_reason_code == WATER_STOP_PROJECTED_FLOOR && safety_stop) {
+    state.stop_reason_code = limiter.reason_code == REASON_DEW_STOP ? WATER_STOP_DEW : WATER_STOP_FALLBACK;
+    state.stop_buffer_gap_c = conditions.filtered_gap_c;
+  }
+  const bool restart_after_water_stop = state.stop_reason_code != WATER_STOP_NONE;
+  const bool projected_floor_pause = state.stop_reason_code == WATER_STOP_PROJECTED_FLOOR;
+  const bool projected_floor_recovered = !projected_floor_pause || !limiter_state.projection_brake_active ||
+                                         limiter.projected_gap_c >= tuning.projected_floor_release_gap_c ||
+                                         conditions.gap_rate_c_per_min >= 0.0f;
+  const bool recovered =
+      conditions.oil_return_mask_active ||
+      ((restart_by_minimum_off_time ? !minimum_off_stop_pending
+                                    : water_restart_gap_recovered(state, conditions.filtered_gap_c, restart_delta_c)) &&
+       (!conditions.dew_mode || !finite_float(conditions.dew_gap_c) ||
+        conditions.dew_gap_c > hard_dew_restart_gap(conditions, tuning)) &&
+       (restart_by_minimum_off_time || !conditions.fallback_mode || !restart_after_water_stop ||
+        projected_floor_pause || conditions.filtered_gap_c > state.stop_buffer_gap_c + restart_delta_c) &&
+       projected_floor_recovered);
+  if (recovered && limiter.allowed_max > 0) {
+    state.active = true;
+    state.stop_reason_code = WATER_STOP_NONE;
+  }
+  const bool keep_limiter_reason =
+      state.active || safety_stop || !restart_after_water_stop || (projected_floor_pause && !projected_floor_recovered);
+  return {state, !state.active && safety_stop, keep_limiter_reason ? limiter.reason_code : REASON_RESTART_WAIT};
+}
+
+inline void apply_cap(int cap, int reason, int& allowed_cap, int& reason_code) {
   cap = std::max(0, cap);
   if (cap < allowed_cap ||
-      (cap == allowed_cap && reason != REASON_FULL &&
-       (reason_code == REASON_FULL || reason_code == REASON_ROOM_CAP))) {
+      (cap == allowed_cap && reason != REASON_FULL && (reason_code == REASON_FULL || reason_code == REASON_ROOM_CAP))) {
     allowed_cap = cap;
     reason_code = reason;
   }
 }
 
-inline int dew_capacity_risk_cap(const LimiterInput &in,
-                                 const LimiterTuning &tuning,
-                                 float hard_dew_restart_gap_c) {
+inline int dew_capacity_risk_cap(const LimiterInput& in, const LimiterTuning& tuning, float hard_dew_restart_gap_c) {
   int risk_cap = std::max(1, in.capacity_demand_max);
   if (!in.dew_mode || !finite_float(in.dew_gap_c)) return risk_cap;
 
@@ -126,26 +346,27 @@ inline int dew_capacity_risk_cap(const LimiterInput &in,
   const float dew_cap2_gap_c = fmaxf(0.95f, hard_dew_restart_gap_c + 0.30f);
   const float dew_cap3_gap_c = fmaxf(1.20f, hard_dew_restart_gap_c + 0.55f);
 
-  if (in.dew_gap_c <= dew_cap1_gap_c) risk_cap = std::min(risk_cap, 1);
-  else if (in.dew_gap_c <= dew_cap2_gap_c) risk_cap = std::min(risk_cap, 2);
-  else if (in.dew_gap_c <= dew_cap3_gap_c) risk_cap = std::min(risk_cap, 3);
+  if (in.dew_gap_c <= dew_cap1_gap_c)
+    risk_cap = std::min(risk_cap, 1);
+  else if (in.dew_gap_c <= dew_cap2_gap_c)
+    risk_cap = std::min(risk_cap, 2);
+  else if (in.dew_gap_c <= dew_cap3_gap_c)
+    risk_cap = std::min(risk_cap, 3);
 
   if (in.gap_rate_c_per_min <= tuning.capacity_fast_fall_rate_c_per_min) {
-    if (in.dew_gap_c <= dew_cap2_gap_c) risk_cap = std::min(risk_cap, 1);
-    else if (in.dew_gap_c <= dew_cap3_gap_c) risk_cap = std::min(risk_cap, 2);
-  } else if (in.gap_rate_c_per_min <= tuning.capacity_slow_fall_rate_c_per_min &&
-             in.dew_gap_c <= dew_cap2_gap_c) {
+    if (in.dew_gap_c <= dew_cap2_gap_c)
+      risk_cap = std::min(risk_cap, 1);
+    else if (in.dew_gap_c <= dew_cap3_gap_c)
+      risk_cap = std::min(risk_cap, 2);
+  } else if (in.gap_rate_c_per_min <= tuning.capacity_slow_fall_rate_c_per_min && in.dew_gap_c <= dew_cap2_gap_c) {
     risk_cap = std::min(risk_cap, 2);
   }
 
   return risk_cap;
 }
 
-inline void update_hysteretic_capacity_cap(const LimiterInput &in,
-                                           const LimiterTuning &tuning,
-                                           float hard_dew_restart_gap_c,
-                                           LimiterState &state,
-                                           LimiterOutput &out) {
+inline void update_hysteretic_capacity_cap(const LimiterInput& in, const LimiterTuning& tuning,
+                                           float hard_dew_restart_gap_c, LimiterState& state, LimiterOutput& out) {
   if (in.oil_return_mask_active) {
     state.capacity_recovery_since_ms = 0;
     state.capacity_full_recovery_since_ms = 0;
@@ -167,7 +388,7 @@ inline void update_hysteretic_capacity_cap(const LimiterInput &in,
 
   if (risk_cap < current_cap) {
     current_cap = risk_cap;
-    state.capacity_last_change_ms = in.now_ms;
+    state.capacity_last_change_ms = nonzero_timestamp_ms(in.now_ms);
     state.capacity_recovery_since_ms = 0;
     state.capacity_full_recovery_since_ms = 0;
     out.clamp_integral_to_zero = true;
@@ -175,52 +396,38 @@ inline void update_hysteretic_capacity_cap(const LimiterInput &in,
     const float dew_release_to2_gap_c = fmaxf(1.05f, hard_dew_restart_gap_c + 0.45f);
     const float dew_release_to3_gap_c = fmaxf(1.25f, hard_dew_restart_gap_c + 0.65f);
     const float dew_release_full_gap_c = fmaxf(1.50f, hard_dew_restart_gap_c + 0.90f);
-    const float required_dew_gap_c =
-        current_cap <= 1 ? dew_release_to2_gap_c :
-        current_cap == 2 ? dew_release_to3_gap_c :
-        dew_release_full_gap_c;
+    const float required_dew_gap_c = current_cap <= 1   ? dew_release_to2_gap_c
+                                     : current_cap == 2 ? dew_release_to3_gap_c
+                                                        : dew_release_full_gap_c;
     const bool staged_recovery_ready =
-        in.dew_gap_c >= required_dew_gap_c &&
-        in.gap_rate_c_per_min >= tuning.capacity_recovery_min_rate_c_per_min;
-    const bool capacity_bound =
-        current_cap < in.demand_max && in.previous_limited_demand >= current_cap;
+        in.dew_gap_c >= required_dew_gap_c && in.gap_rate_c_per_min >= tuning.capacity_recovery_min_rate_c_per_min;
+    const bool capacity_bound = current_cap < in.demand_max && in.previous_limited_demand >= current_cap;
     const bool adaptive_recovery_ready =
-        current_cap >= 3 &&
-        capacity_bound &&
-        in.gap_rate_c_per_min >= tuning.capacity_recovery_min_rate_c_per_min;
+        current_cap >= 3 && capacity_bound && in.gap_rate_c_per_min >= tuning.capacity_recovery_min_rate_c_per_min;
     const bool recovery_ready = staged_recovery_ready || adaptive_recovery_ready;
-    const bool full_recovery_ready =
-        staged_recovery_ready && risk_cap >= capacity_demand_max && current_cap >= 3;
+    const bool full_recovery_ready = staged_recovery_ready && risk_cap >= capacity_demand_max && current_cap >= 3;
 
     if (recovery_ready) {
-      if (state.capacity_recovery_since_ms == 0 || in.now_ms <= state.capacity_recovery_since_ms) {
-        state.capacity_recovery_since_ms = in.now_ms;
-      }
+      if (state.capacity_recovery_since_ms == 0) state.capacity_recovery_since_ms = nonzero_timestamp_ms(in.now_ms);
       if (full_recovery_ready) {
-        if (state.capacity_full_recovery_since_ms == 0 ||
-            in.now_ms <= state.capacity_full_recovery_since_ms) {
-          state.capacity_full_recovery_since_ms = in.now_ms;
-        }
+        if (state.capacity_full_recovery_since_ms == 0)
+          state.capacity_full_recovery_since_ms = nonzero_timestamp_ms(in.now_ms);
       } else {
         state.capacity_full_recovery_since_ms = 0;
       }
-      const bool hold_elapsed =
-          state.capacity_last_change_ms == 0 ||
-          in.now_ms <= state.capacity_last_change_ms ||
-          (uint32_t)(in.now_ms - state.capacity_last_change_ms) >= tuning.capacity_min_hold_ms;
-      if (hold_elapsed && elapsed(in.now_ms, state.capacity_recovery_since_ms,
-                                  tuning.capacity_recovery_stable_ms)) {
+      const bool hold_elapsed = state.capacity_last_change_ms == 0 ||
+                                (uint32_t)(in.now_ms - state.capacity_last_change_ms) >= tuning.capacity_min_hold_ms;
+      if (hold_elapsed && elapsed(in.now_ms, state.capacity_recovery_since_ms, tuning.capacity_recovery_stable_ms)) {
         const bool full_capacity_recovered =
-            full_recovery_ready && elapsed(in.now_ms, state.capacity_full_recovery_since_ms,
-                                           tuning.capacity_recovery_stable_ms);
-        const int non_full_capacity_max =
-            current_cap >= 3 ? capacity_demand_max - 1 : capacity_demand_max;
+            full_recovery_ready &&
+            elapsed(in.now_ms, state.capacity_full_recovery_since_ms, tuning.capacity_recovery_stable_ms);
+        const int non_full_capacity_max = current_cap >= 3 ? capacity_demand_max - 1 : capacity_demand_max;
         const int next_cap = full_capacity_recovered
-            ? capacity_demand_max
-            : std::min(non_full_capacity_max, std::min(risk_cap, current_cap + 1));
+                                 ? capacity_demand_max
+                                 : std::min(non_full_capacity_max, std::min(risk_cap, current_cap + 1));
         if (next_cap > current_cap) {
           current_cap = next_cap;
-          state.capacity_last_change_ms = in.now_ms;
+          state.capacity_last_change_ms = nonzero_timestamp_ms(in.now_ms);
           state.capacity_recovery_since_ms = 0;
           state.capacity_full_recovery_since_ms = 0;
         }
@@ -243,9 +450,7 @@ inline void update_hysteretic_capacity_cap(const LimiterInput &in,
   }
 }
 
-inline LimiterOutput update_limiter(const LimiterInput &in,
-                                    const LimiterTuning &tuning,
-                                    LimiterState &state) {
+inline LimiterOutput update_limiter(const LimiterInput& in, const LimiterTuning& tuning, LimiterState& state) {
   LimiterOutput out;
   out.allowed_max = std::max(0, in.demand_max);
   out.reason_code = in.room_cap_active ? REASON_ROOM_CAP : REASON_FULL;
@@ -256,9 +461,8 @@ inline LimiterOutput update_limiter(const LimiterInput &in,
 
   float projected_floor_dynamic_brake_gap_c = tuning.projected_floor_brake_gap_c;
   if (in.gap_rate_c_per_min < -tuning.projected_floor_fast_fall_rate_c_per_min) {
-    const float fast_fall_extra_c =
-        ((-in.gap_rate_c_per_min) - tuning.projected_floor_fast_fall_rate_c_per_min) *
-        tuning.projected_floor_fast_fall_brake_gain;
+    const float fast_fall_extra_c = ((-in.gap_rate_c_per_min) - tuning.projected_floor_fast_fall_rate_c_per_min) *
+                                    tuning.projected_floor_fast_fall_brake_gain;
     projected_floor_dynamic_brake_gap_c +=
         fminf(tuning.projected_floor_fast_fall_brake_max_c, fmaxf(0.0f, fast_fall_extra_c));
   }
@@ -268,17 +472,16 @@ inline LimiterOutput update_limiter(const LimiterInput &in,
     state.projection_brake_active = true;
   }
 
-  if (in.filtered_gap_c > tuning.simmer_enable_gap_c) state.simmer_allowed = true;
-  else if (in.filtered_gap_c < tuning.simmer_disable_gap_c) state.simmer_allowed = false;
+  if (in.filtered_gap_c > tuning.simmer_enable_gap_c)
+    state.simmer_allowed = true;
+  else if (in.filtered_gap_c < tuning.simmer_disable_gap_c)
+    state.simmer_allowed = false;
 
   const bool dew_hard_stop_candidate =
-      !in.oil_return_mask_active &&
-      in.dew_mode && finite_float(in.dew_gap_c) && in.dew_gap_c <= hard_dew_stop_gap_c;
+      !in.oil_return_mask_active && in.dew_mode && finite_float(in.dew_gap_c) && in.dew_gap_c <= hard_dew_stop_gap_c;
   bool dew_hard_stop = false;
   if (dew_hard_stop_candidate) {
-    if (state.dew_stop_candidate_since_ms == 0 || in.now_ms <= state.dew_stop_candidate_since_ms) {
-      state.dew_stop_candidate_since_ms = in.now_ms;
-    }
+    if (state.dew_stop_candidate_since_ms == 0) state.dew_stop_candidate_since_ms = nonzero_timestamp_ms(in.now_ms);
     dew_hard_stop = elapsed(in.now_ms, state.dew_stop_candidate_since_ms, tuning.limiter_stop_confirm_ms);
   } else {
     state.dew_stop_candidate_since_ms = 0;
@@ -300,15 +503,13 @@ inline LimiterOutput update_limiter(const LimiterInput &in,
       apply_cap(0, REASON_BUFFER_STOP, out.allowed_max, out.reason_code);
     } else if (in.filtered_gap_c <= 0.0f) {
       apply_cap((dew_gap_allows_simmer && state.simmer_allowed) ? 1 : 0,
-                (dew_gap_allows_simmer && state.simmer_allowed) ? REASON_SIMMER : REASON_BUFFER_STOP,
-                out.allowed_max, out.reason_code);
+                (dew_gap_allows_simmer && state.simmer_allowed) ? REASON_SIMMER : REASON_BUFFER_STOP, out.allowed_max,
+                out.reason_code);
     }
   }
 
-  const bool projection_caution_active =
-      !state.projection_brake_active &&
-      in.gap_rate_c_per_min < 0.0f &&
-      out.projected_gap_c <= tuning.projected_floor_release_gap_c;
+  const bool projection_caution_active = !state.projection_brake_active && in.gap_rate_c_per_min < 0.0f &&
+                                         out.projected_gap_c <= tuning.projected_floor_release_gap_c;
   if ((state.projection_brake_active || projection_caution_active) && out.allowed_max > 0) {
     if (in.previous_limited_demand > 1) out.reset_gap_rate_reference = true;
     apply_cap(1, REASON_PROJECTED_FLOOR, out.allowed_max, out.reason_code);
@@ -328,17 +529,14 @@ inline LimiterOutput update_limiter(const LimiterInput &in,
     out.reason_code = REASON_OIL_RETURN_RECOVERY;
   }
 
-  const bool immediate_stop =
-      out.reason_code == REASON_DEW_STOP || out.reason_code == REASON_FALLBACK_FLOOR;
+  const bool immediate_stop = out.reason_code == REASON_DEW_STOP || out.reason_code == REASON_FALLBACK_FLOOR;
   if (!immediate_stop && out.allowed_max <= 0) {
     if (in.buffer_gap_c > 0.0f) {
       out.allowed_max = 1;
       out.reason_code = REASON_LEVEL1_HOLD;
       state.stop_candidate_since_ms = 0;
     } else if (in.filtered_gap_c > tuning.limiter_soft_stop_gap_c) {
-      if (state.stop_candidate_since_ms == 0 || in.now_ms <= state.stop_candidate_since_ms) {
-        state.stop_candidate_since_ms = in.now_ms;
-      }
+      if (state.stop_candidate_since_ms == 0) state.stop_candidate_since_ms = nonzero_timestamp_ms(in.now_ms);
       if (!elapsed(in.now_ms, state.stop_candidate_since_ms, tuning.limiter_stop_confirm_ms)) {
         out.allowed_max = 1;
         out.reason_code = REASON_LEVEL1_HOLD;

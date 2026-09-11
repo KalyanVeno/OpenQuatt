@@ -8,6 +8,7 @@ import { getInstallationLabel, getInstallationTopology } from "../features/devic
 import { getFirmwareCurrentVersion } from "../features/firmware-update.js";
 import { ENERGY_HISTORY_EXPORT_MODES, getSettingsBackupSelectionSummary, normalizeEnergyHistoryExportMode } from "../features/storage-history.js";
 import { formatSettingsOptionLabel, getSettingsStatValue, renderSettingsCompactSwitchControl, renderSettingsFieldCard, renderSettingsSection, renderSettingsSwitchCopy } from "./controls.js";
+import { getElectricalLimitBackupRestoreWarning } from "./electrical-limit.js";
 import { escapeHtml } from "../core/html.js";
 import { renderModalShell } from "../core/modal-shell.js";
 
@@ -171,6 +172,24 @@ import { renderModalShell } from "../core/modal-shell.js";
         return getSettingsStorageLoadingLabel(state.trendHistoryMetadataError);
       }
       return formatSettingsStorageCount(trendMetadata.writes);
+    }
+    if (key === "trendHistoryFlashErases") {
+      return formatSettingsStorageCount(trendMetadata.eraseCount);
+    }
+    if (key === "trendHistoryFlashMaxEraseDuration") {
+      return `${formatSettingsStorageCount(trendMetadata.maxEraseDurationMs)} ms`;
+    }
+    if (key === "trendHistoryFlashMaxWriteDuration") {
+      return `${formatSettingsStorageCount(trendMetadata.maxWriteDurationMs)} ms`;
+    }
+    if (key === "trendHistoryFlashMaxFlushDuration") {
+      return `${formatSettingsStorageCount(trendMetadata.maxFlushDurationMs)} ms`;
+    }
+    if (key === "trendHistoryFlashMaxIndexUpdateDuration") {
+      return `${formatSettingsStorageCount(trendMetadata.maxIndexUpdateDurationMs)} ms`;
+    }
+    if (key === "trendHistoryFlashFailures") {
+      return formatSettingsStorageCount(Number(trendMetadata.eraseFailures || 0) + Number(trendMetadata.writeFailures || 0));
     }
 
     const energyMetadata = getSettingsEnergyHistoryMetadata();
@@ -524,6 +543,12 @@ import { renderModalShell } from "../core/modal-shell.js";
         { label: "Bewaarperiode", value: getSettingsStorageStatOrFallback("trendHistoryFlashAvailable", "Alleen live") },
         { label: "Opslagruimte", value: getSettingsStorageStatOrFallback("trendHistoryFlashSize") },
         { label: "Opslagacties", value: getSettingsStorageStatOrFallback("trendHistoryFlashWrites", "0") },
+        { label: "Langste volledige opslagactie", value: getSettingsStorageStatOrFallback("trendHistoryFlashMaxFlushDuration", "0 ms") },
+        { label: "Sector-erases sinds start", value: getSettingsStorageStatOrFallback("trendHistoryFlashErases", "0") },
+        { label: "Langste sector-erase", value: getSettingsStorageStatOrFallback("trendHistoryFlashMaxEraseDuration", "0 ms") },
+        { label: "Langste flashwrite", value: getSettingsStorageStatOrFallback("trendHistoryFlashMaxWriteDuration", "0 ms") },
+        { label: "Langste index-update", value: getSettingsStorageStatOrFallback("trendHistoryFlashMaxIndexUpdateDuration", "0 ms") },
+        { label: "Flashfouten sinds start", value: getSettingsStorageStatOrFallback("trendHistoryFlashFailures", "0") },
         { label: "Laatst opgeslagen", value: getSettingsStorageStatOrFallback("trendHistoryFlashLastFlush", "Geen data") },
       ],
     };
@@ -670,7 +695,7 @@ import { renderModalShell } from "../core/modal-shell.js";
               Backup herstellen
             </button>
           </div>
-          <p class="oq-settings-action-note">De MQTT-configuratie wordt meegenomen, maar het MQTT-wachtwoord nooit. Ontbrekende en onbekende velden worden na restore benoemd.</p>
+          <p class="oq-settings-action-note">Sensorcorrecties en de MQTT-configuratie worden meegenomen, maar het MQTT-wachtwoord nooit. Ontbrekende en onbekende velden worden na restore benoemd.</p>
           ${state.settingsBackupError ? `<p class="oq-settings-backup-error">${escapeHtml(state.settingsBackupError)}</p>` : ""}
         </div>
       `,
@@ -735,6 +760,9 @@ import { renderModalShell } from "../core/modal-shell.js";
       : summary.requiredMissing
         ? "Ontbrekende velden houden hun firmware-default."
         : "Velden zonder waarde worden overgeslagen.";
+    const electricalRestoreWarning = hasEntity("electricalCurrentLimit")
+      ? getElectricalLimitBackupRestoreWarning(draft.settings)
+      : "";
 
     return renderModalShell({
       id: "system",
@@ -824,6 +852,7 @@ import { renderModalShell } from "../core/modal-shell.js";
             `).join("")}
           </div>
           <p class="oq-settings-action-note${summary.unknown || summary.requiredMissing || installationMismatch ? " oq-settings-action-note--warning" : ""}">${escapeHtml(warningText)}</p>
+          ${electricalRestoreWarning ? `<p class="oq-settings-action-note oq-settings-action-note--warning" role="alert">${escapeHtml(electricalRestoreWarning)}</p>` : ""}
           ${state.settingsBackupError ? `<p class="oq-settings-backup-error">${escapeHtml(state.settingsBackupError)}</p>` : ""}`,
       actions: `
         <button class="oq-helper-button oq-helper-button--ghost" type="button" data-oq-action="close-system-modal" ${state.settingsBackupBusy ? "disabled" : ""}>Annuleren</button>

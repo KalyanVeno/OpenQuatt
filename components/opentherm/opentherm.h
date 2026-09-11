@@ -13,6 +13,7 @@
 #include "esphome/core/log.h"
 
 #include "opentherm_rmt_encoder.h"
+#include "opentherm_transport_diagnostics.h"
 
 #ifdef USE_ESP32
 #include "driver/gptimer.h"
@@ -24,13 +25,23 @@
 
 namespace esphome::opentherm {
 
-template<class T> constexpr T read_bit(T value, uint8_t bit) { return (value >> bit) & 0x01; }
+template <class T>
+constexpr T read_bit(T value, uint8_t bit) {
+  return (value >> bit) & 0x01;
+}
 
-template<class T> constexpr T set_bit(T value, uint8_t bit) { return value |= (1UL << bit); }
+template <class T>
+constexpr T set_bit(T value, uint8_t bit) {
+  return value |= (1UL << bit);
+}
 
-template<class T> constexpr T clear_bit(T value, uint8_t bit) { return value &= ~(1UL << bit); }
+template <class T>
+constexpr T clear_bit(T value, uint8_t bit) {
+  return value &= ~(1UL << bit);
+}
 
-template<class T> constexpr T write_bit(T value, uint8_t bit, uint8_t bit_value) {
+template <class T>
+constexpr T write_bit(T value, uint8_t bit, uint8_t bit_value) {
   return bit_value ? set_bit(value, bit) : clear_bit(value, bit);
 }
 
@@ -41,8 +52,8 @@ enum OperationMode {
   READ = 2,      // reading 32-bit data frame
   RECEIVED = 3,  // data frame received with valid start and stop bit
 
-  WRITE = 4,  // writing data to output
-  SENT = 5,   // all data written to output
+  WRITE = 4,        // writing data to output
+  SENT = 5,         // all data written to output
   RMT_PENDING = 6,  // ESP32 hardware captured a frame; main-loop decode pending
 
   ERROR_PROTOCOL = 8,  // protocol error, can happed only during READ
@@ -185,7 +196,7 @@ enum BitPositions { STOP_BIT = 33 };
 
 /**
  * Structure to hold Opentherm data packet content.
- * Use f88(), u16() or s16() functions to get appropriate value of data packet accoridng to id of message.
+ * Use get_f88(), get_u16() or get_s16() functions to get appropriate value of data packet according to id of message.
  */
 struct OpenthermData {
   uint8_t type;
@@ -198,32 +209,32 @@ struct OpenthermData {
   /**
    * @return float representation of data packet value
    */
-  float f88();
+  float get_f88();
 
   /**
    * @param float number to set as value of this data packet
    */
-  void f88(float value);
+  void set_f88(float value);
 
   /**
    * @return unsigned 16b integer representation of data packet value
    */
-  uint16_t u16();
+  uint16_t get_u16();
 
   /**
    * @param unsigned 16b integer number to set as value of this data packet
    */
-  void u16(uint16_t value);
+  void set_u16(uint16_t value);
 
   /**
    * @return signed 16b integer representation of data packet value
    */
-  int16_t s16();
+  int16_t get_s16();
 
   /**
    * @param signed 16b integer number to set as value of this data packet
    */
-  void s16(int16_t value);
+  void set_s16(int16_t value);
 };
 
 struct OpenThermError {
@@ -234,12 +245,22 @@ struct OpenThermError {
   uint8_t bit_pos;
 };
 
+struct ConversationTiming {
+  bool request_started{false};
+  bool request_completed{false};
+  bool response_captured{false};
+  uint32_t request_started_us{0};
+  uint32_t request_completed_us{0};
+  uint32_t response_captured_us{0};
+  uint32_t response_deadline_us{0};
+};
+
 /**
  * Opentherm static class that supports either listening or sending Opentherm data packets in the same time
  */
 class OpenTherm {
  public:
-  OpenTherm(InternalGPIOPin *in_pin, InternalGPIOPin *out_pin, int32_t device_timeout = 800);
+  OpenTherm(InternalGPIOPin* in_pin, InternalGPIOPin* out_pin, int32_t device_timeout = 800);
 
   /**
    * Setup pins.
@@ -269,7 +290,7 @@ class OpenTherm {
    * @param data reference to data structure to which fill the data packet data.
    * @return true if packet was ready and was filled into data structure passed, false otherwise.
    */
-  bool get_message(OpenthermData &data);
+  bool get_message(OpenthermData& data);
 
   /**
    * Immediately send out Opentherm data packet to line connected on given pin.
@@ -278,12 +299,13 @@ class OpenTherm {
    *
    * @param data Opentherm data packet.
    */
-  void send(OpenthermData &data);
+  void send(OpenthermData& data);
 
   /**
    * Process a completed hardware receive capture. This is a no-op on ESP8266.
+   * @return classification of the transport work performed by this poll.
    */
-  void process();
+  transport_diagnostics::PollResult process();
 
   /**
    * Stops listening for data packet or sending out data packet and resets internal state of this class.
@@ -292,11 +314,23 @@ class OpenTherm {
   void stop();
 
   /**
+   * Atomically claim the final ESP32 RMT timing snapshot while stopping the conversation.
+   * Returns false on platforms without RMT timing data.
+   */
+  bool stop(ConversationTiming& timing);
+
+  /**
    * Get protocol error details in case a protocol error occured.
    * @param error reference to data structure to which fill the error details
    * @return true if protocol error occured during last conversation, false otherwise.
    */
-  bool get_protocol_error(OpenThermError &error);
+  bool get_protocol_error(OpenThermError& error);
+
+  /**
+   * Return wire-level timestamps for the current or most recently completed ESP32 RMT conversation.
+   * Returns false on platforms without RMT timing data.
+   */
+  bool get_conversation_timing(ConversationTiming& timing);
 
   /**
    * Use this function to check whether send() function already finished sending data packed to line.
@@ -345,24 +379,24 @@ class OpenTherm {
 
   OperationMode get_mode() { return mode_; }
 
-  void debug_data(OpenthermData &data);
-  void debug_error(OpenThermError &error) const;
+  void debug_data(OpenthermData& data);
+  void debug_error(OpenThermError& error) const;
   void report_and_reset_timer_error();
 
-  const char *protocol_error_to_str(ProtocolErrorType error_type);
-  const char *timer_error_to_str(TimerErrorType error_type);
-  const char *message_type_to_str(MessageType message_type);
-  const char *operation_mode_to_str(OperationMode mode);
-  const char *message_id_to_str(MessageId id);
+  const char* protocol_error_to_str(ProtocolErrorType error_type);
+  const char* timer_error_to_str(TimerErrorType error_type);
+  const char* message_type_to_str(MessageType message_type);
+  const char* operation_mode_to_str(OperationMode mode);
+  const char* message_id_to_str(MessageId id);
 
 #ifdef USE_ESP32
-  static bool timer_isr(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx);
-  static bool IRAM_ATTR rmt_rx_done_callback_(rmt_channel_handle_t channel,
-                                             const rmt_rx_done_event_data_t *event, void *user_ctx);
-  static bool IRAM_ATTR rmt_tx_done_callback_(rmt_channel_handle_t channel,
-                                             const rmt_tx_done_event_data_t *event, void *user_ctx);
+  static bool timer_isr(gptimer_handle_t timer, const gptimer_alarm_event_data_t* edata, void* user_ctx);
+  static bool IRAM_ATTR rmt_rx_done_callback_(rmt_channel_handle_t channel, const rmt_rx_done_event_data_t* event,
+                                              void* user_ctx);
+  static bool IRAM_ATTR rmt_tx_done_callback_(rmt_channel_handle_t channel, const rmt_tx_done_event_data_t* event,
+                                              void* user_ctx);
 #else
-  static bool timer_isr(OpenTherm *arg);
+  static bool timer_isr(OpenTherm* arg);
 #endif
 
 #ifdef ESP8266
@@ -370,8 +404,8 @@ class OpenTherm {
 #endif
 
  private:
-  InternalGPIOPin *in_pin_;
-  InternalGPIOPin *out_pin_;
+  InternalGPIOPin* in_pin_;
+  InternalGPIOPin* out_pin_;
   ISRInternalGPIOPin isr_in_pin_;
   ISRInternalGPIOPin isr_out_pin_;
 
@@ -397,6 +431,12 @@ class OpenTherm {
   volatile bool rmt_frame_ready_{false};
   volatile uint32_t rmt_frame_completed_us_{0};
   volatile bool rmt_tx_active_{false};
+  volatile bool rmt_request_started_{false};
+  volatile bool rmt_request_completed_{false};
+  volatile bool rmt_response_captured_{false};
+  volatile uint32_t rmt_request_started_us_{0};
+  volatile uint32_t rmt_request_completed_us_{0};
+  volatile uint32_t rmt_response_captured_us_{0};
   uint32_t rmt_tx_deadline_us_{0};
   uint32_t receive_deadline_us_{0};
 #endif
@@ -423,7 +463,7 @@ class OpenTherm {
   bool reset_esp32_rmt_tx_();
   void cancel_esp32_rmt_();
   void cancel_esp32_rmt_tx_();
-  void process_esp32_rmt_();
+  transport_diagnostics::PollResult process_esp32_rmt_();
   void start_esp32_timer_(uint64_t alarm_value, bool auto_reload);
 #endif
 
@@ -440,7 +480,7 @@ class OpenTherm {
 
 #ifdef ESP8266
   // ESP8266 timer can accept callback with no parameters, so we have this hack to save a static instance of OpenTherm
-  static OpenTherm *instance;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+  static OpenTherm* instance;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 #endif
 };
 

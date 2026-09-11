@@ -9,9 +9,11 @@ OpenQuatt heeft geen volledige MQTT-export. De firmware gebruikt wel een kleine 
 - warmtetoestemming;
 - koeltoestemming.
 
-Gebruik voor normale monitoring en bediening bij voorkeur de web-app en, als je die gebruikt, Home Assistant via de native ESPHome API.
+Gebruik voor normale monitoring en bediening bij voorkeur de web-app en, als je die gebruikt, Home Assistant via de native ESPHome API. Voor dezelfde externe bronwaarden zonder MQTT kun je de [API-input-entiteiten](api-input.md) gebruiken.
 
-De [keuze voor gebruiksstatistieken](web-app.md#gebruiksstatistieken-en-privacy) gebruikt een aparte outbound-only MQTT-client om de centrale OpenQuatt-loggingserver te bereiken. De huidige standaardconfiguratie gebruikt poort 1883 zonder TLS. Die client deelt geen entiteiten, discovery-berichten of logs en gebruikt niet de brokerconfiguratie van deze MQTT inputbronnen. De telemetrypayload vermeldt alleen of MQTT inputbronnen als geheel aanstaan. Brokergegevens, wifi-netwerknaam, wifi-wachtwoord, gebruikersnamen, andere wachtwoorden, topics en ontvangen waarden worden nooit meegestuurd. Zoals bij iedere internetverbinding is het bron-IP-adres technisch zichtbaar voor de loggingserver; OpenQuatt slaat dit IP-adres niet op.
+De [keuze voor gebruiksstatistieken](web-app.md#gebruiksstatistieken-en-privacy) gebruikt aparte outbound-only MQTT-clients om de centrale OpenQuatt-loggingserver te bereiken. De huidige standaardconfiguratie gebruikt poort 1883 zonder TLS. Deze clients delen geen entiteiten, discovery-berichten of reguliere logs en gebruiken niet de brokerconfiguratie van de MQTT inputbronnen. Het uurbericht vermeldt alleen of MQTT inputbronnen als geheel aanstaan. Na een echte firmwarecrash kan daarnaast het begrensde technische ESPHome-crashrapport worden gepubliceerd. Brokergegevens, wifi-netwerknaam, wifi-wachtwoord, gebruikersnamen, andere wachtwoorden, topics en ontvangen waarden worden nooit meegestuurd. Zoals bij iedere internetverbinding is het bron-IP-adres technisch zichtbaar voor de loggingserver; OpenQuatt slaat dit IP-adres niet op.
+
+Het crashbericht gebruikt QoS 1 en retain op `openquatt/devices/<installation-id>/crash`. Het topic bevat bewust alleen de laatst bekende crash; een volgende crash vervangt de vorige. Na uitschakelen van gebruiksstatistieken wist OpenQuatt dit retained topic met een lege retained payload zodra de broker bereikbaar is. De payload bevat de bronrepository, volledige commit-SHA, het exacte buildtarget, ESPHome- en firmwareversie, buildtijd en volledige ELF-SHA256. Een opnieuw gebouwd ELF mag alleen voor symbolisatie worden gebruikt wanneer die SHA256 exact overeenkomt. OpenQuatt bewaart niet standaard bij iedere build een ELF-bestand. Zie ook [Retained crashtelemetrie](crash-telemetry.md).
 
 ## Waar stel je MQTT in?
 
@@ -111,13 +113,14 @@ Ga in de web-app naar **Instellingen → Bronnen / integraties → Sensorselecti
 
 Bij `Koelingsdauwpunt` kies je:
 
-- `Auto`: gebruik de hoogste geldige waarde van Home Assistant en MQTT;
+- `Auto`: gebruik de hoogste geldige waarde van Home Assistant, API-invoer en MQTT;
 - `Home Assistant`: vereis de Home Assistant-dauwpuntbron;
+- `API input`: vereis de API-invoerbron;
 - `MQTT`: vereis de MQTT-dauwpuntbron.
 
 In `Auto` is de hoogste geldige dauwpuntwaarde bewust leidend, omdat die voor koeling de veiligste ondergrens geeft.
 
-Bij `Buitentemperatuur` gebruikt `Auto` de laagste geldige waarde uit buitenunit, Home Assistant en MQTT. Dat houdt verwarming en vorstbeveiliging conservatief. Bij `Kamertemperatuur` en `Kamer setpoint` kies je MQTT expliciet als bron.
+Bij `Buitentemperatuur` gebruikt `Auto` de laagste geldige waarde uit buitenunit, Home Assistant, API-invoer en MQTT. Dat houdt verwarming en vorstbeveiliging conservatief. Bij `Kamertemperatuur` en `Kamer setpoint` kun je MQTT of API input expliciet als bron kiezen.
 
 Kies je `MQTT` expliciet als buitentemperatuurbron, dan is die bron na een (her)start pas geldig zodra OpenQuatt een nieuwe live publicatie ontvangt. Tot die tijd ontbreekt de buitentemperatuur en kan de regeling naar `CM98` (antivriescirculatie) gaan. De wachttijd hangt af van het publicatie-interval van de zender. Overweeg daarom `Auto`; dan kan OpenQuatt tijdens het wachten een andere geldige buitentemperatuurbron gebruiken.
 
@@ -146,6 +149,8 @@ mosquitto_pub -h mqtt.local -t openquatt/openquatt/input/thermostat/heating_enab
 ## Verder lezen
 
 - [Web-app gebruiken](web-app.md)
+- [API inputbronnen](api-input.md)
+- [OpenQuatt in Homey](homey.md)
 - [Instellingen en meetwaarden](instellingen-en-meetwaarden.md)
 - [Problemen oplossen](problemen-oplossen.md)
 - [Verwarmen en koelen uitgelegd](verwarmen-en-koelen.md)

@@ -5,8 +5,68 @@
 
 namespace {
 
-oq_hp_supervisory::FallbackEvaluationInputs
-eligible_fallback_evaluation_inputs() {
+void test_heating_enable_gate() {
+  using oq_hp_supervisory::apply_heating_enable_gate;
+
+  assert(apply_heating_enable_gate(true, true, true));
+  assert(!apply_heating_enable_gate(true, true, false));
+  assert(!apply_heating_enable_gate(true, false, false));
+  assert(!apply_heating_enable_gate(false, true, true));
+}
+
+void test_frost_control_mode_remains_independent_of_heating_request() {
+  using oq_hp_supervisory::base_control_mode;
+
+  assert(base_control_mode(false, false, true) == 98);
+  assert(base_control_mode(false, true, true) == 2);
+  assert(base_control_mode(true, true, true) == 5);
+  assert(base_control_mode(false, false, false) == 0);
+}
+
+void test_cold_start_temperature_bands() {
+  using oq_hp_supervisory::ColdStartWaterSample;
+  using oq_hp_supervisory::evaluate_cold_start;
+
+  const uint32_t sample_after_ms = 1000;
+  ColdStartWaterSample hp1{true, 4.9f, 1001};
+  ColdStartWaterSample hp2{false, NAN, 0};
+
+  auto decision = evaluate_cold_start(sample_after_ms, hp1, hp2, 5.0f, 12.0f);
+  assert(decision.samples_ready);
+  assert(!decision.hp_start_allowed);
+  assert(!decision.auxiliary_assist_recommended);
+  assert(!decision.released);
+
+  hp1.temperature_c = 5.0f;
+  decision = evaluate_cold_start(sample_after_ms, hp1, hp2, 5.0f, 12.0f);
+  assert(decision.hp_start_allowed);
+  assert(decision.auxiliary_assist_recommended);
+  assert(!decision.released);
+
+  hp1.temperature_c = 12.0f;
+  decision = evaluate_cold_start(sample_after_ms, hp1, hp2, 5.0f, 12.0f);
+  assert(decision.hp_start_allowed);
+  assert(!decision.auxiliary_assist_recommended);
+  assert(decision.released);
+
+  hp1.updated_at_ms = sample_after_ms;
+  decision = evaluate_cold_start(sample_after_ms, hp1, hp2, 5.0f, 12.0f);
+  assert(!decision.samples_ready);
+  assert(!decision.hp_start_allowed);
+
+  hp1 = ColdStartWaterSample{true, 10.0f, 1002};
+  hp2 = ColdStartWaterSample{true, 4.0f, 1003};
+  decision = evaluate_cold_start(sample_after_ms, hp1, hp2, 5.0f, 12.0f);
+  assert(decision.samples_ready);
+  assert(decision.minimum_temperature_c == 4.0f);
+  assert(!decision.hp_start_allowed);
+
+  hp2.temperature_c = NAN;
+  decision = evaluate_cold_start(sample_after_ms, hp1, hp2, 5.0f, 12.0f);
+  assert(!decision.samples_ready);
+}
+
+oq_hp_supervisory::FallbackEvaluationInputs eligible_fallback_evaluation_inputs() {
   oq_hp_supervisory::FallbackEvaluationInputs inputs;
   inputs.current_mode = 3;
   inputs.heating_demand = true;
@@ -44,27 +104,23 @@ void test_fallback_evaluation_and_recovering_handover() {
   assert(!evaluation.no_hp_available_confirmed);
   assert(evaluation.fallback_requested);
   assert(!evaluation.decision.cm4_allowed);
-  assert(evaluation.decision.block_reason ==
-         FallbackBlockReason::HP_AVAILABILITY_UNKNOWN);
+  assert(evaluation.decision.block_reason == FallbackBlockReason::HP_AVAILABILITY_UNKNOWN);
   assert(evaluation.cm3_handover_wait);
 
   oq_hp_supervisory::Cm4ResumeTracker recovering_resume;
-  recovering_resume.observe_fallback_request(
-      evaluation.fallback_requested, 3);
+  recovering_resume.observe_fallback_request(evaluation.fallback_requested, 3);
   assert(recovering_resume.resume_mode() == 3);
-  recovering_resume.observe_fallback_request(
-      evaluation.fallback_requested, 1);
+  recovering_resume.observe_fallback_request(evaluation.fallback_requested, 1);
   assert(recovering_resume.resume_mode() == 3);
 
   // The prospective handover check releases only the two coupled stop gates.
   // Every real independent guard still prevents the CM3 hold.
   const auto recovering_inputs = inputs;
-  auto assert_no_handover_hold =
-      [&](const oq_hp_supervisory::FallbackEvaluationInputs &candidate) {
-        const auto blocked = evaluate_fallback(candidate);
-        assert(blocked.fallback_requested);
-        assert(!blocked.cm3_handover_wait);
-      };
+  auto assert_no_handover_hold = [&](const oq_hp_supervisory::FallbackEvaluationInputs& candidate) {
+    const auto blocked = evaluate_fallback(candidate);
+    assert(blocked.fallback_requested);
+    assert(!blocked.cm3_handover_wait);
+  };
 
   inputs = recovering_inputs;
   inputs.fallback_enabled = false;
@@ -102,11 +158,28 @@ void test_fallback_evaluation_and_recovering_handover() {
   evaluation = evaluate_fallback(inputs);
   assert(!evaluation.fallback_requested);
   assert(!evaluation.cm3_handover_wait);
+
+  // A confirmed sub-5°C cold start is a temporary HP-unavailable cause.
+  // It may enter CM4 only when the normal output and boiler guards pass.
+  inputs = eligible_fallback_evaluation_inputs();
+  inputs.available_hp_count = 2;
+  inputs.every_unavailable_hp_has_fallback_cause = false;
+  inputs.cold_start_blocked = true;
+  evaluation = evaluate_fallback(inputs);
+  assert(evaluation.no_hp_available_confirmed);
+  assert(evaluation.fallback_requested);
+  assert(evaluation.decision.cm4_allowed);
+
+  inputs.all_hp_outputs_safe = false;
+  evaluation = evaluate_fallback(inputs);
+  assert(!evaluation.no_hp_available_confirmed);
+  assert(evaluation.fallback_requested);
+  assert(!evaluation.decision.cm4_allowed);
 }
 
 void test_heating_mode_decisions() {
-  using oq_hp_supervisory::HeatingModeInputs;
   using oq_hp_supervisory::decide_heating_mode;
+  using oq_hp_supervisory::HeatingModeInputs;
 
   HeatingModeInputs inputs;
   inputs.current_mode = 3;
@@ -148,8 +221,8 @@ void test_heating_mode_decisions() {
 }
 
 void test_control_mode_log_classification() {
-  using oq_hp_supervisory::ControlModeLogCodes;
   using oq_hp_supervisory::classify_control_mode_transition;
+  using oq_hp_supervisory::ControlModeLogCodes;
 
   const ControlModeLogCodes codes{
       {10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21},
@@ -157,61 +230,50 @@ void test_control_mode_log_classification() {
       {40, 41, 42, 43},
   };
 
-  auto decision = classify_control_mode_transition(
-      {3, 4, true, false, 10}, codes);
+  auto decision = classify_control_mode_transition({3, 4, true, false, 10}, codes);
   assert(decision.reason == 11);
   assert(decision.severity == 32);
   assert(decision.from_state == 42);
   assert(decision.to_state == 43);
 
-  decision = classify_control_mode_transition(
-      {4, 3, false, false, 10}, codes);
+  decision = classify_control_mode_transition({4, 3, false, false, 10}, codes);
   assert(decision.reason == 12);
   assert(decision.severity == 30);
   assert(decision.from_state == 43);
   assert(decision.to_state == 42);
 
-  decision = classify_control_mode_transition(
-      {4, 1, true, false, 10}, codes);
+  decision = classify_control_mode_transition({4, 1, true, false, 10}, codes);
   assert(decision.reason == 13);
   assert(decision.severity == 31);
 
-  decision = classify_control_mode_transition(
-      {4, 1, false, false, 77}, codes);
+  decision = classify_control_mode_transition({4, 1, false, false, 77}, codes);
   assert(decision.reason == 77);
   assert(decision.severity == 30);
 
-  decision = classify_control_mode_transition(
-      {4, 1, false, false, 10}, codes);
+  decision = classify_control_mode_transition({4, 1, false, false, 10}, codes);
   assert(decision.reason == 21);
   assert(decision.severity == 31);
 
-  decision = classify_control_mode_transition(
-      {4, 0, false, false, 10}, codes);
+  decision = classify_control_mode_transition({4, 0, false, false, 10}, codes);
   assert(decision.reason == 20);
   assert(decision.severity == 30);
 
-  decision = classify_control_mode_transition(
-      {4, 100, false, false, 10}, codes);
+  decision = classify_control_mode_transition({4, 100, false, false, 10}, codes);
   assert(decision.reason == 14);
   assert(decision.severity == 30);
 
-  decision = classify_control_mode_transition(
-      {0, 1, true, false, 10}, codes);
+  decision = classify_control_mode_transition({0, 1, true, false, 10}, codes);
   assert(decision.reason == 13);
   assert(decision.severity == 31);
 
-  decision = classify_control_mode_transition(
-      {2, 98, false, true, 10}, codes);
+  decision = classify_control_mode_transition({2, 98, false, true, 10}, codes);
   // Override classification retains its priority over the target mode.
   assert(decision.reason == 15);
 
-  decision = classify_control_mode_transition(
-      {0, 1, false, false, 77}, codes);
+  decision = classify_control_mode_transition({0, 1, false, false, 77}, codes);
   assert(decision.reason == 77);
 
-  decision = classify_control_mode_transition(
-      {5, 0, false, false, 10}, codes);
+  decision = classify_control_mode_transition({5, 0, false, false, 10}, codes);
   assert(decision.reason == 19);
   assert(decision.to_state == 40);
 }
@@ -219,8 +281,11 @@ void test_control_mode_log_classification() {
 }  // namespace
 
 int main() {
-  using oq_hp_supervisory::fallback_availability_is_confirmed;
+  test_heating_enable_gate();
+  test_frost_control_mode_remains_independent_of_heating_request();
+  test_cold_start_temperature_bands();
   using oq_hp_supervisory::Cm4ResumeTracker;
+  using oq_hp_supervisory::fallback_availability_is_confirmed;
   using oq_hp_supervisory::recovered_heating_mode;
 
   assert(fallback_availability_is_confirmed(true, false, false));

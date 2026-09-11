@@ -151,7 +151,7 @@ def can_create_bootstrap_venv(python_exe: str, root_dir: Path) -> tuple[bool, st
     )
     detected = version_check.stdout.strip() or "unknown"
     if version_check.returncode != 0:
-        return False, f"Python {detected} is too old; ESPHome 2026.7 requires Python {minimum} or newer"
+        return False, f"Python {detected} is too old; ESPHome 2026.8 requires Python {minimum} or newer"
 
     with tempfile.TemporaryDirectory(prefix="openquatt-bootstrap-check-") as tmp_dir:
         probe_venv = Path(tmp_dir) / "venv"
@@ -504,6 +504,13 @@ def validate_command(args: argparse.Namespace) -> int:
             env=env,
             log_path=log_dir / f"{stem}.config.log",
             label=f"config {config}",
+        )
+        run_logged(
+            [*helper_python, str(command_scripts_dir / "check_nvs_budget.py"), config],
+            cwd=command_root,
+            env=env,
+            log_path=log_dir / f"{stem}.nvs-budget.log",
+            label=f"NVS budget {config}",
         )
 
     if args.config_only:

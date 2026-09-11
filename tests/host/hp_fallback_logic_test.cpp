@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <string.h>
 
 #include "../../openquatt/includes/control/oq_boiler_control_logic.h"
 #include "../../openquatt/includes/control/oq_boiler_output_logic.h"
@@ -63,38 +64,34 @@ oq_boiler::BoilerControllerLogInputs eligible_boiler_log_inputs() {
 }
 
 void test_cm3_cm4_cm3_keeps_heat_output_enabled() {
-  using oq_boiler::BoilerOutputCommand;
   using oq_boiler::BoilerOutputAction;
+  using oq_boiler::BoilerOutputCommand;
   using oq_boiler::BoilerOutputController;
   using oq_boiler::BoilerRole;
 
   FakeHeatOutput output;
   BoilerOutputController controller;
 
-  const auto cm3_start =
-      controller.apply(BoilerOutputCommand{BoilerRole::ASSIST_CM3, true}, output);
+  const auto cm3_start = controller.apply(BoilerOutputCommand{BoilerRole::ASSIST_CM3, true}, output);
   assert(cm3_start.output_action == BoilerOutputAction::ENABLE);
   assert(output.write_count == 1);
   assert(output.writes[0]);
 
-  const auto cm4_handover =
-      controller.apply(BoilerOutputCommand{BoilerRole::FALLBACK_CM4, true}, output);
+  const auto cm4_handover = controller.apply(BoilerOutputCommand{BoilerRole::FALLBACK_CM4, true}, output);
   assert(cm4_handover.role_changed);
   assert(cm4_handover.output_action == BoilerOutputAction::KEEP);
   assert(cm4_handover.assist_fallback_handover_without_output_edge);
   assert(output.write_count == 1);
   assert(controller.heat_enable());
 
-  const auto cm3_handover =
-      controller.apply(BoilerOutputCommand{BoilerRole::ASSIST_CM3, true}, output);
+  const auto cm3_handover = controller.apply(BoilerOutputCommand{BoilerRole::ASSIST_CM3, true}, output);
   assert(cm3_handover.role_changed);
   assert(cm3_handover.output_action == BoilerOutputAction::KEEP);
   assert(cm3_handover.assist_fallback_handover_without_output_edge);
   assert(output.write_count == 1);
   assert(controller.heat_enable());
 
-  const auto stop =
-      controller.apply(BoilerOutputCommand{BoilerRole::OFF, false}, output);
+  const auto stop = controller.apply(BoilerOutputCommand{BoilerRole::OFF, false}, output);
   assert(stop.output_action == BoilerOutputAction::DISABLE);
   assert(output.write_count == 2);
   assert(!output.writes[1]);
@@ -102,9 +99,9 @@ void test_cm3_cm4_cm3_keeps_heat_output_enabled() {
 
 void test_cm4_requires_every_guard() {
   using oq_hp_fallback::ControlMode;
+  using oq_hp_fallback::decide_cm4;
   using oq_hp_fallback::FallbackAction;
   using oq_hp_fallback::FallbackBlockReason;
-  using oq_hp_fallback::decide_cm4;
 
   auto inputs = eligible_fallback_inputs();
   auto decision = decide_cm4(inputs);
@@ -128,16 +125,13 @@ void test_cm4_requires_every_guard() {
   assert(decide_cm4(inputs).block_reason == FallbackBlockReason::HP_AVAILABLE);
   inputs = eligible_fallback_inputs();
   inputs.hp_availability_complete = false;
-  assert(decide_cm4(inputs).block_reason ==
-         FallbackBlockReason::HP_AVAILABILITY_UNKNOWN);
+  assert(decide_cm4(inputs).block_reason == FallbackBlockReason::HP_AVAILABILITY_UNKNOWN);
   inputs = eligible_fallback_inputs();
   inputs.confirmed_fallback_cause = false;
-  assert(decide_cm4(inputs).block_reason ==
-         FallbackBlockReason::NO_CONFIRMED_FALLBACK_CAUSE);
+  assert(decide_cm4(inputs).block_reason == FallbackBlockReason::NO_CONFIRMED_FALLBACK_CAUSE);
   inputs = eligible_fallback_inputs();
   inputs.hp_output_state_safe = false;
-  assert(decide_cm4(inputs).block_reason ==
-         FallbackBlockReason::HP_OUTPUT_STATE_UNSAFE);
+  assert(decide_cm4(inputs).block_reason == FallbackBlockReason::HP_OUTPUT_STATE_UNSAFE);
   inputs = eligible_fallback_inputs();
   inputs.flow_valid = false;
   assert(decide_cm4(inputs).block_reason == FallbackBlockReason::FLOW_UNAVAILABLE);
@@ -146,8 +140,7 @@ void test_cm4_requires_every_guard() {
   assert(decide_cm4(inputs).block_reason == FallbackBlockReason::FLOW_INSUFFICIENT);
   inputs = eligible_fallback_inputs();
   inputs.supply_temperature_valid = false;
-  assert(decide_cm4(inputs).block_reason ==
-         FallbackBlockReason::SUPPLY_TEMPERATURE_UNAVAILABLE);
+  assert(decide_cm4(inputs).block_reason == FallbackBlockReason::SUPPLY_TEMPERATURE_UNAVAILABLE);
   inputs = eligible_fallback_inputs();
   inputs.boiler_guards_clear = false;
   assert(decide_cm4(inputs).block_reason == FallbackBlockReason::BOILER_GUARD_BLOCKED);
@@ -155,9 +148,9 @@ void test_cm4_requires_every_guard() {
 
 void test_cm4_never_competes_with_other_control_owners() {
   using oq_hp_fallback::ControlMode;
+  using oq_hp_fallback::decide_cm4;
   using oq_hp_fallback::FallbackAction;
   using oq_hp_fallback::FallbackBlockReason;
-  using oq_hp_fallback::decide_cm4;
 
   auto inputs = eligible_fallback_inputs();
   inputs.override_active = true;
@@ -190,16 +183,15 @@ void test_cm4_never_competes_with_other_control_owners() {
 }
 
 void test_off_role_fails_safe_even_with_heat_requested() {
-  using oq_boiler::BoilerOutputCommand;
   using oq_boiler::BoilerOutputAction;
+  using oq_boiler::BoilerOutputCommand;
   using oq_boiler::BoilerOutputController;
   using oq_boiler::BoilerRole;
 
   FakeHeatOutput output;
   BoilerOutputController controller;
   controller.apply(BoilerOutputCommand{BoilerRole::ASSIST_CM3, true}, output);
-  const auto transition =
-      controller.apply(BoilerOutputCommand{BoilerRole::OFF, true}, output);
+  const auto transition = controller.apply(BoilerOutputCommand{BoilerRole::OFF, true}, output);
 
   assert(transition.output_action == BoilerOutputAction::DISABLE);
   assert(!transition.next_heat_enable);
@@ -209,22 +201,18 @@ void test_off_role_fails_safe_even_with_heat_requested() {
 }
 
 void test_boiler_role_and_log_classification() {
+  using oq_boiler::boiler_role_for_source;
   using oq_boiler::BoilerLogReason;
   using oq_boiler::BoilerRole;
-  using oq_boiler::boiler_role_for_source;
   using oq_boiler::classify_boiler_controller_log;
 
   const auto codes = boiler_log_codes();
-  assert(boiler_role_for_source(oq_boiler::COMMAND_SOURCE_POWER_HOUSE) ==
-         BoilerRole::ASSIST_CM3);
-  assert(boiler_role_for_source(oq_boiler::COMMAND_SOURCE_HEATING_CURVE) ==
-         BoilerRole::ASSIST_CM3);
-  assert(boiler_role_for_source(oq_boiler::COMMAND_SOURCE_FALLBACK) ==
-         BoilerRole::FALLBACK_CM4);
-  assert(boiler_role_for_source(oq_boiler::COMMAND_SOURCE_COMMISSIONING) ==
-         BoilerRole::COMMISSIONING_CM100);
-  assert(boiler_role_for_source(oq_boiler::COMMAND_SOURCE_NONE) ==
-         BoilerRole::OFF);
+  assert(boiler_role_for_source(oq_boiler::COMMAND_SOURCE_POWER_HOUSE) == BoilerRole::ASSIST_CM3);
+  assert(boiler_role_for_source(oq_boiler::COMMAND_SOURCE_HEATING_CURVE) == BoilerRole::ASSIST_CM3);
+  assert(boiler_role_for_source(oq_boiler::COMMAND_SOURCE_COLD_START) == BoilerRole::ASSIST_CM3);
+  assert(boiler_role_for_source(oq_boiler::COMMAND_SOURCE_FALLBACK) == BoilerRole::FALLBACK_CM4);
+  assert(boiler_role_for_source(oq_boiler::COMMAND_SOURCE_COMMISSIONING) == BoilerRole::COMMISSIONING_CM100);
+  assert(boiler_role_for_source(oq_boiler::COMMAND_SOURCE_NONE) == BoilerRole::OFF);
 
   auto inputs = eligible_boiler_log_inputs();
   auto log = classify_boiler_controller_log(inputs, codes);
@@ -247,6 +235,16 @@ void test_boiler_role_and_log_classification() {
   log = classify_boiler_controller_log(inputs, codes);
   assert(log.reason == BoilerLogReason::SOFT_GUARD);
   assert(log.reason_code == 12);
+
+  inputs.controller_block_reason = oq_boiler::BLOCK_BOILER_TOO_HOT_FOR_START;
+  log = classify_boiler_controller_log(inputs, codes);
+  assert(log.reason == BoilerLogReason::SOFT_GUARD);
+  assert(log.reason_code == 12);
+
+  inputs.controller_block_reason = oq_boiler::BLOCK_BOILER_TEMPERATURE_UNAVAILABLE;
+  log = classify_boiler_controller_log(inputs, codes);
+  assert(log.reason == BoilerLogReason::SENSOR_FALLBACK);
+  assert(log.reason_code == 13);
 
   inputs.controller_block_reason = oq_boiler::BLOCK_MIN_OFF_TIME;
   log = classify_boiler_controller_log(inputs, codes);
@@ -308,6 +306,16 @@ void test_boiler_stop_reason_preserves_safety_cause() {
   assert(log.severity == 30);
 }
 
+void test_boiler_diagnostic_helpers_are_bounded() {
+  assert(strcmp(oq_boiler::command_source_text(oq_boiler::COMMAND_SOURCE_POWER_HOUSE), "Power House") == 0);
+  assert(strcmp(oq_boiler::command_source_text(oq_boiler::COMMAND_SOURCE_COLD_START), "Cold start") == 0);
+  assert(strcmp(oq_boiler::command_source_text(99), "None") == 0);
+  assert(oq_boiler::estimate_boiler_heat_power(false, 30.0f, 40.0f, 720.0f, 4180.0f) == 0.0f);
+  assert(oq_boiler::estimate_boiler_heat_power(true, 40.0f, 30.0f, 720.0f, 4180.0f) == 0.0f);
+  const float power = oq_boiler::estimate_boiler_heat_power(true, 30.0f, 40.0f, 720.0f, 4180.0f);
+  assert(power > 8359.0f && power < 8361.0f);
+}
+
 }  // namespace
 
 int main() {
@@ -317,5 +325,6 @@ int main() {
   test_off_role_fails_safe_even_with_heat_requested();
   test_boiler_role_and_log_classification();
   test_boiler_stop_reason_preserves_safety_cause();
+  test_boiler_diagnostic_helpers_are_bounded();
   return 0;
 }

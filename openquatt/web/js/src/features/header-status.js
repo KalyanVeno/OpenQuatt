@@ -10,11 +10,16 @@ import { getDebugRecordingHubStatusLabel, renderDebugRecordingHeaderStatus, rend
 import { formatDeviceClock, formatUptimeFromMeta, getDeviceIpAddress, getInstallationLabel } from "./device-context.js";
 import { getFirmwareUpdateEntity, getUpdateStatus, isFirmwareUpdateAvailable } from "./firmware-update.js";
 import { renderMqttModal, renderMqttSensorsModal } from "./mqtt.js";
+import { renderOduEepromDumpModal } from "./odu-eeprom-dump.js";
 import { renderApiSecurityModal, renderLoginModal } from "./security-access.js";
 import { getWebServerLogStatusLabel, renderWebServerLogsModal } from "./webserver-logs.js";
 import { getControlModeOverrideLabel, renderSettingsServiceTaskModal } from "../settings/service.js";
 import { renderSilentSettingsFields } from "../settings/silent.js";
 import { renderSettingsBackupImportModal, renderSettingsBackupRestoreModal, renderSettingsHistoryStorageModal } from "../settings/storage.js";
+import { renderHpWaterSensorOffsetsModal } from "../settings/water.js";
+import { renderSettingsSelectField } from "../settings/controls.js";
+import { formatDutchAmps } from "../settings/electrical-limit.js";
+import { renderHeatingStrategyAdviceModal } from "./heating-strategy-advice.js";
 import { formatNumericState } from "../core/formatting.js";
 import { escapeHtml } from "../core/html.js";
 import { render } from "../core/render-scheduler.js";
@@ -30,6 +35,7 @@ import { render } from "../core/render-scheduler.js";
       getEntitySignatureFragment("installationTopology"),
       getEntitySignatureFragment("hardwareProfileText"),
       getEntitySignatureFragment("connectionText"),
+      getEntitySignatureFragment("preferredConnection"),
       state.firmwareAdvancedOpen ? "firmware-advanced-open" : "firmware-advanced-closed",
       state.firmwareConnectionSwitchOpen ? "connection-open" : "connection-closed",
       state.firmwareTopologySwitchOpen ? "topology-open" : "topology-closed",
@@ -120,14 +126,20 @@ import { render } from "../core/render-scheduler.js";
   export function getConnectivityModalRows() {
     const rows = [
       ["Netwerkstatus", getConnectivityStatus()],
-      ["IP-adres", getDeviceIpAddress()],
     ];
+    const hasActiveConnection = hasEntity("connectionText");
+    const activeConnection = getEntityStateText("connectionText", "Niet verbonden").replace("Not connected", "Niet verbonden");
+    if (hasActiveConnection) {
+      rows.push(["Actieve verbinding", activeConnection]);
+    }
+    rows.push(["IP-adres", getDeviceIpAddress()]);
+    const showWifiDetails = !hasActiveConnection || activeConnection === "WiFi";
     const ssid = String(getEntityValue("wifiSsid") || "").trim();
-    if (ssid) {
+    if (showWifiDetails && ssid) {
       rows.push(["WiFi SSID", ssid]);
     }
     const signalEntity = state.entities.wifiSignal;
-    if (signalEntity) {
+    if (showWifiDetails && signalEntity) {
       const signal = getEntityNumericValue("wifiSignal");
       if (!Number.isNaN(signal)) {
         rows.push(["WiFi signaal", formatNumericState(signal, 0, signalEntity.uom || " dBm")]);
@@ -201,6 +213,9 @@ import { render } from "../core/render-scheduler.js";
 
   export function patchHeaderDom() {
     if (!state.root) {
+      return false;
+    }
+    if (state.systemModal === "connectivity") {
       return false;
     }
 
@@ -433,6 +448,13 @@ import { render } from "../core/render-scheduler.js";
 
     if (state.systemModal === "connectivity") {
       const rows = getConnectivityModalRows();
+      const preferenceMarkup = renderSettingsSelectField(
+        "preferredConnection",
+        "Verbindingsmodus",
+        "Automatisch detecteert bij opstart en herstel. Kabel later aangesloten? Kies Ethernet of herstart.",
+      );
+      const preferenceFeedback = state.controlError || state.controlNotice ||
+        (state.busyAction === "save-preferredConnection" ? "Bezig..." : "");
       return renderModalShell({
         modalId: "system",
         titleId: "oq-system-modal-title",
@@ -441,7 +463,6 @@ import { render } from "../core/render-scheduler.js";
         closeAction: "close-system-modal",
         closeLabel: "Sluit systeem-popup",
         bodyMarkup: `
-          <p class="oq-helper-modal-copy">Status en details van de actieve netwerkverbinding van OpenQuatt.</p>
           <div class="oq-helper-modal-grid">
             ${rows.map(([label, value]) => `
               <div class="oq-helper-modal-row">
@@ -449,7 +470,10 @@ import { render } from "../core/render-scheduler.js";
                 <strong class="oq-helper-modal-value">${escapeHtml(value)}</strong>
               </div>
             `).join("")}
+            ${preferenceMarkup}
           </div>
+          ${preferenceMarkup ? `<p class="oq-helper-modal-note"><strong>WiFi-fallback:</strong> werkt alleen als WiFi vooraf is ingesteld. Gebruik daarvoor de <a href="https://openquatt.github.io/OpenQuatt/install/" target="_blank" rel="noreferrer">installatiehulp</a> en laat Ethernet tijdens het instellen tijdelijk los.</p>` : ""}
+          ${preferenceFeedback ? `<p class="${state.controlError ? "oq-helper-error" : "oq-helper-notice"}" role="status">${escapeHtml(preferenceFeedback)}</p>` : ""}
           <div class="oq-helper-modal-actions">
             <button class="oq-helper-button oq-helper-button--primary" type="button" data-oq-action="close-system-modal">Gereed</button>
           </div>
@@ -467,6 +491,14 @@ import { render } from "../core/render-scheduler.js";
 
     if (state.systemModal === "history-storage") {
       return renderSettingsHistoryStorageModal();
+    }
+
+    if (state.systemModal === "water-sensor-corrections") {
+      return renderHpWaterSensorOffsetsModal();
+    }
+
+    if (state.systemModal === "odu-eeprom-dump") {
+      return renderOduEepromDumpModal();
     }
 
     if (String(state.systemModal || "").startsWith("service-task-")) {
@@ -638,6 +670,39 @@ import { render } from "../core/render-scheduler.js";
       return renderDebugRecordingModal();
     }
 
+    if (state.systemModal === "heating-strategy-advice") {
+      return renderHeatingStrategyAdviceModal();
+    }
+
+    if (state.systemModal === "electrical-limit-confirm") {
+      const pending = state.pendingElectricalLimit || {};
+      const fromA = Number(pending.fromA);
+      const toA = Number(pending.toA);
+      const standardA = Number(pending.standardA);
+      const busy = state.busyAction === "save-electricalCurrentLimit";
+      const fromLabel = formatDutchAmps(fromA);
+      const toLabel = formatDutchAmps(toA);
+      const standardLabel = formatDutchAmps(standardA);
+      return renderModalShell({
+        modalId: "system",
+        titleId: "oq-electrical-limit-modal-title",
+        kicker: "Elektrische installatie",
+        title: "Hogere elektrische ingangsgrens instellen?",
+        closeAction: "close-system-modal",
+        closeLabel: "Sluit elektrische-ingangsgrens-popup",
+        bodyMarkup: `
+          <p class="oq-helper-modal-copy">Je verhoogt de grens van <strong>${escapeHtml(fromLabel)}</strong> naar <strong>${escapeHtml(toLabel)}</strong>.</p>
+          <p class="oq-settings-action-note oq-settings-action-note--warning">Bevestig alleen wanneer de volledige elektrische aansluiting geschikt is voor minimaal ${escapeHtml(toLabel)}. Bij een standaard ${escapeHtml(standardLabel)}-groep kan de installatieautomaat uitschakelen. Bij onjuist gedimensioneerde bekabeling of aansluitmaterialen kan oververhitting of brandgevaar ontstaan.</p>
+          <p class="oq-helper-modal-copy">OpenQuatt vervangt nooit de elektrische beveiliging van de installatie.</p>
+          ${state.controlError ? `<p class="oq-helper-error" role="alert">${escapeHtml(state.controlError)}</p>` : ""}
+          <div class="oq-helper-modal-actions">
+            <button class="oq-helper-button oq-helper-button--ghost" type="button" data-oq-action="close-system-modal" ${busy ? "disabled" : ""}>Annuleren</button>
+            <button class="oq-helper-button oq-helper-button--warning" type="button" data-oq-action="confirm-electrical-limit" ${busy ? "disabled" : ""}>${busy ? "Instellen..." : `${escapeHtml(toLabel)} instellen`}</button>
+          </div>
+        `,
+      });
+    }
+
     if (state.systemModal === "openquatt-pause") {
       const enabled = isEntityActive("openquattEnabled");
       const busy = state.busyAction === "openquatt-regulation";
@@ -657,7 +722,7 @@ import { render } from "../core/render-scheduler.js";
         closeLabel: "Sluit regeling-popup",
         bodyMarkup: `
           <p class="oq-helper-modal-copy">${enabled
-              ? "Kies hoe lang de regeling uit moet blijven. Verwarmen en koelen stoppen dan, maar beveiligingen blijven actief."
+              ? "Kies hoe lang de regeling uit moet blijven. Verwarmen en koelen stoppen dan, maar beveiligingen (inclusief vorstbeveiliging) blijven actief."
               : "De regeling staat nu tijdelijk uit. Je kunt meteen weer inschakelen of een nieuw hervatmoment plannen."
           }</p>
           ${resumeScheduled

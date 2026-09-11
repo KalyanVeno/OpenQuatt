@@ -2,9 +2,10 @@ import { getEntityNumericValue, hasEntity } from "../core/app-shared.js";
 import { CURVE_POINTS, STRATEGY_OPTION_CURVE, STRATEGY_OPTION_POWER_HOUSE } from "../core/config.js";
 import { isCurveMode, isManualFlowMode } from "../core/domain-helpers.js";
 import { getCurveFallbackSuggestion, getEntityValue, normalizeNumber } from "../core/entity-store.js";
+import { getHeatingEnableAdvice, getHeatingEnableCurrent, getHeatingEnableRecommendation } from "../core/heating-strategy-matrix.js";
 import { renderNumberInputField } from "../core/number-controls.js";
 import { state } from "../core/state.js";
-import { renderSettingsAdvancedDisclosure, renderSettingsChoiceOption, renderSettingsFieldCard, renderSettingsMiniNumberField, renderSettingsNumberField, renderSettingsSection, renderSettingsSelectField } from "./controls.js";
+import { renderSettingsAdvancedDisclosure, renderSettingsChoiceOption, renderSettingsFieldCard, renderSettingsFrequencyRangeField, renderSettingsMiniNumberField, renderSettingsNumberField, renderSettingsSection, renderSettingsSelectField } from "./controls.js";
 import { formatNumericState } from "../core/formatting.js";
 import { escapeHtml } from "../core/html.js";
 
@@ -115,7 +116,7 @@ import { escapeHtml } from "../core/html.js";
           data-select-key="strategy"
           data-select-option="${escapeHtml(STRATEGY_OPTION_POWER_HOUSE)}"
           aria-pressed="${curveActive ? "false" : "true"}"
-          ${state.loadingEntities || state.busyAction === "save-strategy" ? "disabled" : ""}
+          ${state.loadingEntities || state.busyAction === "save-strategy" || state.busyAction === "save-heatingEnableSource" ? "disabled" : ""}
         >
           <p class="oq-helper-label">Power House</p>
           <h4>Automatisch op basis van je woning</h4>
@@ -133,7 +134,7 @@ import { escapeHtml } from "../core/html.js";
           data-select-key="strategy"
           data-select-option="${escapeHtml(STRATEGY_OPTION_CURVE)}"
           aria-pressed="${curveActive ? "true" : "false"}"
-          ${state.loadingEntities || state.busyAction === "save-strategy" ? "disabled" : ""}
+          ${state.loadingEntities || state.busyAction === "save-strategy" || state.busyAction === "save-heatingEnableSource" ? "disabled" : ""}
         >
           <p class="oq-helper-label">Stooklijn</p>
           <h4>Regelen met een stooklijn</h4>
@@ -428,13 +429,14 @@ import { escapeHtml } from "../core/html.js";
     `;
   }
 
-  export function renderSettingsHeatPumpLimiterCard(title, keyA, keyB) {
-    const fields = [
-      renderSettingsSelectField(keyA, "Stand A", "Kies hier welke compressorstand je wilt uitsluiten."),
-      renderSettingsSelectField(keyB, "Stand B", "Kies hier nog een compressorstand die je wilt overslaan."),
-    ]
-      .filter(Boolean)
-      .join("");
+  export function renderSettingsHeatPumpLimiterCard(title, hpPrefix) {
+    const firstFrequencyKey = `${hpPrefix}ExcludeMinHz`;
+    const fields = renderSettingsFrequencyRangeField(
+      firstFrequencyKey,
+      `${hpPrefix}ExcludeMaxHz`,
+      "Uitgesloten frequentiebereik",
+      "OpenQuatt slaat alle compressorfrequenties binnen dit bereik over, bij verwarmen en koelen.",
+    );
 
     if (!fields) {
       return "";
@@ -445,7 +447,7 @@ import { escapeHtml } from "../core/html.js";
         <header>
           <p class="oq-helper-label">Warmtepomp</p>
           <h4>${escapeHtml(title)}</h4>
-          <p>Stel hier de standen in die OpenQuatt niet hoeft te gebruiken.</p>
+          <p>Kies één frequentiebereik dat OpenQuatt bij verwarmen en koelen moet overslaan.</p>
         </header>
         <div class="oq-settings-hp-group-grid">
           ${fields}
@@ -472,6 +474,26 @@ import { escapeHtml } from "../core/html.js";
         ` : ""}
       `,
     );
+  }
+
+  export function renderHeatingEnableStrategyAdvice() {
+    if (!hasEntity("heatingEnableSource")) {
+      return "";
+    }
+    const advice = getHeatingEnableAdvice();
+    const deviant = Boolean(advice.deviant);
+    return `
+      <div class="oq-settings-subpanel oq-settings-subpanel--advice${deviant ? " is-warning" : ""}">
+        <div class="oq-settings-subpanel-head">
+          <p class="oq-helper-label">Warmtetoestemming</p>
+          <h4>Welke warmtetoestemming past bij je strategie?</h4>
+          <p>Power House bepaalt zelf de vraag; bij stooklijn bepaalt de thermostaat of er verwarmd wordt. Open de overwegingen en aanbevelingen per strategie.</p>
+        </div>
+        <div class="oq-helper-actions">
+          <button class="oq-helper-button ${deviant ? "oq-helper-button--warning-soft" : "oq-helper-button--ghost"}" type="button" data-oq-action="open-heating-strategy-advice-modal">${deviant ? '<span class="oq-advice-warn-icon"><svg viewBox="0 0 20 18" aria-hidden="true"><path d="M10 1.6 L18.2 16.4 H1.8 Z"/><rect x="9.1" y="5.4" width="1.8" height="5.8" rx="0.9"/><circle cx="10" cy="13.6" r="1.1"/></svg></span> Advies per strategie bekijken' : "Advies per strategie bekijken"}</button>
+        </div>
+      </div>
+    `;
   }
 
   export function renderSettingsHeatingSection() {
@@ -512,6 +534,7 @@ import { escapeHtml } from "../core/html.js";
       `
         ${renderStrategySelectionFields()}
         ${renderHeatingStrategyExplainCards()}
+        ${renderHeatingEnableStrategyAdvice()}
         ${strategyContent}
       `,
     );

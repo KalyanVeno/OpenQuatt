@@ -1,5 +1,5 @@
 import { getSetupCompleteState, isTrendHistoryEnabled, renderAppSummary } from "./app-shared.js";
-import { AUX_RELAY_SETTING_KEYS, AUX_RELAY_STATE_KEYS, BOILER_DIAGNOSTIC_KEYS, BOILER_SETTING_KEYS, BOILER_SUPPORT_SWITCHING_KEYS, BULK_POLL_INTERVAL_MS, CIC_COMPATIBILITY_KEYS, CIC_POLLING_DIAGNOSTIC_KEYS, CIC_POLLING_SETTING_KEYS, COMMISSIONING_STATE_KEYS, COMPRESSOR_SETTING_KEYS, CONNECTIVITY_PROBE_SUCCESS_TTL_MS, CONNECTIVITY_PROBE_TIMEOUT_MS, CONTROL_REPLAY_STATE_KEYS, COOLING_SETTING_KEYS, CURVE_POINTS, CURVE_SETTING_KEYS, ENTITY_DEFS, ENTITY_REFRESH_CONCURRENCY, FAST_OVERVIEW_KEYS, FAST_VIEW_ENTITY_REFRESH_CONCURRENCY, FIRMWARE_ENTITY_KEYS, FIRMWARE_MODAL_KEYS, FLOW_SETTING_KEYS, FLOW_TUNING_KEYS, HEADER_ENTITY_KEYS, HIDDEN_POLL_INTERVAL_MS, INSTALLATION_MONITORING_STATE_KEYS, LIMIT_KEYS, ODU_RUNTIME_FREQUENCY_KEYS, OPENTHERM_DIAGNOSTIC_KEYS, OPENTHERM_SETTING_KEYS, OTB_DIAGNOSTIC_KEYS, OVERVIEW_ENERGY_COLUMN_CONFIGS, OVERVIEW_KEYS, OVERVIEW_METADATA_KEYS, POWER_HOUSE_KEYS, QUICK_START_FLOW_SOURCE_KEYS, QUICK_START_THERMOSTAT_SOURCE_KEYS, SENSOR_CALIBRATION_KEYS, SENSOR_CALIBRATION_STATE_KEYS, SENSOR_SELECTION_KEYS, SENSOR_SELECTION_STATE_KEYS, SERVICE_CONTROL_KEYS, SERVICE_STATUS_ENTITY_KEYS, SETTINGS_GROUP_IDS, SETTINGS_GROUPS, SETTINGS_KEYS, SILENT_SETTING_KEYS, STATIC_POLL_INTERVAL_MS } from "./config.js";
+import { AUX_RELAY_SETTING_KEYS, AUX_RELAY_STATE_KEYS, BOILER_DIAGNOSTIC_KEYS, BOILER_SETTING_KEYS, BOILER_SUPPORT_SWITCHING_KEYS, BULK_POLL_INTERVAL_MS, CIC_COMPATIBILITY_KEYS, CIC_POLLING_DIAGNOSTIC_KEYS, CIC_POLLING_SETTING_KEYS, COMMISSIONING_STATE_KEYS, COMPRESSOR_SETTING_KEYS, CONNECTIVITY_PROBE_SUCCESS_TTL_MS, CONNECTIVITY_PROBE_TIMEOUT_MS, CONTROL_REPLAY_STATE_KEYS, COOLING_SETTING_KEYS, CURVE_POINTS, CURVE_SETTING_KEYS, ENTITY_DEFS, ENTITY_REFRESH_CONCURRENCY, FAST_OVERVIEW_KEYS, FAST_VIEW_ENTITY_REFRESH_CONCURRENCY, FIRMWARE_ENTITY_KEYS, FIRMWARE_MODAL_KEYS, FLOW_SETTING_KEYS, FLOW_TUNING_KEYS, FREQUENCY_CAP_KEYS, HEADER_ENTITY_KEYS, HIDDEN_POLL_INTERVAL_MS, INSTALLATION_MONITORING_STATE_KEYS, LIMIT_KEYS, OPENTHERM_DIAGNOSTIC_KEYS, OPENTHERM_SETTING_KEYS, OTB_DIAGNOSTIC_KEYS, OVERVIEW_ENERGY_COLUMN_CONFIGS, OVERVIEW_KEYS, OVERVIEW_METADATA_KEYS, POWER_HOUSE_KEYS, QUICK_START_FLOW_SOURCE_KEYS, QUICK_START_THERMOSTAT_SOURCE_KEYS, SENSOR_CALIBRATION_KEYS, SENSOR_CALIBRATION_STATE_KEYS, SENSOR_SELECTION_KEYS, SENSOR_SELECTION_STATE_KEYS, SERVICE_CONTROL_KEYS, SERVICE_STATUS_ENTITY_KEYS, SETTINGS_GROUP_IDS, SETTINGS_GROUPS, SETTINGS_KEYS, SILENT_SETTING_KEYS, STATIC_POLL_INTERVAL_MS } from "./config.js";
 import { buildEntityPath, isCurveMode } from "./domain-helpers.js";
 import { getEntityValue, parseLooseNumber } from "./entity-store.js";
 import { state } from "./state.js";
@@ -8,7 +8,8 @@ import { getDefaultAppView, getUrlAppView, setAppView } from "./navigation.js";
 import { isFirmwareOtaQuietActive } from "./firmware-quiet.js";
 import { getInstallationMonitoringModel, syncInstallationMonitoringDetailsState } from "./installation-monitoring.js";
 import { getIncidentMonitoringFailureUpdate, getIncidentMonitoringSuccessUpdate, getIncidentMonitoringUnsupportedUpdate } from "./incident-monitoring.js";
-import { beginDeviceReconnect, clearDeviceReconnect, markDeviceReconnectRecovered, reconcileOtaEvidence } from "./device-reconnect.js";
+import { ODU_GENERATION_DETECT_KEYS, ODU_GENERATION_KEYS, ODU_GENERATION_VARIANT_KEYS } from "./odu-generation.js";
+import { beginDeviceReconnect, clearDeviceReconnect, isRestartRefreshActive, markDeviceReconnectRecovered, reconcileOtaEvidence, reconcileRestartEvidence } from "./device-reconnect.js";
 import { getSettingsRenderSignature } from "./render-signatures.js";
 import { isSystemSettingsGroupActive } from "./surface-state.js";
 import { getHeaderRenderSignature, patchHeaderDom } from "./header-render-controls.js";
@@ -19,6 +20,13 @@ import { patchControlReplayDom, patchDiagnosisDom, patchEnergyDom, patchOverview
 import { clearWebServerLogOutput, closeWebServerLogStream, resetWebServerLogRecoveryState } from "./webserver-log-controls.js";
 import { getMqttSensorsModalRenderSignature, refreshMqttStatus, shouldRefreshMqttStatusForCurrentSurface } from "../features/mqtt-actions.js";
 import { getApiSecurityStatusSignature, refreshApiSecurityStatus, refreshAuthStatus, shouldRefreshApiSecurityStatusForCurrentSurface, shouldRefreshAuthStatusForCurrentSurface } from "../features/security-actions.js";
+import { refreshOduEepromDumpStatuses, shouldRefreshOduEepromDumpSurface } from "../features/odu-eeprom-dump.js";
+import { refreshOduRuntimeFrequencyStatuses, shouldRefreshOduRuntimeFrequencySurface } from "../features/odu-runtime-frequency.js";
+import {
+  captureUsageTelemetryPreview,
+  loadUsageTelemetryPreviewMqttEnabled,
+  USAGE_TELEMETRY_PREVIEW_ENTITY_KEYS,
+} from "./usage-telemetry-preview.js";
 import { render } from "./render-scheduler.js";
 import { fetchWithTimeout } from "./browser-utils.js";
 
@@ -169,6 +177,7 @@ import { fetchWithTimeout } from "./browser-utils.js";
   export const INITIAL_SETTINGS_READY_KEY_MAP = {
     installation: [
       "hpGeneration",
+      "electricalCurrentLimit",
       "boilerCvAssistEnabled",
       "boilerRatedHeatPower",
       ...BOILER_SETTING_KEYS,
@@ -185,6 +194,7 @@ import { fetchWithTimeout } from "./browser-utils.js";
       "minRuntime",
     ],
     service: [
+      "auxHeatSourcePresent",
       "compressorStarts2hWarningLimit",
       "compressorStarts72hWarningLimit",
       "compressorCyclingWarning2h",
@@ -205,6 +215,10 @@ import { fetchWithTimeout } from "./browser-utils.js";
       "setupComplete",
       "installationTopology",
       "hpGeneration",
+      "electricalCurrentLimit",
+      ...ODU_GENERATION_KEYS,
+      ...ODU_GENERATION_VARIANT_KEYS,
+      ...ODU_GENERATION_DETECT_KEYS,
       "boilerCvAssistEnabled",
       "boilerRatedHeatPower",
       ...BOILER_SETTING_KEYS,
@@ -221,16 +235,18 @@ import { fetchWithTimeout } from "./browser-utils.js";
       ...SENSOR_CALIBRATION_KEYS,
       ...SENSOR_CALIBRATION_STATE_KEYS,
       "maxWater",
-      ...ODU_RUNTIME_FREQUENCY_KEYS,
     ],
     service: [
       ...INSTALLATION_MONITORING_STATE_KEYS,
       ...COMMISSIONING_STATE_KEYS,
+      "hpGeneration",
       ...SENSOR_CALIBRATION_KEYS,
       ...SENSOR_CALIBRATION_STATE_KEYS,
+      "auxHeatSourcePresent",
       "boilerCvAssistEnabled",
       "boilerRatedHeatPower",
       "flowSelected",
+      "flowSetpoint",
       "flowKp",
       "flowKi",
       ...SERVICE_CONTROL_KEYS,
@@ -239,8 +255,7 @@ import { fetchWithTimeout } from "./browser-utils.js";
       "strategy",
       ...POWER_HOUSE_KEYS,
       ...CURVE_SETTING_KEYS,
-      "dayMax",
-      "silentMax",
+      ...FREQUENCY_CAP_KEYS,
     ],
     cooling: [
       "manualCoolingEnable",
@@ -249,6 +264,9 @@ import { fetchWithTimeout } from "./browser-utils.js";
       "coolingMinimumSafeSupplyTemp",
       "coolingSupplyTarget",
       "coolingSupplyError",
+      "silentModeOverride",
+      "silentActive",
+      ...FREQUENCY_CAP_KEYS,
       ...COOLING_SETTING_KEYS,
     ],
     integrations: [
@@ -261,6 +279,9 @@ import { fetchWithTimeout } from "./browser-utils.js";
       ...CIC_POLLING_DIAGNOSTIC_KEYS,
       ...SENSOR_SELECTION_KEYS,
       ...SENSOR_SELECTION_STATE_KEYS,
+      "waterSupplyCalibrationOffset",
+      "waterSupplyCalibrationRequired",
+      "waterSupplyCalibrationStatus",
       ...CIC_COMPATIBILITY_KEYS,
     ],
     system: [
@@ -274,7 +295,6 @@ import { fetchWithTimeout } from "./browser-utils.js";
       "usageTelemetryChoiceConfigured",
       "usageTelemetryInstallationId",
       ...SETTINGS_STORAGE_KEYS,
-      "webServerLogHistoryEnabled",
       "debugLevel",
     ],
   };
@@ -552,8 +572,9 @@ import { fetchWithTimeout } from "./browser-utils.js";
     state.lastEntitySyncSuccessAt = now;
     state.entitySyncFailureCount = 0;
     reconcileOtaEvidence();
+    reconcileRestartEvidence();
     const wasReconnectActive = Boolean(state.deviceReconnectMode);
-    const reconnectRecovered = wasReconnectActive && typeof markDeviceReconnectRecovered === "function"
+    const reconnectRecovered = wasReconnectActive && !isRestartRefreshActive() && typeof markDeviceReconnectRecovered === "function"
       ? markDeviceReconnectRecovered()
       : false;
     if (reconnectRecovered) {
@@ -598,11 +619,16 @@ import { fetchWithTimeout } from "./browser-utils.js";
   export function noteEntityRefreshFailure(message) {
     if (!isLikelyDeviceConnectionError(message)) {
       state.entitySyncFailureCount = 0;
-      clearDeviceReconnect();
+      if (!state.restartRefresh.on) {
+        clearDeviceReconnect();
+      }
       return;
     }
     if (state.ota.ok === 1) {
       state.ota.ok = 2;
+    }
+    if (state.restartRefresh.ok === 1) {
+      state.restartRefresh.ok = 2;
     }
     state.entitySyncFailureCount = Number(state.entitySyncFailureCount || 0) + 1;
     state.deviceReconnectLastError = String(message || "");
@@ -612,11 +638,13 @@ import { fetchWithTimeout } from "./browser-utils.js";
       || state.updateInstallBusy
       || state.updateInstallPhaseHint
       || state.ota.on
+      || state.restartRefresh.on
       || state.entitySyncFailureCount >= 2
     ) {
       beginDeviceReconnect(
         state.updateInstallBusy || state.updateInstallPhaseHint || state.ota.on
           ? "ota"
+          : state.restartRefresh.on ? "restart"
           : state.busyAction === "restartAction" ? "restart" : "reconnect",
         message,
       );
@@ -1135,6 +1163,21 @@ import { fetchWithTimeout } from "./browser-utils.js";
     const appView = state.appView;
     const isPrefetchOverview = options.prefetchView === "overview" && !options.forceBulk && appView === "settings";
     const syncView = isPrefetchOverview ? "overview" : appView;
+    const quickStartModalVisible = state.quickStartModalOpen
+      && (state.complete !== true || state.quickStartModalMode === "generation");
+    const usageTelemetryPreviewSurface = syncView === "settings"
+      && state.settingsGroup === "system"
+      && !quickStartModalVisible
+      ? "settings-system"
+      : "";
+    const shouldCaptureUsageTelemetryPreview = Boolean(usageTelemetryPreviewSurface)
+      && state.usageTelemetryPreviewSurface !== usageTelemetryPreviewSurface;
+    if (!usageTelemetryPreviewSurface && state.usageTelemetryPreviewSurface === "settings-system") {
+      state.usageTelemetryPreviewSurface = "";
+    }
+    const usageTelemetryPreviewKeys = shouldCaptureUsageTelemetryPreview
+      ? USAGE_TELEMETRY_PREVIEW_ENTITY_KEYS
+      : [];
     const isOverviewLike = syncView === "overview" || syncView === "control" || syncView === "diagnosis" ||
       syncView === "energy" || syncView === "results";
     const forceFast = options.forceFast === true && !options.forceBulk;
@@ -1152,6 +1195,10 @@ import { fetchWithTimeout } from "./browser-utils.js";
     const quickStartThermostatSourceKeys = state.quickStartModalOpen && state.currentStep === "thermostat-source"
       ? QUICK_START_THERMOSTAT_SOURCE_KEYS
       : [];
+    const quickStartGenerationKeys = state.quickStartModalOpen
+      && (state.currentStep === "generation" || state.currentStep === "confirm")
+      ? ODU_GENERATION_KEYS
+      : [];
     const settingsStorageKeys = shouldRefreshSettingsStorageForCurrentSurface()
       ? getSettingsStorageRefreshKeys()
       : [];
@@ -1168,7 +1215,12 @@ import { fetchWithTimeout } from "./browser-utils.js";
           ...staticKeys,
         ]
       : appView === "settings"
-        ? [...new Set([...getSettingsGroupHydrationKeys(), ...settingsStorageKeys, ...staticKeys])]
+        ? [...new Set([
+            ...getSettingsGroupHydrationKeys(),
+            ...settingsStorageKeys,
+            ...usageTelemetryPreviewKeys,
+            ...staticKeys,
+          ])]
         : isBulkDue
           ? [
               "setupComplete",
@@ -1180,10 +1232,12 @@ import { fetchWithTimeout } from "./browser-utils.js";
               ...(isCurveMode() ? CURVE_POINTS.map((point) => point.key) : POWER_HOUSE_KEYS),
             ]
           : ["setupComplete", ...HEADER_ENTITY_KEYS, "strategy", ...staticKeys];
+    const generationBefore = ODU_GENERATION_KEYS.map(getEntityValue).join();
 
     state.entitySyncInFlight = true;
     state.lastEntitySyncAttemptAt = now;
     try {
+      let usageTelemetryPreviewChanged = false;
       const reconnectModeBefore = state.deviceReconnectMode;
       const probe = shouldRefreshConnectivityProbe(now, options)
         ? await refreshConnectivityProbe()
@@ -1195,7 +1249,7 @@ import { fetchWithTimeout } from "./browser-utils.js";
         }
         return;
       }
-      await refreshEntities([...new Set([...keys, ...(state.ota.wait ? ["uptime", "projectVersionText"] : []), ...quickStartSetupKeys, ...quickStartFlowSourceKeys, ...quickStartThermostatSourceKeys])], isPrefetchOverview ? "state" : appView === "settings" || quickStartSetupKeys.length ? "all" : "state", {
+      await refreshEntities([...new Set([...keys, ...(state.ota.wait || state.restartRefresh.wait ? ["uptime", "projectVersionText"] : []), ...quickStartSetupKeys, ...quickStartFlowSourceKeys, ...quickStartThermostatSourceKeys, ...quickStartGenerationKeys])], isPrefetchOverview ? "state" : appView === "settings" || quickStartSetupKeys.length ? "all" : "state", {
         concurrency: forceFast && isOverviewLike ? FAST_VIEW_ENTITY_REFRESH_CONCURRENCY : ENTITY_REFRESH_CONCURRENCY,
       });
       state.lastFastEntitySyncAt = Date.now();
@@ -1208,6 +1262,19 @@ import { fetchWithTimeout } from "./browser-utils.js";
       if (isPrefetchOverview) {
         await refreshIncidentMonitoringData({ prefetchOverview: true });
         return;
+      }
+      if (shouldCaptureUsageTelemetryPreview
+        && state.appView === "settings"
+        && state.settingsGroup === "system"
+        && !quickStartModalVisible) {
+        const mqttEnabled = await loadUsageTelemetryPreviewMqttEnabled();
+        if (state.appView === "settings"
+          && state.settingsGroup === "system"
+          && !(state.quickStartModalOpen
+            && (state.complete !== true || state.quickStartModalMode === "generation"))) {
+          captureUsageTelemetryPreview(usageTelemetryPreviewSurface, { mqttEnabled });
+          usageTelemetryPreviewChanged = true;
+        }
       }
       if (isOverviewLike && !state.overviewMetadataHydrated && !state.overviewMetadataHydrating) {
         void hydrateOverviewMetadata();
@@ -1243,11 +1310,25 @@ import { fetchWithTimeout } from "./browser-utils.js";
       const mqttChanged = shouldDeferSupplementary || !shouldRefreshMqttStatusForCurrentSurface()
         ? false
         : await refreshMqttStatus({ force: state.systemModal === "mqtt-sensors" });
+      if (!shouldDeferSupplementary && shouldRefreshOduEepromDumpSurface()) {
+        await refreshOduEepromDumpStatuses();
+      }
+      if (!shouldDeferSupplementary && shouldRefreshOduRuntimeFrequencySurface()) {
+        await refreshOduRuntimeFrequencyStatuses();
+      }
       const nextHeaderSignature = getHeaderRenderSignature();
       if (shouldDeferSupplementary && !state.nativeOpen) {
         schedulePrimeSupplementaryData(getSupplementaryPrimeDelayMs(syncView));
       }
+      if (generationBefore !== ODU_GENERATION_KEYS.map(getEntityValue).join()) {
+        render();
+        return;
+      }
       if (reconnectChanged) {
+        render();
+        return;
+      }
+      if (usageTelemetryPreviewChanged) {
         render();
         return;
       }
@@ -1308,7 +1389,7 @@ import { fetchWithTimeout } from "./browser-utils.js";
       } else {
         patchHeaderDom();
       }
-      if (state.appView === "settings" && String(state.systemModal || "").startsWith("service-task-")) {
+      if (state.appView === "settings" && (String(state.systemModal || "").startsWith("service-task-") || state.systemModal === "water-sensor-corrections")) {
         const nextSettingsSignature = getSettingsRenderSignature();
         if (nextSettingsSignature !== state.settingsRenderSignature) {
           render();

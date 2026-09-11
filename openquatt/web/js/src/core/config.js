@@ -10,11 +10,11 @@
   export const STRATEGY_OPTION_CURVE = "Water Temperature Control (heating curve)";
 
   export const QUICK_STEPS = [
-    ["setup", "Kies je setup", "Controleer of je Q-edition als Single of Duo en via Wi-Fi of Ethernet moet werken."],
+    ["setup", "Configuratie en software-update", "Kies Single of Duo en Wi-Fi of Ethernet. OpenQuatt controleert daarna de stabiele main-release en installeert deze alleen als dat nodig is."],
     ["generation", "Kies je Quatt Hybrid", "Geef hier aan welke Quatt Hybrid je hebt. Dan zet OpenQuatt de juiste regeling klaar."],
     ["flow-source", "Flowmeting configureren", "Controleer en activeer de flowbron die bij jouw Quatt-versie en controller hoort."],
     ["thermostat-source", "Thermostaatgegevens configureren", "Leg vast waar OpenQuatt de kamertemperatuur en het kamer-setpoint samen vandaan haalt."],
-    ["boiler", "CV-ketel of boiler", "Leg vast of er een ketel is en hoe die fysiek is aangesloten.", "boilerCvAssistEnabled"],
+    ["boiler", "Aanvullende warmtebron", "Leg vast of een aanvullende warmtebron is aangesloten en wanneer OpenQuatt die mag gebruiken.", "auxHeatSourcePresent"],
     ["strategy", "Kies de verwarmingsstrategie", "Kies hier hoe OpenQuatt je verwarming regelt. Daarna lopen we samen de belangrijkste instellingen langs."],
     ["heating", "Werk de regeling uit", "Stel nu de gekozen regeling verder in. De inhoud hieronder past zich aan aan je keuze."],
     ["flow", "Flowregeling en afstelling", "Leg daarna vast hoe de pomp geregeld moet worden en welke waarden daarbij horen. De autotune staat later onder Instellingen → Installatie → Service & commissioning."],
@@ -23,51 +23,6 @@
     ["usage-telemetry", "Gebruiksstatistieken", "Kies of OpenQuatt beperkte technische gebruiksstatistieken mag delen. Tijdens een nieuwe Quick Start staat delen standaard aan.", "usageTelemetryEnabled"],
     ["confirm", "Bevestigen en afronden", "Controleer nog één keer je keuzes. Met afronden markeer je Quick Start als voltooid."],
   ].map(([id, title, copy, optionalEntity], index) => ({ id, kicker: `Stap ${index + 1}`, title, copy, ...(optionalEntity ? { optionalEntity } : {}) }));
-
-  export const ODU_RUNTIME_FREQUENCY_HP_IDS = [1, 2];
-  export const ODU_RUNTIME_FREQUENCY_LEVELS = Array.from({ length: 11 }, (_item, index) => index);
-  export const ODU_RUNTIME_FREQUENCY_MODES = ["cooling", "heating"];
-
-  export function getOduRuntimeFrequencyModeLabel(mode) {
-    return mode === "cooling" ? "cooling" : "heating";
-  }
-
-  export function getOduRuntimeFrequencyModeKey(mode) {
-    return mode === "cooling" ? "Cooling" : "Heating";
-  }
-
-  export function getOduRuntimeFrequencyValueKey(hpIndex, mode, level) {
-    return `hp${hpIndex}OduRuntime${getOduRuntimeFrequencyModeKey(mode)}F${level}`;
-  }
-
-  export function getOduRuntimeFrequencyControlKey(hpIndex, suffix) {
-    return `hp${hpIndex}OduRuntimeFrequency${suffix}`;
-  }
-
-  export function getOduRuntimeFrequencyHpKeys(hpIndex) {
-    return [
-      getOduRuntimeFrequencyControlKey(hpIndex, "Enable"),
-      getOduRuntimeFrequencyControlKey(hpIndex, "Load"),
-      getOduRuntimeFrequencyControlKey(hpIndex, "Apply"),
-      getOduRuntimeFrequencyControlKey(hpIndex, "Status"),
-      ...ODU_RUNTIME_FREQUENCY_MODES.flatMap((mode) => (
-        ODU_RUNTIME_FREQUENCY_LEVELS.map((level) => getOduRuntimeFrequencyValueKey(hpIndex, mode, level))
-      )),
-    ];
-  }
-
-  export function getOduRuntimeFrequencyButtonHp(key) {
-    const match = String(key || "").match(/^hp([12])OduRuntimeFrequency(?:Load|Apply)$/);
-    return match ? Number(match[1]) : 0;
-  }
-
-  export const ODU_RUNTIME_FREQUENCY_KEYS = ODU_RUNTIME_FREQUENCY_HP_IDS.flatMap(getOduRuntimeFrequencyHpKeys);
-  export const ODU_RUNTIME_FREQUENCY_BUTTON_KEYS = new Set(
-    ODU_RUNTIME_FREQUENCY_HP_IDS.flatMap((hpIndex) => [
-      getOduRuntimeFrequencyControlKey(hpIndex, "Load"),
-      getOduRuntimeFrequencyControlKey(hpIndex, "Apply"),
-    ]),
-  );
 
   export const ENTITY_DEFS = {
     setupComplete: { domain: "binary_sensor", name: "Setup Complete", optional: true },
@@ -79,14 +34,16 @@
     firmwareUpdateStatus: { domain: "text_sensor", name: "Firmware Update Status", optional: true },
     firmwareTestOtaUrl: { domain: "text", name: "Firmware Test OTA URL", optional: true },
     firmwareTestOtaMd5Url: { domain: "text", name: "Firmware Test OTA MD5 URL", optional: true },
+    firmwareTestManifestUrl: { domain: "text", name: "Firmware Test Manifest URL", optional: true },
     checkFirmwareUpdates: { domain: "button", name: "Check Firmware Updates", optional: true },
     installFirmwareTestOta: { domain: "button", name: "Install Firmware Test OTA", optional: true },
+    installFirmwareTestManifest: { domain: "button", name: "Install Firmware Test Manifest", optional: true },
     installFirmwareUpdateTarget: { domain: "button", name: "Install Firmware Update Target", optional: true },
     restartAction: { domain: "button", name: "Restart", optional: true },
     uptime: { domain: "sensor", name: "Uptime", optional: true },
+    uptimeRaw: { domain: "sensor", name: "Uptime raw", optional: true },
     uptimeReadable: { domain: "text_sensor", name: "Uptime readable", optional: true },
     timeNowHhmm: { domain: "text_sensor", name: "Time now (HH:MM)", optional: true },
-    timeValid: { domain: "binary_sensor", name: "Time valid", optional: true },
     ipAddress: { domain: "text_sensor", name: "IP Address", optional: true },
     wifiSsid: { domain: "text_sensor", name: "WiFi SSID", optional: true },
     projectVersionText: { domain: "text_sensor", name: "OpenQuatt Version", optional: true },
@@ -95,15 +52,34 @@
     hardwareProfileText: { domain: "text_sensor", name: "OpenQuatt Hardware Profile", optional: true },
     hardwareRevisionText: { domain: "text_sensor", name: "OpenQuatt Hardware Revision", optional: true },
     connectionText: { domain: "text_sensor", name: "OpenQuatt Connection", optional: true },
+    preferredConnection: { domain: "select", name: "Preferred Connection", optional: true },
+    hp1Generation: { domain: "text_sensor", name: "HP1 - ODU generation", optional: true },
+    hp2Generation: { domain: "text_sensor", name: "HP2 - ODU generation", optional: true },
+    hp1CompressorLevelProfile: { domain: "text_sensor", name: "HP1 - Compressor level profile", optional: true },
+    hp2CompressorLevelProfile: { domain: "text_sensor", name: "HP2 - Compressor level profile", optional: true },
+    hp1GenerationVariant: { domain: "text_sensor", name: "HP1 - ODU generation variant", optional: true },
+    hp2GenerationVariant: { domain: "text_sensor", name: "HP2 - ODU generation variant", optional: true },
+    hp1CustomerModelCode: { domain: "text_sensor", name: "HP1 - ODU customer model code", optional: true },
+    hp2CustomerModelCode: { domain: "text_sensor", name: "HP2 - ODU customer model code", optional: true },
+    hp1GenerationDetect: { domain: "button", name: "HP1 - Detect ODU generation", optional: true },
+    hp2GenerationDetect: { domain: "button", name: "HP2 - Detect ODU generation", optional: true },
     wifiSignal: { domain: "sensor", name: "WiFi Signal", optional: true },
     espInternalTemp: { domain: "sensor", name: "ESP Internal Temperature", optional: true },
+    heapFree: { domain: "sensor", name: "Heap Free", optional: true },
+    heapMinFree: { domain: "sensor", name: "Heap Min Free", optional: true },
+    heapLargestBlock: { domain: "sensor", name: "Heap Max Block", optional: true },
+    psramFree: { domain: "sensor", name: "PSRAM Free", optional: true },
+    loopTime: { domain: "sensor", name: "Loop Time", optional: true },
     statusLedsEnabled: { domain: "switch", name: "Status LEDs enabled", optional: true },
     usageTelemetryEnabled: { domain: "switch", name: "Usage statistics", optional: true },
     usageTelemetryChoiceConfigured: { domain: "binary_sensor", name: "Usage statistics choice configured", optional: true },
     usageTelemetryInstallationId: { domain: "text_sensor", name: "Usage statistics installation ID", optional: true },
     hpGeneration: { domain: "select", name: "Quatt Hybrid version" },
+    electricalCurrentLimit: { domain: "number", name: "Electrical current limit", optional: true },
+    electricalCurrentLimitReset: { domain: "button", name: "Reset electrical current limit", optional: true },
     strategy: { domain: "select", name: "Heating Control Mode" },
     openquattEnabled: { domain: "switch", name: "OpenQuatt Enabled", optional: true },
+    auxHeatSourcePresent: { domain: "switch", name: "Auxiliary heat source connected", optional: true },
     boilerCvAssistEnabled: { domain: "switch", name: "Boiler assist enabled", optional: true },
     boilerFaultFallbackEnabled: { domain: "switch", name: "Boiler fallback on heat-pump fault", optional: true },
     boilerConnection: { domain: "select", name: "Boiler connection", optional: true },
@@ -126,6 +102,9 @@
     coolingDewPointSource: { domain: "select", name: "Cooling Dew Point Source", optional: true },
     coolingDewPointHa: { domain: "sensor", name: "HA - Cooling Dew Point", optional: true },
     coolingDewPointHaValid: { domain: "binary_sensor", name: "HA - Cooling Dew Point Valid", optional: true },
+    apiInputCoolingDewPoint: { domain: "number", name: "api_input_cooling_dew_point", optional: true },
+    apiInputCoolingDewPointAge: { domain: "sensor", name: "API Input Cooling Dew Point Age", optional: true },
+    apiInputCoolingDewPointValid: { domain: "binary_sensor", name: "API Input Cooling Dew Point Valid", optional: true },
     mqttCoolingDewPoint: { domain: "sensor", name: "MQTT Cooling Dew Point", optional: true },
     mqttCoolingDewPointAge: { domain: "sensor", name: "MQTT Cooling Dew Point Age", optional: true },
     mqttCoolingDewPointValid: { domain: "binary_sensor", name: "MQTT Cooling Dew Point Valid", optional: true },
@@ -160,12 +139,16 @@
     outsideTempSource: { domain: "select", name: "Outside Temperature Source", optional: true },
     roomTempSource: { domain: "select", name: "Room Temperature Source", optional: true },
     roomSetpointSource: { domain: "select", name: "Room Setpoint Source", optional: true },
+    externalHeatDemandSource: { domain: "select", name: "External Heat Demand Source", optional: true },
     heatingEnableSource: { domain: "select", name: "Heating Enable Source", optional: true },
     coolingEnableSource: { domain: "select", name: "Cooling Enable Source", optional: true },
     localWaterSupplyTempSource: { domain: "select", name: "Local Water Supply Temp Source", optional: true },
     coolingMinimumSupplyTemp: { domain: "number", name: "Cooling Minimum Supply Temp", optional: true },
     coolingDemandMax: { domain: "number", name: "Cooling Demand Max", optional: true },
+    coolingRestartMode: { domain: "select", name: "Cooling Restart Mode", optional: true },
     coolingRestartDelta: { domain: "number", name: "Cooling Restart Delta", optional: true },
+    coolingMinimumOffTime: { domain: "number", name: "Cooling Minimum Off Time", optional: true },
+    coolingMinimumOffTimeRemaining: { domain: "sensor", name: "Cooling Minimum Off Time Remaining", optional: true },
     coolingPidKp: { domain: "number", name: "Cooling PID Kp", optional: true },
     coolingPidKi: { domain: "number", name: "Cooling PID Ki", optional: true },
     coolingPidKd: { domain: "number", name: "Cooling PID Kd", optional: true },
@@ -178,6 +161,7 @@
     flowSetpoint: { domain: "number", name: "Flow Setpoint" },
     coolingFlowSetpoint: { domain: "number", name: "Cooling Flow Setpoint", optional: true },
     manualIpwm: { domain: "number", name: "Manual iPWM" },
+    flowOutputIpwm: { domain: "sensor", name: "Flow Output iPWM", optional: true },
     compressorStarts2hWarningLimit: { domain: "number", name: "Compressor starts 2h warning limit", optional: true },
     compressorStarts72hWarningLimit: { domain: "number", name: "Compressor starts 72h warning limit", optional: true },
     compressorCyclingWarning2h: { domain: "binary_sensor", name: "Compressor cycling warning 2h", optional: true },
@@ -216,6 +200,7 @@
     cicPollingEnabled: { domain: "switch", name: "CIC - Enable polling", optional: true },
     cicFeedUrl: { domain: "text", name: "CIC - Feed URL", optional: true },
     cicWaterSupplyTemp: { domain: "sensor", name: "CIC - Water Supply Temp", optional: true },
+    cicBoilerWaterPressure: { domain: "sensor", name: "CIC - Boiler Water Pressure", optional: true },
     cicControlSetpoint: { domain: "sensor", name: "CIC - Control setpoint", optional: true },
     cicRoomSetpoint: { domain: "sensor", name: "CIC - Room setpoint", optional: true },
     cicRoomTemp: { domain: "sensor", name: "CIC - Room temperature", optional: true },
@@ -263,7 +248,11 @@
     otbDeviceVersion: { domain: "sensor", name: "OTB - Device Product Version", optional: true },
     otbLastResponseAge: { domain: "sensor", name: "OTB - Last Response Age", optional: true },
     otbResponseCount: { domain: "sensor", name: "OTB - Valid Response Count", optional: true },
+    otbTransportErrorCount: { domain: "sensor", name: "OTB - Transport Error Count", optional: true },
+    otbResponseTimeoutCount: { domain: "sensor", name: "OTB - Response Timeout Count", optional: true },
     otbLastResponseId: { domain: "sensor", name: "OTB - Last Response Message ID", optional: true },
+    otbStartHandshakeState: { domain: "text_sensor", name: "OTB - Start Handshake State", optional: true },
+    otbStartHandshakeDetail: { domain: "text_sensor", name: "OTB - Start Handshake Detail", optional: true },
     flowKp: { domain: "number", name: "Flow PI Kp", optional: true },
     flowKi: { domain: "number", name: "Flow PI Ki", optional: true },
     boilerRatedHeatPower: { domain: "number", name: "Boiler rated heat power", optional: true },
@@ -278,6 +267,7 @@
     boilerPowerTestApply: { domain: "button", name: "Boiler Power Test Apply", optional: true },
     boilerPowerTestResult: { domain: "sensor", name: "Boiler power test result", optional: true },
     boilerPowerTestConfidence: { domain: "sensor", name: "Boiler power test confidence", optional: true },
+    boilerPowerTestResultQuality: { domain: "text_sensor", name: "Boiler power test result quality", optional: true },
     boilerPowerTestActive: { domain: "binary_sensor", name: "Boiler power test active", optional: true },
     boilerPowerTestStatus: { domain: "text_sensor", name: "Boiler power test status", optional: true },
     flowAutotuneStart: { domain: "button", name: "Flow Autotune Start", optional: true },
@@ -330,18 +320,30 @@
     hpWaterCalibrationResultHp1OutRawAvg: { domain: "sensor", name: "HP water calibration result HP1 water out raw average", optional: true },
     hpWaterCalibrationResultHp2InRawAvg: { domain: "sensor", name: "HP water calibration result HP2 water in raw average", optional: true },
     hpWaterCalibrationResultHp2OutRawAvg: { domain: "sensor", name: "HP water calibration result HP2 water out raw average", optional: true },
+    hpWaterCalibrationResultSupplyRawAvg: { domain: "sensor", name: "HP water calibration result supply raw average", optional: true },
+    hpWaterCalibrationResultSupplyOffset: { domain: "sensor", name: "HP water calibration result supply offset", optional: true },
+    hpWaterCalibrationResultSupplySource: { domain: "text_sensor", name: "HP water calibration result supply source", optional: true },
     hp1WaterInOffset: { domain: "number", name: "HP1 water in temperature offset", optional: true },
     hp1WaterOutOffset: { domain: "number", name: "HP1 water out temperature offset", optional: true },
     hp2WaterInOffset: { domain: "number", name: "HP2 water in temperature offset", optional: true },
     hp2WaterOutOffset: { domain: "number", name: "HP2 water out temperature offset", optional: true },
+    waterSupplyPt1000CalibrationOffset: { domain: "number", name: "Water Supply PT1000 Calibration Offset", optional: true },
+    waterSupplyDs18b20CalibrationOffset: { domain: "number", name: "Water Supply DS18B20 Calibration Offset", optional: true },
+    waterSupplyCicCalibrationOffset: { domain: "number", name: "Water Supply CIC Calibration Offset", optional: true },
+    waterSupplyHaInputCalibrationIdentity: { domain: "text", name: "Water Supply HA Input Calibration Identity", optional: true },
+    waterSupplyHaInputCalibrationOffset: { domain: "number", name: "Water Supply HA Input Calibration Offset", optional: true },
     hp1WaterInOffsetSuggested: { domain: "number", name: "HP calibration HP1 water in offset suggested", optional: true },
     hp1WaterOutOffsetSuggested: { domain: "number", name: "HP calibration HP1 water out offset suggested", optional: true },
     hp2WaterInOffsetSuggested: { domain: "number", name: "HP calibration HP2 water in offset suggested", optional: true },
     hp2WaterOutOffsetSuggested: { domain: "number", name: "HP calibration HP2 water out offset suggested", optional: true },
+    waterSupplyCalibrationOffset: { domain: "number", name: "Water Supply Temperature Calibration Offset", optional: true },
+    waterSupplyCalibrationOffsetSuggested: { domain: "number", name: "HP calibration supply temperature offset suggested", optional: true },
+    waterSupplyCalibrationRequired: { domain: "binary_sensor", name: "Water Supply Temperature Calibration Required", optional: true },
+    waterSupplyCalibrationStatus: { domain: "text_sensor", name: "Water Supply Temperature Calibration Status", optional: true },
     controlModeLabel: { domain: "text_sensor", name: "Control Mode (Label)" },
     flowMode: { domain: "text_sensor", name: "Flow Mode" },
-    dayMax: { domain: "number", name: "Day max level" },
-    silentMax: { domain: "number", name: "Silent max level" },
+    dayMaxHz: { domain: "number", name: "Day max frequency", optional: true },
+    silentMaxHz: { domain: "number", name: "Silent max frequency", optional: true },
     silentStartTime: { domain: "time", name: "Silent start time" },
     silentEndTime: { domain: "time", name: "Silent end time" },
     openquattResumeAt: { domain: "datetime", name: "OpenQuatt resume at", optional: true },
@@ -362,6 +364,8 @@
     boilerCommandAge: { domain: "sensor", name: "Boiler command age", optional: true },
     boilerCommandSource: { domain: "text_sensor", name: "Boiler command source", optional: true },
     boilerBlockReason: { domain: "text_sensor", name: "Boiler block reason", optional: true },
+    boilerStartThermalGuard: { domain: "text_sensor", name: "Boiler warm-start guard", optional: true },
+    boilerStartThermalSafeCeiling: { domain: "sensor", name: "Boiler warm-start safe ceiling", optional: true },
     boilerHeatPower: { domain: "sensor", name: "Boiler Heat Power", optional: true },
     auxRelayFunction: { domain: "select", name: "Aux Relay Function", optional: true },
     auxWaitForSupplyTemp: { domain: "switch", name: "Aux Relay Wait For Supply Temp", optional: true },
@@ -376,7 +380,6 @@
     controllerFlow: { domain: "sensor", name: "Controller Flow", optional: true },
     trendHistoryEnabled: { domain: "switch", name: "Trendopslag", optional: true },
     trendHistoryFlashEnabled: { domain: "switch", name: "Trendhistorie opslaan in flash", optional: true },
-    webServerLogHistoryEnabled: { domain: "switch", name: "RAM log history", optional: true },
     debugLevel: { domain: "select", name: "Debug Level", optional: true },
     trendHistoryFlush: { domain: "button", name: "Trendhistorie nu opslaan", optional: true },
     decisionLogHistoryEnabled: { domain: "switch", name: "Beslisloghistorie bewaren", optional: true },
@@ -416,18 +419,39 @@
     waterSupplyTempHa: { domain: "sensor", name: "HA - Water Supply Temperature", optional: true },
     roomSetpointHa: { domain: "sensor", name: "HA - Thermostat Setpoint", optional: true },
     roomTempHa: { domain: "sensor", name: "HA - Thermostat Room Temperature", optional: true },
+    apiInputOutsideTemperature: { domain: "number", name: "api_input_outside_temperature", optional: true },
+    apiInputOutsideTemperatureAge: { domain: "sensor", name: "API Input Outside Temperature Age", optional: true },
+    apiInputOutsideTemperatureValid: { domain: "binary_sensor", name: "API Input Outside Temperature Valid", optional: true },
     mqttOutsideTemperature: { domain: "sensor", name: "MQTT Outside Temperature", optional: true },
     mqttOutsideTemperatureAge: { domain: "sensor", name: "MQTT Outside Temperature Age", optional: true },
     mqttOutsideTemperatureValid: { domain: "binary_sensor", name: "MQTT Outside Temperature Valid", optional: true },
+    apiInputRoomTemperature: { domain: "number", name: "api_input_room_temperature", optional: true },
+    apiInputRoomTemperatureAge: { domain: "sensor", name: "API Input Room Temperature Age", optional: true },
+    apiInputRoomTemperatureValid: { domain: "binary_sensor", name: "API Input Room Temperature Valid", optional: true },
     mqttRoomTemperature: { domain: "sensor", name: "MQTT Room Temperature", optional: true },
     mqttRoomTemperatureAge: { domain: "sensor", name: "MQTT Room Temperature Age", optional: true },
     mqttRoomTemperatureValid: { domain: "binary_sensor", name: "MQTT Room Temperature Valid", optional: true },
+    apiInputRoomSetpoint: { domain: "number", name: "api_input_room_setpoint", optional: true },
+    apiInputRoomSetpointAge: { domain: "sensor", name: "API Input Room Setpoint Age", optional: true },
+    apiInputRoomSetpointValid: { domain: "binary_sensor", name: "API Input Room Setpoint Valid", optional: true },
     mqttRoomSetpoint: { domain: "sensor", name: "MQTT Room Setpoint", optional: true },
     mqttRoomSetpointAge: { domain: "sensor", name: "MQTT Room Setpoint Age", optional: true },
     mqttRoomSetpointValid: { domain: "binary_sensor", name: "MQTT Room Setpoint Valid", optional: true },
+    externalHeatDemandSelected: { domain: "sensor", name: "External Heat Demand (Selected)", optional: true },
+    externalHeatDemandHa: { domain: "sensor", name: "HA - External Heat Demand", optional: true },
+    externalHeatDemandHaValid: { domain: "binary_sensor", name: "HA - External Heat Demand Valid", optional: true },
+    apiInputExternalHeatDemand: { domain: "number", name: "api_input_external_heat_demand", optional: true },
+    apiInputExternalHeatDemandAge: { domain: "sensor", name: "API Input External Heat Demand Age", optional: true },
+    apiInputExternalHeatDemandValid: { domain: "binary_sensor", name: "API Input External Heat Demand Valid", optional: true },
+    apiInputHeatingEnable: { domain: "switch", name: "api_input_heating_enable", optional: true },
+    apiInputHeatingEnableAge: { domain: "sensor", name: "API Input Heating Enable Age", optional: true },
+    apiInputHeatingEnableValid: { domain: "binary_sensor", name: "API Input Heating Enable Valid", optional: true },
     mqttHeatingEnable: { domain: "binary_sensor", name: "MQTT Heating Enable", optional: true },
     mqttHeatingEnableAge: { domain: "sensor", name: "MQTT Heating Enable Age", optional: true },
     mqttHeatingEnableValid: { domain: "binary_sensor", name: "MQTT Heating Enable Valid", optional: true },
+    apiInputCoolingEnable: { domain: "switch", name: "api_input_cooling_enable", optional: true },
+    apiInputCoolingEnableAge: { domain: "sensor", name: "API Input Cooling Enable Age", optional: true },
+    apiInputCoolingEnableValid: { domain: "binary_sensor", name: "API Input Cooling Enable Valid", optional: true },
     mqttCoolingEnable: { domain: "binary_sensor", name: "MQTT Cooling Enable", optional: true },
     mqttCoolingEnableAge: { domain: "sensor", name: "MQTT Cooling Enable Age", optional: true },
     mqttCoolingEnableValid: { domain: "binary_sensor", name: "MQTT Cooling Enable Valid", optional: true },
@@ -444,6 +468,7 @@
     waterSupplyTempEffectiveSource: { domain: "text_sensor", name: "Water Supply Temp Effective Source", optional: true },
     heatingEnableEffectiveSource: { domain: "text_sensor", name: "Heating Enable Effective Source", optional: true },
     coolingEnableEffectiveSource: { domain: "text_sensor", name: "Cooling Enable Effective Source", optional: true },
+    powerHouseDemandSource: { domain: "text_sensor", name: "Power House – demand source", optional: true },
     curveSupplyTarget: { domain: "sensor", name: "Heating Curve Supply Target" },
     requestReason: { domain: "text_sensor", name: "Request Reason", optional: true },
     strategyActiveCode: { domain: "sensor", name: "Strategy active code", optional: true },
@@ -460,6 +485,7 @@
     curveTargetHp1Level: { domain: "sensor", name: "Curve target HP1 level", optional: true },
     curveTargetHp2Level: { domain: "sensor", name: "Curve target HP2 level", optional: true },
     curveRestartInhibit: { domain: "sensor", name: "Curve restart inhibit", optional: true },
+    curveRestartBlockedByRoom: { domain: "sensor", name: "Curve restart blocked by room", optional: true },
     curvePhase: { domain: "text_sensor", name: "Curve Phase", optional: true },
     curveOperatingRegime: { domain: "text_sensor", name: "Curve operating regime", optional: true },
     curveCapacityMode: { domain: "text_sensor", name: "Curve capacity mode", optional: true },
@@ -498,8 +524,8 @@
     curve5: { domain: "number", name: "Curve Tsupply @ 5°C" },
     curve10: { domain: "number", name: "Curve Tsupply @ 10°C" },
     curve15: { domain: "number", name: "Curve Tsupply @ 15°C" },
-    hp1ExcludedA: { domain: "select", name: "HP1 - Excluded compressor level A" },
-    hp1ExcludedB: { domain: "select", name: "HP1 - Excluded compressor level B" },
+    hp1ExcludeMinHz: { domain: "number", name: "HP1 - Excluded frequency minimum", optional: true },
+    hp1ExcludeMaxHz: { domain: "number", name: "HP1 - Excluded frequency maximum", optional: true },
     hp1Power: { domain: "sensor", name: "HP1 - Power Input" },
     hp1Heat: { domain: "sensor", name: "HP1 - Heat Power" },
     hp1Cooling: { domain: "sensor", name: "HP1 - Cooling Power" },
@@ -526,8 +552,8 @@
     hp1Crankcase: { domain: "binary_sensor", name: "HP1 - Crankcase heater" },
     hp1Eev: { domain: "sensor", name: "HP1 - EEV steps" },
     hp1FourWay: { domain: "binary_sensor", name: "HP1 - 4-Way valve" },
-    hp2ExcludedA: { domain: "select", name: "HP2 - Excluded compressor level A", optional: true },
-    hp2ExcludedB: { domain: "select", name: "HP2 - Excluded compressor level B", optional: true },
+    hp2ExcludeMinHz: { domain: "number", name: "HP2 - Excluded frequency minimum", optional: true },
+    hp2ExcludeMaxHz: { domain: "number", name: "HP2 - Excluded frequency maximum", optional: true },
     hp2Power: { domain: "sensor", name: "HP2 - Power Input", optional: true },
     hp2Heat: { domain: "sensor", name: "HP2 - Heat Power", optional: true },
     hp2Cooling: { domain: "sensor", name: "HP2 - Cooling Power", optional: true },
@@ -558,39 +584,6 @@
     reset: { domain: "button", name: "Reset setup state" },
   };
 
-  ODU_RUNTIME_FREQUENCY_HP_IDS.forEach((hpIndex) => {
-    const prefix = `HP${hpIndex} - EXPERIMENTAL`;
-    ENTITY_DEFS[getOduRuntimeFrequencyControlKey(hpIndex, "Enable")] = {
-      domain: "switch",
-      name: `${prefix} ODU runtime frequency write enable`,
-      optional: true,
-    };
-    ENTITY_DEFS[getOduRuntimeFrequencyControlKey(hpIndex, "Load")] = {
-      domain: "button",
-      name: `${prefix} load ODU runtime frequency table`,
-      optional: true,
-    };
-    ENTITY_DEFS[getOduRuntimeFrequencyControlKey(hpIndex, "Apply")] = {
-      domain: "button",
-      name: `${prefix} apply ODU runtime frequency table`,
-      optional: true,
-    };
-    ENTITY_DEFS[getOduRuntimeFrequencyControlKey(hpIndex, "Status")] = {
-      domain: "text_sensor",
-      name: `${prefix} ODU runtime frequency status`,
-      optional: true,
-    };
-    ODU_RUNTIME_FREQUENCY_MODES.forEach((mode) => {
-      ODU_RUNTIME_FREQUENCY_LEVELS.forEach((level) => {
-        ENTITY_DEFS[getOduRuntimeFrequencyValueKey(hpIndex, mode, level)] = {
-          domain: "number",
-          name: `${prefix} ${getOduRuntimeFrequencyModeLabel(mode)} F${level} runtime Hz`,
-          optional: true,
-        };
-      });
-    });
-  });
-
   export const APP_VIEWS = [
     { id: "overview", label: "Overzicht", icon: "monitor-dashboard" },
     { id: "energy", label: "Energie", icon: "zap" },
@@ -604,6 +597,7 @@
   export const OQ_ICON_PATHS = {
     activity: '<path d="M3 12h4l2-7 4 14 2-7h6"/>',
     "bar-chart": '<path d="M4 19V5"/><path d="M20 19H4"/><rect x="7" y="11" width="3" height="5" rx="1"/><rect x="12" y="7" width="3" height="9" rx="1"/><rect x="17" y="3" width="3" height="13" rx="1"/>',
+    calculator: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8"/><path d="M16 14v4"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/>',
     clipboard: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
     "clipboard-check": '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/><path d="m11 14 2 2 4-5"/>',
     droplet: '<path d="M12 3.2s6 6.5 6 10.8a6 6 0 0 1-12 0c0-4.3 6-10.8 6-10.8z"/>',
@@ -612,6 +606,7 @@
     link: '<path d="M9 15l6 -6"/><path d="M11 6l.46 -.54a5 5 0 0 1 7.08 7.08l-.54 .46"/><path d="M13 18l-.46 .54a5 5 0 0 1 -7.08 -7.08l.54 -.46"/>',
     "monitor-dashboard": '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8"/><path d="M12 16v4"/><path d="M6.5 7h7v4h-7z"/><path d="M16 7h2"/><path d="M16 10h2"/><path d="M6.5 13h3"/><path d="M11 13h2.5"/>',
     "more-horizontal": '<path d="M5 12h.01"/><path d="M12 12h.01"/><path d="M19 12h.01"/>',
+    pencil: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
     settings: '<path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15z"/>',
     server: '<rect x="3" y="4" width="18" height="8" rx="3"/><rect x="3" y="12" width="18" height="8" rx="3"/><path d="M7 8h.01"/><path d="M7 16h.01"/>',
     shield: '<path d="M12 3 19 6v5c0 4.4-2.8 8.4-7 10-4.2-1.6-7-5.6-7-10V6z"/><path d="m9 12 2 2 4-5"/>',
@@ -620,6 +615,7 @@
     target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/>',
     thermometer: '<path d="M14 14.76V5a2 2 0 0 0-4 0v9.76a4 4 0 1 0 4 0z"/><path d="M12 9v6"/>',
     tool: '<path d="M7 10h3v-3l-3.5 -3.5a6 6 0 0 1 8 8l6 6a2 2 0 0 1 -3 3l-6 -6a6 6 0 0 1 -8 -8z"/>',
+    "triangle-alert": '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
     waves: '<path d="M3 8c1.5-1.2 3-1.2 4.5 0s3 1.2 4.5 0 3-1.2 4.5 0 3 1.2 4.5 0"/><path d="M3 13c1.5-1.2 3-1.2 4.5 0s3 1.2 4.5 0 3-1.2 4.5 0 3 1.2 4.5 0"/><path d="M3 18c1.5-1.2 3-1.2 4.5 0s3 1.2 4.5 0 3-1.2 4.5 0 3 1.2 4.5 0"/>',
     wifi: '<path d="M5 13a10 10 0 0 1 14 0"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M12 20h.01"/>',
     zap: '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/>',
@@ -740,7 +736,8 @@
     "phDemandRiseTime",
     "phDemandFallTime",
   ];
-  export const LIMIT_KEYS = ["dayMax", "silentMax", "maxWater"];
+  export const FREQUENCY_CAP_KEYS = ["dayMaxHz", "silentMaxHz"];
+  export const LIMIT_KEYS = [...FREQUENCY_CAP_KEYS, "maxWater"];
   export const FLOW_SETTING_KEYS = ["flowControlMode", "flowSetpoint", "coolingFlowSetpoint", "manualIpwm"];
   export const FLOW_TUNING_KEYS = ["flowKp", "flowKi"];
   export const SENSOR_CALIBRATION_KEYS = [
@@ -748,6 +745,13 @@
     "hp1WaterOutOffset",
     "hp2WaterInOffset",
     "hp2WaterOutOffset",
+  ];
+  export const SUPPLY_CALIBRATION_BACKUP_KEYS = [
+    "waterSupplyPt1000CalibrationOffset",
+    "waterSupplyDs18b20CalibrationOffset",
+    "waterSupplyCicCalibrationOffset",
+    "waterSupplyHaInputCalibrationIdentity",
+    "waterSupplyHaInputCalibrationOffset",
   ];
   export const SENSOR_CALIBRATION_STATE_KEYS = [
     "hp1WaterInRaw",
@@ -758,6 +762,9 @@
     "hp2WaterIn",
     "hp2WaterOutRaw",
     "hp2WaterOut",
+    "waterSupplyCalibrationOffset",
+    "waterSupplyCalibrationRequired",
+    "waterSupplyCalibrationStatus",
   ];
   export const INSTALLATION_MONITORING_STATE_KEYS = [
     "compressorStarts2hWarningLimit",
@@ -833,6 +840,7 @@
     "boilerPowerTestApply",
     "boilerPowerTestResult",
     "boilerPowerTestConfidence",
+    "boilerPowerTestResultQuality",
     "boilerPowerTestActive",
     "boilerPowerTestStatus",
     "boilerHeatPower",
@@ -867,6 +875,8 @@
     "manualHp2Mode",
     "manualHp1Level",
     "manualHp2Level",
+    "hp1CompressorLevelProfile",
+    "hp2CompressorLevelProfile",
     "hpWaterCalibrationStart",
     "hpWaterCalibrationAbort",
     "hpWaterCalibrationApply",
@@ -885,11 +895,16 @@
     "hpWaterCalibrationResultHp1OutRawAvg",
     "hpWaterCalibrationResultHp2InRawAvg",
     "hpWaterCalibrationResultHp2OutRawAvg",
+    "hpWaterCalibrationResultSupplyRawAvg",
+    "hpWaterCalibrationResultSupplyOffset",
+    "hpWaterCalibrationResultSupplySource",
     ...SENSOR_CALIBRATION_STATE_KEYS,
     "hp1WaterInOffsetSuggested",
     "hp1WaterOutOffsetSuggested",
     "hp2WaterInOffsetSuggested",
     "hp2WaterOutOffsetSuggested",
+    "waterSupplyCalibrationOffsetSuggested",
+    "supplyTemp",
     "flowSelected",
     "hp1Compressor",
     "hp1Freq",
@@ -905,6 +920,7 @@
     "cm100Active",
     "boilerPowerTestResult",
     "boilerPowerTestConfidence",
+    "boilerPowerTestResultQuality",
     "boilerPowerTestActive",
     "boilerPowerTestStatus",
     "flowAutotuneStatus",
@@ -936,10 +952,14 @@
     "hpWaterCalibrationResultHp1OutRawAvg",
     "hpWaterCalibrationResultHp2InRawAvg",
     "hpWaterCalibrationResultHp2OutRawAvg",
+    "hpWaterCalibrationResultSupplyRawAvg",
+    "hpWaterCalibrationResultSupplyOffset",
+    "hpWaterCalibrationResultSupplySource",
   ]);
   export const CIC_COMPATIBILITY_KEYS = ["cicCompatibilityMode"];
   export const OPENTHERM_SETTING_KEYS = ["otEnabled", "otLinkProblem"];
   export const BOILER_SETTING_KEYS = [
+    "auxHeatSourcePresent",
     "boilerConnection",
     "boilerFaultFallbackEnabled",
   ];
@@ -959,6 +979,8 @@
     "boilerCommandAge",
     "boilerCommandSource",
     "boilerBlockReason",
+    "boilerStartThermalGuard",
+    "boilerStartThermalSafeCeiling",
   ];
   export const OTB_DIAGNOSTIC_KEYS = [
     "otbLinkAvailable",
@@ -995,6 +1017,7 @@
   export const CIC_POLLING_DIAGNOSTIC_KEYS = [
     "cicJsonFeedOk",
     "cicWaterSupplyTemp",
+    "cicBoilerWaterPressure",
     "cicControlSetpoint",
     "cicRoomSetpoint",
     "cicRoomTemp",
@@ -1033,6 +1056,9 @@
     "outsideTempLocalAggregated",
     "outsideTempHa",
     "outsideTempHaValid",
+    "apiInputOutsideTemperature",
+    "apiInputOutsideTemperatureAge",
+    "apiInputOutsideTemperatureValid",
     "mqttOutsideTemperature",
     "mqttOutsideTemperatureAge",
     "mqttOutsideTemperatureValid",
@@ -1040,6 +1066,9 @@
     "roomTempEffectiveSource",
     "roomTempHa",
     "roomTempHaValid",
+    "apiInputRoomTemperature",
+    "apiInputRoomTemperatureAge",
+    "apiInputRoomTemperatureValid",
     "mqttRoomTemperature",
     "mqttRoomTemperatureAge",
     "mqttRoomTemperatureValid",
@@ -1047,9 +1076,23 @@
     "roomSetpointEffectiveSource",
     "roomSetpointHa",
     "roomSetpointHaValid",
+    "apiInputRoomSetpoint",
+    "apiInputRoomSetpointAge",
+    "apiInputRoomSetpointValid",
     "mqttRoomSetpoint",
     "mqttRoomSetpointAge",
     "mqttRoomSetpointValid",
+    "externalHeatDemandSource",
+    "externalHeatDemandSelected",
+    "externalHeatDemandHa",
+    "externalHeatDemandHaValid",
+    "apiInputExternalHeatDemand",
+    "apiInputExternalHeatDemandAge",
+    "apiInputExternalHeatDemandValid",
+    "powerHouseDemandSource",
+    "apiInputHeatingEnable",
+    "apiInputHeatingEnableAge",
+    "apiInputHeatingEnableValid",
     "mqttHeatingEnable",
     "mqttHeatingEnableAge",
     "mqttHeatingEnableValid",
@@ -1063,6 +1106,9 @@
     "cicChEnableValid",
     "heatingEnableHa",
     "heatingEnableHaValid",
+    "apiInputCoolingEnable",
+    "apiInputCoolingEnableAge",
+    "apiInputCoolingEnableValid",
     "mqttCoolingEnable",
     "mqttCoolingEnableAge",
     "mqttCoolingEnableValid",
@@ -1075,6 +1121,9 @@
     "coolingDewPointSelected",
     "coolingDewPointHa",
     "coolingDewPointHaValid",
+    "apiInputCoolingDewPoint",
+    "apiInputCoolingDewPointAge",
+    "apiInputCoolingDewPointValid",
     "mqttCoolingDewPoint",
     "mqttCoolingDewPointAge",
     "mqttCoolingDewPointValid",
@@ -1120,11 +1169,17 @@
     "cicRoomSetpoint",
     "roomTempHa",
     "roomTempHaValid",
+    "apiInputRoomTemperature",
+    "apiInputRoomTemperatureAge",
+    "apiInputRoomTemperatureValid",
     "mqttRoomTemperature",
     "mqttRoomTemperatureAge",
     "mqttRoomTemperatureValid",
     "roomSetpointHa",
     "roomSetpointHaValid",
+    "apiInputRoomSetpoint",
+    "apiInputRoomSetpointAge",
+    "apiInputRoomSetpointValid",
     "mqttRoomSetpoint",
     "mqttRoomSetpointAge",
     "mqttRoomSetpointValid",
@@ -1132,7 +1187,9 @@
   export const COOLING_SETTING_KEYS = [
     "coolingMinimumSupplyTemp",
     "coolingDemandMax",
+    "coolingRestartMode",
     "coolingRestartDelta",
+    "coolingMinimumOffTime",
     "coolingPidKp",
     "coolingPidKi",
     "coolingPidKd",
@@ -1146,6 +1203,9 @@
     "coolingDewPointSelected",
     "coolingDewPointHa",
     "coolingDewPointHaValid",
+    "apiInputCoolingDewPoint",
+    "apiInputCoolingDewPointAge",
+    "apiInputCoolingDewPointValid",
     "mqttCoolingDewPoint",
     "mqttCoolingDewPointAge",
     "mqttCoolingDewPointValid",
@@ -1161,12 +1221,15 @@
     "heatingCurvePidKi",
     "heatingCurvePidKd",
   ];
-  export const COMPRESSOR_SETTING_KEYS = ["minRuntime", "hp1ExcludedA", "hp1ExcludedB", "hp2ExcludedA", "hp2ExcludedB"];
+  export const EXCLUDED_FREQUENCY_KEYS = [
+    "hp1ExcludeMinHz", "hp1ExcludeMaxHz", "hp2ExcludeMinHz", "hp2ExcludeMaxHz",
+  ];
+  export const COMPRESSOR_SETTING_KEYS = ["minRuntime", ...EXCLUDED_FREQUENCY_KEYS];
   // Restore order: gate + thresholds first, the function last, so a backup
   // restore cannot energize the relay with stale gate settings in between.
   export const AUX_RELAY_SETTING_KEYS = ["auxWaitForSupplyTemp", "auxHeatingStartTemp", "auxCoolingStartTemp", "auxTempHysteresis", "auxRelayFunction"];
   export const AUX_RELAY_STATE_KEYS = ["auxRelayActive", "auxRelayStatus"];
-  export const SILENT_SETTING_KEYS = ["silentStartTime", "silentEndTime", "silentMax", "dayMax"];
+  export const SILENT_SETTING_KEYS = ["silentStartTime", "silentEndTime", ...FREQUENCY_CAP_KEYS];
   export const BOILER_SUPPORT_SWITCHING_KEYS = ["boilerSupportStartThreshold", "boilerSupportStopThreshold"];
   export const SERVICE_CONTROL_KEYS = [
     "controlModeOverride",
@@ -1176,10 +1239,6 @@
     "resetRuntimeCountersHp1",
     "resetRuntimeCountersHp1Hp2",
   ];
-  export const DEBUG_RECORDING_SAMPLE_INTERVAL_MS = 10000;
-  export const DEBUG_RECORDING_BUSY_RETRY_MS = 1000;
-  export const DEBUG_RECORDING_LOG_LIMIT = 120;
-  export const DEBUG_RECORDING_EVENT_LIMIT = 1000;
   export const DEBUG_RECORDING_DURATION_OPTIONS = [
     { minutes: 15, label: "15 min" },
     { minutes: 30, label: "30 min" },
@@ -1192,7 +1251,7 @@
     "hardwareProfileText",
     "hardwareRevisionText",
     "connectionText",
-    "timeValid",
+    "timeNowHhmm",
     "controlModeLabel",
     "strategy",
     "openquattEnabled",
@@ -1321,23 +1380,77 @@
     "alternatingCompressorStartsWarning",
     "cicDataStale",
     "otLinkProblem",
+    "flowOutputIpwm",
+    "hp1CompressorStarts2h",
+    "hp1CompressorStarts6h",
+    "hp1CompressorStarts24h",
+    "hp1CompressorStarts72h",
+    "hp2CompressorStarts2h",
+    "hp2CompressorStarts6h",
+    "hp2CompressorStarts24h",
+    "hp2CompressorStarts72h",
+    "boilerActive",
+    "boilerCommandValid",
+    "boilerCommandActive",
+    "boilerCommandSource",
+    "boilerCommandTargetTemperature",
+    "boilerBlockReason",
+    "otbLinkAvailable",
+    "otbChCommand",
+    "otbControlSetpointCommand",
+    "otbFlameOn",
+    "otbLastResponseAge",
+    "otbTransportErrorCount",
+    "otbMaxCapacity",
+    "otbMinModulation",
+    "curveRestartBlockedByRoom",
+    "heatingEnableSource",
+    "heatingEnableValid",
+    "heatingEnableSelected",
+    "otThermostatStatusValid",
+    "otThermostatChEnable",
+    "hp1Generation",
+    "hp2Generation",
+    "hp1GenerationVariant",
+    "hp2GenerationVariant",
+    "hp1CustomerModelCode",
+    "hp2CustomerModelCode",
+    "externalHeatDemandSource",
+    "externalHeatDemandSelected",
+    "powerHouseDemandSource",
+    "coolingRestartMode",
+    "coolingMinimumOffTime",
+    "coolingMinimumOffTimeRemaining",
+    "boilerPowerTestStatus",
+    "boilerCommandRequestedPower",
+    "boilerHeatPower",
+    "otbFaultIndication",
+    "otbDhwActive",
+    "otbRelativeModulation",
+    "otbBoilerWaterTemp",
+    "otbReturnWaterTemp",
+    "otbStartHandshakeDetail",
+    "boilerStartThermalGuard",
+    "boilerStartThermalSafeCeiling",
+    "boilerPowerTestResultQuality",
   ];
   export const FIRMWARE_ENTITY_KEYS = ["firmwareUpdate", "firmwareUpdateChannel", "firmwareUpdateTarget", "firmwareUpdateProgress", "firmwareUpdateStatus"];
-  export const FIRMWARE_TEST_ENTITY_KEYS = ["firmwareTestOtaUrl", "firmwareTestOtaMd5Url", "installFirmwareTestOta"];
-  export const FIRMWARE_MODAL_KEYS = [...FIRMWARE_ENTITY_KEYS, ...FIRMWARE_TEST_ENTITY_KEYS, "installFirmwareUpdateTarget", "projectVersionText", "releaseChannelText", "installationTopology", "hardwareProfileText", "connectionText"];
-  export const TOPOLOGY_HINT_KEYS = ["hp2ExcludedA", "hp2ExcludedB", "hp2Power", "hp2WaterOut"];
+  export const FIRMWARE_TEST_ENTITY_KEYS = ["firmwareTestManifestUrl", "installFirmwareTestManifest"];
+  export const FIRMWARE_TEST_LEGACY_ENTITY_KEYS = ["firmwareTestOtaUrl", "firmwareTestOtaMd5Url", "installFirmwareTestOta"];
+  export const FIRMWARE_MODAL_KEYS = [...FIRMWARE_ENTITY_KEYS, ...FIRMWARE_TEST_ENTITY_KEYS, ...FIRMWARE_TEST_LEGACY_ENTITY_KEYS, "installFirmwareUpdateTarget", "projectVersionText", "releaseChannelText", "installationTopology", "hardwareProfileText", "connectionText", "preferredConnection"];
+  export const TOPOLOGY_HINT_KEYS = ["hp2ExcludeMinHz", "hp2Power", "hp2WaterOut"];
   export const HEADER_ENTITY_KEYS = [
     "status",
     "uptime",
     "uptimeReadable",
     "timeNowHhmm",
-    "timeValid",
     "ipAddress",
     "wifiSsid",
     "wifiSignal",
     "installationTopology",
     "hardwareProfileText",
     "connectionText",
+    "preferredConnection",
     "hpGeneration",
     "projectVersionText",
     "releaseChannelText",
@@ -1349,6 +1462,7 @@
     "openquattEnabled",
     "usageTelemetryEnabled",
     "usageTelemetryChoiceConfigured",
+    "auxHeatSourcePresent",
     "boilerCvAssistEnabled",
     "boilerConnection",
     "openquattResumeAt",
@@ -1446,6 +1560,7 @@
     "openquattEnabled",
     "usageTelemetryEnabled",
     "usageTelemetryChoiceConfigured",
+    "auxHeatSourcePresent",
     "boilerCvAssistEnabled",
     "boilerRatedHeatPower",
     "boilerConnection",
@@ -1628,7 +1743,10 @@
   export const SETTINGS_KEYS = [
     "strategy",
     "installationTopology",
+    "connectionText",
+    "preferredConnection",
     "hpGeneration",
+    "electricalCurrentLimit",
     "openquattEnabled",
     "boilerCvAssistEnabled",
     "boilerRatedHeatPower",
@@ -1641,13 +1759,13 @@
     "usageTelemetryEnabled",
     "usageTelemetryInstallationId",
     "silentModeOverride",
+    "silentActive",
     "trendHistoryEnabled",
     "trendHistoryFlashEnabled",
     "trendHistoryFlush",
     "decisionLogHistoryEnabled",
     "decisionLogHistoryFlush",
     "decisionLogHistoryClear",
-    "webServerLogHistoryEnabled",
     "lifetimeEnergyHistoryEnabled",
     "lifetimeEnergyHourRetention",
     "lifetimeEnergyHistoryCapture",
@@ -1664,6 +1782,7 @@
     ...FLOW_SETTING_KEYS,
     ...FLOW_TUNING_KEYS,
     ...SENSOR_CALIBRATION_KEYS,
+    ...SUPPLY_CALIBRATION_BACKUP_KEYS,
     ...SENSOR_CALIBRATION_STATE_KEYS,
     ...INSTALLATION_MONITORING_STATE_KEYS,
     ...COOLING_SETTING_KEYS,
@@ -1673,18 +1792,20 @@
     ...COMPRESSOR_SETTING_KEYS,
     ...SILENT_SETTING_KEYS,
     ...SERVICE_CONTROL_KEYS,
-    ...ODU_RUNTIME_FREQUENCY_KEYS,
   ];
   export const SETTINGS_BACKUP_WRITABLE_DOMAINS = new Set(["number", "select", "switch", "text", "time", "datetime"]);
   export const SETTINGS_BACKUP_EXPECTED_EXTRA_KEYS = new Set(["setupComplete", "openquattResumeAt", "firmwareUpdateChannel"]);
   export const SETTINGS_BACKUP_EXCLUDED_KEYS = new Set([
     "installationTopology",
+    "preferredConnection",
     ...COMMISSIONING_STATE_KEYS,
-    ...ODU_RUNTIME_FREQUENCY_KEYS,
     "cicDataStale",
     "otLinkProblem",
     "otbChCommand",
     "otbControlSetpointCommand",
+    // A live power request rather than a persisted setting: restoring it
+    // would re-assert a stale demand and mark it freshly valid.
+    "apiInputExternalHeatDemand",
     "coolingGuardMode",
     "coolingFallbackNightMinOutdoorTemp",
     "coolingFallbackMinSupplyTemp",
@@ -1702,6 +1823,7 @@
       keys: [
         "setupComplete",
         "hpGeneration",
+        "electricalCurrentLimit",
         "boilerCvAssistEnabled",
         "boilerRatedHeatPower",
         ...BOILER_SETTING_KEYS,
@@ -1734,6 +1856,8 @@
       id: "sensor_sources",
       label: "Sensorbronnen",
       keys: [
+        ...SENSOR_CALIBRATION_KEYS,
+        ...SUPPLY_CALIBRATION_BACKUP_KEYS,
         "waterSupplySource",
         "localWaterSupplyTempSource",
         "flowSource",
@@ -1745,7 +1869,13 @@
         "heatingEnableSource",
         "coolingEnableSource",
         "coolingDewPointSource",
-        ...SENSOR_CALIBRATION_KEYS,
+        "externalHeatDemandSource",
+        "apiInputOutsideTemperature",
+        "apiInputRoomTemperature",
+        "apiInputRoomSetpoint",
+        "apiInputHeatingEnable",
+        "apiInputCoolingEnable",
+        "apiInputCoolingDewPoint",
       ],
     },
     {
@@ -1754,8 +1884,7 @@
       keys: [
         "silentStartTime",
         "silentEndTime",
-        "dayMax",
-        "silentMax",
+        ...FREQUENCY_CAP_KEYS,
         "maxWater",
       ],
     },
@@ -1797,7 +1926,9 @@
       keys: [
         "coolingMinimumSupplyTemp",
         "coolingDemandMax",
+        "coolingRestartMode",
         "coolingRestartDelta",
+        "coolingMinimumOffTime",
         "coolingPidKp",
         "coolingPidKi",
         "coolingPidKd",
@@ -1811,7 +1942,7 @@
     {
       id: "compressor",
       label: "Compressor",
-      keys: ["minRuntime", "compressorStarts2hWarningLimit", "compressorStarts72hWarningLimit", "hp1ExcludedA", "hp1ExcludedB", "hp2ExcludedA", "hp2ExcludedB"],
+      keys: ["minRuntime", "compressorStarts2hWarningLimit", "compressorStarts72hWarningLimit", ...EXCLUDED_FREQUENCY_KEYS],
     },
     {
       id: "system",
@@ -1822,7 +1953,6 @@
         "decisionLogHistoryEnabled",
         "lifetimeEnergyHistoryEnabled",
         "lifetimeEnergyHourRetention",
-        "webServerLogHistoryEnabled",
         "firmwareUpdateChannel",
       ],
     },

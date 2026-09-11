@@ -1,5 +1,7 @@
-import { getOduRuntimeFrequencyButtonHp, getOduRuntimeFrequencyHpKeys, INSTALLATION_MONITORING_STATE_KEYS, ODU_RUNTIME_FREQUENCY_BUTTON_KEYS } from "./config.js";
-import { triggerIncidentAction, triggerNamedButton } from "./entity-write-actions.js";
+import { INSTALLATION_MONITORING_STATE_KEYS } from "./config.js";
+import { getEntityValue, hasEntity } from "./entity-store.js";
+import { triggerIncidentAction, triggerNamedButton, triggerNamedButtonGroup } from "./entity-write-actions.js";
+import { normalizeDetectedOduGeneration, ODU_CUSTOMER_MODEL_CODE_KEYS, ODU_GENERATION_DETECT_KEYS, ODU_GENERATION_KEYS, ODU_GENERATION_VARIANT_KEYS } from "./odu-generation.js";
 import { state } from "./state.js";
 
 const commissioningRefreshGroups = [
@@ -16,7 +18,7 @@ const commissioningRefreshGroups = [
     actions: ["boilerPowerTestStart", "boilerPowerTestAbort", "boilerPowerTestApply"],
     keys: [
       "commissioningStatus", "boilerPowerTestStatus", "boilerPowerTestActive", "boilerHeatPower",
-      "boilerPowerTestResult", "boilerRatedHeatPower",
+      "boilerPowerTestResult", "boilerPowerTestResultQuality", "boilerRatedHeatPower", "flowSetpoint",
     ],
   },
   {
@@ -39,11 +41,15 @@ const commissioningRefreshGroups = [
       "hpWaterCalibrationResultReference", "hpWaterCalibrationResultSpreadBefore",
       "hpWaterCalibrationResultExpectedSpread", "hpWaterCalibrationResultHp1InRawAvg",
       "hpWaterCalibrationResultHp1OutRawAvg", "hpWaterCalibrationResultHp2InRawAvg",
-      "hpWaterCalibrationResultHp2OutRawAvg", "hp1WaterInRaw", "hp1WaterOutRaw", "hp2WaterInRaw",
+      "hpWaterCalibrationResultHp2OutRawAvg", "hpWaterCalibrationResultSupplyRawAvg",
+      "hpWaterCalibrationResultSupplyOffset", "hpWaterCalibrationResultSupplySource",
+      "hp1WaterInRaw", "hp1WaterOutRaw", "hp2WaterInRaw",
       "hp2WaterOutRaw", "hp1WaterIn", "hp1WaterOut", "hp2WaterIn", "hp2WaterOut",
       "hp1WaterInOffset", "hp1WaterOutOffset", "hp2WaterInOffset", "hp2WaterOutOffset",
       "hp1WaterInOffsetSuggested", "hp1WaterOutOffsetSuggested", "hp2WaterInOffsetSuggested",
-      "hp2WaterOutOffsetSuggested", "flowMode",
+      "hp2WaterOutOffsetSuggested", "waterSupplyCalibrationOffset",
+      "waterSupplyCalibrationOffsetSuggested", "waterSupplyCalibrationRequired",
+      "waterSupplyCalibrationStatus", "supplyTemp", "flowMode",
     ],
   },
   {
@@ -156,25 +162,37 @@ function getRefreshOptions(buttonKey) {
     return { refreshKeys: [...group.keys] };
   }
 
-  if (ODU_RUNTIME_FREQUENCY_BUTTON_KEYS.has(buttonKey)) {
-    const hpIndex = getOduRuntimeFrequencyButtonHp(buttonKey);
-    if (hpIndex) {
-      const isLoad = buttonKey.endsWith("Load");
-      return {
-        refreshKeys: getOduRuntimeFrequencyHpKeys(hpIndex),
-        refreshDelayMs: isLoad ? 1200 : 3200,
-        successNotice: isLoad
-          ? `HP${hpIndex} ODU runtime tabel lezen aangevraagd.`
-          : `HP${hpIndex} ODU runtime write aangevraagd; controleer status/readback.`,
-        errorPrefix: `ODU runtime actie mislukt voor HP${hpIndex}`,
-      };
-    }
-  }
-
   return {};
 }
 
-export function handleNamedButtonAction(action, button) {
+function triggerOduGenerationDetection(detectKeys) {
+  const detectIndexes = detectKeys.map((key) => ODU_GENERATION_DETECT_KEYS.indexOf(key));
+  const generationKeys = detectIndexes.map((index) => ODU_GENERATION_KEYS[index]);
+  const refreshKeys = detectIndexes.flatMap((index) => [
+    ODU_GENERATION_KEYS[index],
+    ODU_GENERATION_VARIANT_KEYS[index],
+    ODU_CUSTOMER_MODEL_CODE_KEYS[index],
+  ]);
+
+  generationKeys.forEach((key) => {
+    const current = state.entities[key];
+    if (current) state.entities[key] = { ...current, state: "Unknown", value: "Unknown" };
+  });
+
+  return triggerNamedButtonGroup(detectKeys, {
+    busyAction: "odu-generation-detect-all",
+    refreshKeys,
+    refreshDelayMs: 800,
+    refreshIntervalMs: 1200,
+    refreshTimeoutMs: 33000,
+    refreshUntil: () => generationKeys.every((key) => normalizeDetectedOduGeneration(getEntityValue(key)) !== "Unknown"),
+    refreshTimeoutMessage: "ODU-detectie niet binnen 33 seconden voltooid",
+    successNotice: "ODU-detectie voltooid.",
+    errorPrefix: "ODU-detectie niet volledig uitgevoerd",
+  });
+}
+
+  export function handleNamedButtonAction(action, button) {
   if (action === "retry-hp-start" || action === "confirm-hp-power-cycle") {
     const hpIndex = Number(button.dataset.oqHpIndex || 0);
     if (hpIndex !== 1 && hpIndex !== 2) return true;
@@ -190,6 +208,12 @@ export function handleNamedButtonAction(action, button) {
     void triggerIncidentAction(hpIndex, kind);
     return true;
   }
+  if (action === "press-odu-generation-detect-all") {
+    const detectKeys = ODU_GENERATION_DETECT_KEYS.filter((key) => hasEntity(key));
+    if (detectKeys.length === 0) return true;
+    void triggerOduGenerationDetection(detectKeys);
+    return true;
+  }
   if (action !== "press-named-button") {
     return false;
   }
@@ -197,6 +221,10 @@ export function handleNamedButtonAction(action, button) {
   const buttonKey = String(button.dataset.oqButtonKey || button.dataset.buttonKey || button.getAttribute("data-oq-button-key") || "").trim();
   if (buttonKey) {
     prepareCommissioningState(buttonKey);
+    if (ODU_GENERATION_DETECT_KEYS.includes(buttonKey)) {
+      void triggerOduGenerationDetection([buttonKey]);
+      return true;
+    }
     void triggerNamedButton(buttonKey, getRefreshOptions(buttonKey));
   }
   return true;

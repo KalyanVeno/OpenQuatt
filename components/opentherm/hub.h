@@ -64,14 +64,39 @@ class OpenthermHub final : public Component {
 
   bool sending_initial_ = true;
   bool priority_sequence_active_ = false;
+  bool urgent_priority_pending_ = false;
+  MessageId urgent_priority_first_ = MessageId::STATUS;
+  MessageId urgent_priority_second_ = MessageId::STATUS;
+  bool deferred_priority_pending_ = false;
+  bool deferred_priority_activated_ = false;
+  MessageId deferred_priority_first_ = MessageId::STATUS;
+  MessageId deferred_priority_second_ = MessageId::STATUS;
   // The OpenQuatt transport owner explicitly starts polling after restore.
   bool polling_enabled_ = false;
   std::unordered_map<MessageId, uint8_t> configured_messages_;
   std::vector<MessageId> messages_;
   std::vector<MessageId>::const_iterator message_iterator_;
 
-  uint32_t last_conversation_start_ = 0;
-  uint32_t last_conversation_end_ = 0;
+  bool has_last_conversation_start_ = false;
+  bool has_last_conversation_end_ = false;
+  bool has_last_wire_response_ = false;
+  uint32_t last_conversation_start_us_ = 0;
+  uint32_t last_conversation_end_us_ = 0;
+  uint32_t last_wire_response_us_ = 0;
+  uint32_t last_processing_latency_us_ = 0;
+  uint32_t requests_started_ = 0;
+  uint32_t tx_completed_ = 0;
+  uint32_t rx_captured_ = 0;
+  uint32_t rx_accepted_ = 0;
+  uint32_t rx_rejected_ = 0;
+  uint32_t tx_timeouts_ = 0;
+  uint32_t response_timeouts_ = 0;
+  uint32_t late_response_timeouts_ = 0;
+  uint32_t max_wire_response_us_ = 0;
+  uint32_t max_processing_latency_us_ = 0;
+  transport_diagnostics::SlowPollStats slow_transport_poll_stats_;
+  OperationMode last_slow_transport_mode_before_ = IDLE;
+  OperationMode last_slow_transport_mode_after_ = IDLE;
   OperationMode last_mode_ = IDLE;
   OpenthermData last_request_;
 
@@ -80,8 +105,8 @@ class OpenthermHub final : public Component {
   // Very likely to happen while using Dallas temperature sensors.
   bool sync_mode_ = false;
 
-  CallbackManager<void(OpenthermData &)> before_send_callback_;
-  CallbackManager<void(OpenthermData &)> before_process_response_callback_;
+  CallbackManager<void(OpenthermData&)> before_send_callback_;
+  CallbackManager<void(OpenthermData&)> before_process_response_callback_;
 
   // Create OpenTherm messages based on the message id
   OpenthermData build_request_(MessageId request_id) const;
@@ -90,16 +115,24 @@ class OpenthermHub final : public Component {
   void handle_timeout_error_();
   void handle_timer_error_();
   void stop_opentherm_();
+  void activate_priority_sequence_(MessageId first, MessageId second);
+  void apply_urgent_priority_();
+  void apply_deferred_priority_();
   void start_conversation_();
   void read_response_();
-  void check_timings_(uint32_t cur_time);
-  bool should_skip_loop_(uint32_t cur_time) const;
+  void check_cadence_(uint32_t started_us) const;
+  bool should_skip_loop_(uint32_t cur_time_us) const;
+  void warn_if_slow_(const char* phase, uint32_t started_us) const;
+  void record_transport_poll_(transport_diagnostics::PollResult result, OperationMode mode_before,
+                              OperationMode mode_after, uint32_t elapsed_us);
+  void log_transport_diagnostics_() const;
   void sync_loop_();
 
-  void write_initial_messages_(std::vector<MessageId> &target);
-  void write_repeating_messages_(std::vector<MessageId> &target);
+  void write_initial_messages_(std::vector<MessageId>& target);
+  void write_repeating_messages_(std::vector<MessageId>& target);
 
-  template<typename F> bool spin_wait_(uint32_t timeout, F func) {
+  template <typename F>
+  bool spin_wait_(uint32_t timeout, F func) {
     auto start_time = millis();
     while (func()) {
       yield();
@@ -116,11 +149,11 @@ class OpenthermHub final : public Component {
   OpenthermHub();
 
   // Handle responses from the OpenTherm interface
-  void process_response(OpenthermData &data);
+  void process_response(OpenthermData& data);
 
   // Setters for the input and output OpenTherm interface pins
-  void set_in_pin(InternalGPIOPin *in_pin) { this->in_pin_ = in_pin; }
-  void set_out_pin(InternalGPIOPin *out_pin) { this->out_pin_ = out_pin; }
+  void set_in_pin(InternalGPIOPin* in_pin) { this->in_pin_ = in_pin; }
+  void set_out_pin(InternalGPIOPin* out_pin) { this->out_pin_ = out_pin; }
 
   OPENTHERM_SENSOR_LIST(OPENTHERM_SET_SENSOR, )
 
@@ -163,15 +196,19 @@ class OpenthermHub final : public Component {
   void set_sync_mode(bool sync_mode) { this->sync_mode_ = sync_mode; }
 
   void prioritize_messages(MessageId first, MessageId second);
+  void defer_priority_messages(MessageId first, MessageId second);
+  bool consume_deferred_priority_activation(MessageId first, MessageId second);
   void start_priority_polling(MessageId first, MessageId second);
   void resume_polling();
   void suspend_polling();
   bool is_polling_enabled() const { return this->polling_enabled_; }
 
-  template<typename F> void add_on_before_send_callback(F &&callback) {
+  template <typename F>
+  void add_on_before_send_callback(F&& callback) {
     this->before_send_callback_.add(std::forward<F>(callback));
   }
-  template<typename F> void add_on_before_process_response_callback(F &&callback) {
+  template <typename F>
+  void add_on_before_process_response_callback(F&& callback) {
     this->before_process_response_callback_.add(std::forward<F>(callback));
   }
 
