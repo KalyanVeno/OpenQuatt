@@ -52,10 +52,6 @@ binary_sensor:
       id: ot_thermostat_ch_enable
       name: "OT - Thermostat CH Enable"
       icon: mdi:radiator
-    master_ch_enable:
-      id: ot_thermostat_ch_enable
-      name: "OT - Thermostat CH Enable"
-      icon: mdi:radiator
     master_dhw_enable:
       id: ot_thermostat_dhw_enable
       name: "OT - Thermostat DHW Enable"
