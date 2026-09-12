@@ -472,6 +472,10 @@ void OpenQuattOTSlave::publish_master_runtime_state_() {
   publish_binary_if_changed(this->master_ch_enable_binary_sensor, m_master_state.ch_enable,
                             m_lastPublishedMasterCHEnableBinary);
 #endif
+#ifdef OPENQUATT_OT_SLAVE_HAS_BINARY_SENSOR_master_dhw_enable
+  publish_binary_if_changed(this->master_dhw_enable_binary_sensor, m_master_state.dhw_enable,
+                            m_lastPublishedMasterDHWEnableBinary);
+#endif
 #ifdef OPENQUATT_OT_SLAVE_HAS_BINARY_SENSOR_master_cooling_enable
   publish_binary_if_changed(this->master_cooling_enable_binary_sensor, m_master_state.cooling_enable,
                             m_lastPublishedMasterCoolingEnableBinary);
