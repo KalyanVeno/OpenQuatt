@@ -42,16 +42,19 @@ Draadkleuren in de schema's en stappenhulp zijn illustratief. De klemmarkeringen
 > [!NOTE]
 > Bij de OpenTherm-verbindingen (`OTT` en `OTB`) en het aan/uit-contact (`R1`: `COM` + `NO`) maakt de polariteit of volgorde van de twee aders niet uit. Gebruik wel de genoemde aansluitklemmen.
 
+> [!WARNING]
+> Een ZJ-B10-flowmeter kan niet rechtstreeks op `Q` worden aangesloten. Voor deze vervanging moet de kabel worden aangepast met een BC547-transistor en een weerstand van 4,7 kΩ. Volg hiervoor de [ZJ-B10-aansluithandleiding en pinbezetting](hcq-io-overzicht.md#zj-b10-aansluiten).
+
 > [!IMPORTANT]
 > Kies voor de CV-ketel óf `OTB` óf `R1`; gebruik beide routes niet tegelijk.
 
 > [!TIP]
-> De verbinding tussen `M2` en de CiC is optioneel. Activeer daarna **CiC-compatibiliteit** onder **Instellingen → Bronnen / integraties** als de Quatt app via de CiC moet blijven meekijken. Deze functie staat standaard uit en geeft alleen OpenQuatt-data door; de CiC neemt de regeling niet over.
+> De Modbusverbinding tussen `M2` en de CiC is optioneel. Activeer daarna **Quatt-app via CiC** onder **Instellingen → Bronnen / integraties** om buitenunitgegevens in de Quatt-app te blijven bekijken. Deze functie staat standaard uit en geeft alleen buitenunitgegevens door, geen thermostaatgegevens. OpenQuatt blijft regelen. Dit staat los van **CiC JSON-feed inlezen**, waarmee OpenQuatt juist gegevens uit de CiC leest.
 
 ### M1, M2 en de optionele aansluitingen
 
 - **M1** is de primaire Modbuspoort voor de Quatt-buitenunit(s). Deze verbinding is nodig voor de normale regeling.
-- **M2** is de optionele Modbuspoort voor CiC-compatibiliteit. Verbind M2 alleen met de vrijgekomen Modbuspoort van de CiC als de Quatt app moet blijven meekijken.
+- **M2** is de optionele Modbuspoort voor Quatt-app via CiC. Verbind M2 alleen met de vrijgekomen Modbuspoort van de CiC als de Quatt-app moet blijven meekijken. M2 is niet nodig voor CiC JSON-feed inlezen.
 - **R2** is een tweede potentiaalvrij wisselrelais met `NC`, `COM` en `NO`. R2 kan optioneel als hulprelais worden ingesteld via **Instellingen → Installatie → Hulprelais (R2)**, bijvoorbeeld om een fancoil, pomp of klep te laten volgen op de warmte- of koelvraag van OpenQuatt. Standaard staat deze functie uit en blijft R2 onbekrachtigd. Sluit apparatuur die moet inschakelen bij een actief relais aan op `COM` + `NO`; heb je geen hulpuitgang nodig, laat deze aansluiting dan vrij.
 - **T** is een 1-Wire-aansluiting voor een optionele Dallas/DS18B20-temperatuursensor: `+3.3V`, `GND` en `DATA`.
 
@@ -163,7 +166,8 @@ Volg de route die de web-app voor jouw installatie toont. De basisstappen zijn:
 9. **Watertemperatuur beveiligen:** controleer de normale bovengrens en de tripgrens.
 10. **Stille uren en niveaus:** stel het stille venster en de compressorlimieten voor dag en nacht in.
 11. **Gebruiksstatistieken:** controleer of OpenQuatt beperkte technische systeemstatus, aan/uit-statussen van functies en configuratiekeuzes zoals Quatt Hybrid-versie, verwarmingsstrategie, flowbron en regelbronnen mag delen; tijdens een nieuwe Quick Start staat dit standaard aan en kan het hier worden uitgezet. Gemeten of ingestelde temperaturen, wifi-gegevens, gebruikersnamen en wachtwoorden worden nooit meegestuurd.
-12. **Bevestigen en afronden:** controleer je keuzes en markeer Quick Start als voltooid.
+12. **Prestatiemetingen:** kies of OpenQuatt stabiele verwarmingsmetingen mag delen voor validatie van het prestatiemodel; tijdens een nieuwe Quick Start staat dit standaard uit en kan het hier worden aangezet.
+13. **Bevestigen en afronden:** controleer je keuzes en markeer Quick Start als voltooid.
 
 Bij een koude verwarmingsstart circuleert OpenQuatt eerst water en controleert daarna de uitgaande temperatuur van iedere aangesloten ODU. Onder `5 °C` blijven de compressoren uit; met `Overnemen wanneer de warmtepomp niet beschikbaar is` kan de aanvullende warmtebron voorverwarmen. Tussen `5 en 12 °C` starten de warmtepompen zelfstandig; met `Hybride verwarmen bij vermogenstekort` helpt de aanvullende warmtebron tijdelijk mee. Vanaf `12 °C` geldt de normale warmteregeling. Een algemene startgrens van `18 °C` wordt niet toegepast.
 

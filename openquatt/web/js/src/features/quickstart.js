@@ -16,6 +16,7 @@ import { renderSilentSettingsGrid } from "../settings/silent.js";
 import { renderWaterSettingsFields } from "../settings/water.js";
 import { escapeHtml } from "../core/html.js";
 import { renderUsageTelemetryConsent, renderUsageTelemetryDisclosure } from "./usage-telemetry.js";
+import { renderPerformanceTelemetryConsent, renderPerformanceTelemetryDisclosure } from "./performance-telemetry.js";
 
   export function getQuickStartSetupModel() {
     const currentTopology = getInstallationTopology();
@@ -224,12 +225,6 @@ import { renderUsageTelemetryConsent, renderUsageTelemetryDisclosure } from "./u
     if (normalized === "heatpump_controller_q" || normalized.includes("q-edition") || normalized.includes("controller q")) {
       return "heatpump_controller_q";
     }
-    if (normalized === "heatpump_listener" || normalized.includes("listener")) {
-      return "heatpump_listener";
-    }
-    if (normalized === "waveshare" || normalized.includes("waveshare")) {
-      return "waveshare";
-    }
     return "";
   }
 
@@ -242,26 +237,16 @@ import { renderUsageTelemetryConsent, renderUsageTelemetryDisclosure } from "./u
     if (!profile && hasEntity("qFlowSource")) {
       profile = "heatpump_controller_q";
       inferred = true;
-    } else if (!profile && hasEntity("flowSource") && hasEntity("cicPollingEnabled")) {
-      profile = "remote";
-      inferred = true;
     }
 
     return {
       profile,
       inferred,
       isQEdition: profile === "heatpump_controller_q",
-      isRemoteProfile: profile === "heatpump_listener" || profile === "waveshare" || profile === "remote",
       hardwareKnown: Boolean(profile),
       hardwareLabel: profile === "heatpump_controller_q"
         ? "Heatpump Controller Q-edition"
-        : profile === "heatpump_listener"
-          ? "Heatpump Listener"
-          : profile === "waveshare"
-            ? "Waveshare"
-            : profile === "remote"
-              ? "Heatpump Listener / Waveshare"
-              : "Onbekend hardwareprofiel",
+        : "Onbekend hardwareprofiel",
     };
   }
 
@@ -269,10 +254,10 @@ import { renderUsageTelemetryConsent, renderUsageTelemetryDisclosure } from "./u
     const generation = String(getEntityValue("hpGeneration") || "").trim();
     const hardware = getQuickStartHardwareProfileModel();
     const isV1 = generation === "V1";
-    const { isQEdition, isRemoteProfile, hardwareKnown } = hardware;
-    const requiresCic = isV1 && isRemoteProfile;
+    const { isQEdition, hardwareKnown } = hardware;
+    const requiresCic = false;
     const qFlowTarget = isQEdition ? (isV1 ? "Local" : "Outdoor unit") : "";
-    const flowSourceTarget = requiresCic ? "CIC" : "Outdoor unit";
+    const flowSourceTarget = "Outdoor unit";
     const currentFlowSource = String(getEntityValue("flowSource") || "").trim();
     const currentQFlowSource = String(getEntityValue("qFlowSource") || "").trim();
     const cicEnabled = isEntityActive("cicPollingEnabled");
@@ -345,7 +330,7 @@ import { renderUsageTelemetryConsent, renderUsageTelemetryDisclosure } from "./u
 
   export function getQuickStartThermostatSourceModel() {
     const hardware = getQuickStartHardwareProfileModel();
-    const { isQEdition, isRemoteProfile } = hardware;
+    const { isQEdition } = hardware;
     const currentRoomTempSource = String(getEntityValue("roomTempSource") || "").trim();
     const currentRoomSetpointSource = String(getEntityValue("roomSetpointSource") || "").trim();
     const pairedCurrentSource = currentRoomTempSource === currentRoomSetpointSource
@@ -374,7 +359,7 @@ import { renderUsageTelemetryConsent, renderUsageTelemetryDisclosure } from "./u
         ? isEntityActive("cicJsonFeedOk") && !isEntityActive("cicDataStale") && valuesAvailable
         : isEntityActive("roomTempHaValid") && isEntityActive("roomSetpointHaValid") && valuesAvailable;
 
-    let status = isQEdition || isRemoteProfile ? "Nog activeren" : "Hardwareprofiel niet herkend";
+    let status = isQEdition ? "Nog activeren" : "Hardwareprofiel niet herkend";
     if (configurationApplied) {
       status = sourceHealthy ? "Geldig" : selectedSource === "OT thermostat"
         ? "OpenTherm-verbinding controleren"
@@ -397,7 +382,6 @@ import { renderUsageTelemetryConsent, renderUsageTelemetryDisclosure } from "./u
     return {
       hardwareLabel: hardware.hardwareLabel,
       isQEdition,
-      isRemoteProfile,
       selectedSource,
       sourceLabel,
       explanation,
@@ -407,7 +391,7 @@ import { renderUsageTelemetryConsent, renderUsageTelemetryDisclosure } from "./u
       roomSetpointValue,
       valuesAvailable,
       ...cicUrl,
-      canApply: (isQEdition || isRemoteProfile)
+      canApply: isQEdition
         && hasEntity("roomTempSource")
         && hasEntity("roomSetpointSource")
         && (selectedSource !== "OT thermostat" || hasEntity("otEnabled"))
@@ -504,23 +488,6 @@ import { renderUsageTelemetryConsent, renderUsageTelemetryDisclosure } from "./u
     const model = getQuickStartThermostatSourceModel();
     const busy = state.busyAction === "quickstart-thermostat-source";
     const statusClass = model.status === "Geldig" ? " is-active" : "";
-    const sourceSelector = model.isRemoteProfile ? `
-      <article class="oq-helper-surface oq-settings-field oq-settings-field--span-2" data-oq-settings-field="quickStartThermostatSource">
-        <div class="oq-settings-field-head">
-          <h3>Gegevensbron</h3>
-          ${renderSettingsInfoToggle("quickStartThermostatSource", "Gegevensbron", "Kamertemperatuur en kamer-setpoint worden bewust als gekoppeld paar ingesteld.")}
-        </div>
-        <div class="oq-settings-field-control">
-          <label class="oq-settings-control oq-settings-control--select">
-            <select data-oq-quickstart-thermostat-source ${busy ? "disabled" : ""}>
-              <option value="CIC" ${model.selectedSource === "CIC" ? "selected" : ""}>CiC JSON-feed</option>
-              <option value="HA input" ${model.selectedSource === "HA input" ? "selected" : ""}>Home Assistant</option>
-            </select>
-          </label>
-          <p class="oq-settings-action-note">Deze keuze geldt altijd voor zowel kamertemperatuur als kamer-setpoint.</p>
-        </div>
-      </article>
-    ` : "";
     const cicField = model.selectedSource === "CIC" ? renderQuickStartCicFeedUrlField(model, busy) : "";
     const haNote = model.selectedSource === "HA input" ? `
       <article class="oq-helper-surface oq-settings-field oq-settings-field--span-2">
@@ -560,7 +527,6 @@ import { renderUsageTelemetryConsent, renderUsageTelemetryDisclosure } from "./u
             `,
             "oq-settings-field--span-2",
           )}
-          ${sourceSelector}
           ${cicField}
           ${haNote}
         </div>
@@ -778,6 +744,37 @@ import { renderUsageTelemetryConsent, renderUsageTelemetryDisclosure } from "./u
     `;
   }
 
+  export function renderPerformanceTelemetryWorkspace() {
+    const enabled = isEntityActive("performanceTelemetryEnabled");
+    const choiceConfigured = isEntityActive("performanceTelemetryChoiceConfigured");
+    const busy = state.loadingEntities || Boolean(state.busyAction);
+    return `
+      <section class="oq-helper-panel">
+        <p class="oq-helper-label">${escapeHtml(getQuickStepKicker("performance-telemetry"))}</p>
+        <h2 class="oq-helper-section-title">Prestatiemetingen</h2>
+        <p class="oq-helper-section-copy">Bij een nieuwe Quick Start staat het delen van prestatiemetingen standaard uit. Wil je dit wel, zet delen hier aan. Je kunt de keuze later altijd wijzigen.</p>
+        ${renderPerformanceTelemetryConsent({ enabled, busy })}
+        ${renderPerformanceTelemetryDisclosure()}
+        ${state.controlNotice ? `<p class="oq-helper-notice">${escapeHtml(state.controlNotice)}</p>` : ""}
+        ${state.controlError ? `<p class="oq-helper-error">${escapeHtml(state.controlError)}</p>` : ""}
+        ${state.controlError ? `
+          <div class="oq-helper-actions">
+            <button class="oq-helper-button" type="button" data-oq-action="retry-performance-telemetry-choice" ${busy ? "disabled" : ""}>Keuze opnieuw opslaan</button>
+          </div>
+        ` : ""}
+        ${!choiceConfigured && !busy ? `
+          <div class="oq-helper-actions">
+            <button class="oq-helper-button oq-helper-button--ghost" type="button" data-oq-action="confirm-no-performance-telemetry">Niet delen bevestigen</button>
+          </div>
+        ` : ""}
+        ${renderQuickStartStepNav({
+          nextDisabled: busy || !choiceConfigured || Boolean(state.controlError),
+          nextDisabledLabel: busy || !choiceConfigured ? "Keuze opslaan..." : "Controleer keuze",
+        })}
+      </section>
+    `;
+  }
+
   export function renderConfirmWorkspace() {
     return `
       <section class="oq-helper-panel">
@@ -785,9 +782,14 @@ import { renderUsageTelemetryConsent, renderUsageTelemetryDisclosure } from "./u
         <h2 class="oq-helper-section-title">Bevestigen en afronden</h2>
         <p class="oq-helper-section-copy">Controleer nog één keer je keuzes. Met afronden markeer je Quick Start als voltooid.</p>
         ${renderConfirmReviewCards()}
-        <section class="oq-helper-surface oq-helper-surface--muted" aria-label="Lokale historie">
-          <h3>Lokale historie</h3>
-          <p>Energiegegevens en belangrijke regelgebeurtenissen worden lokaal bewaard zodat Resultaten en diagnose ook na een herstart beschikbaar blijven. Dit kan later worden aangepast onder Instellingen → Gegevens bewaren.</p>
+        <section class="oq-quickstart-history" aria-label="Lokale historie">
+          <div>
+            <p class="oq-quickstart-history-label">Lokale historie</p>
+            <p class="oq-quickstart-history-copy">Energiegegevens en belangrijke regelgebeurtenissen blijven ook na een herstart beschikbaar in Resultaten en Diagnose.</p>
+          </div>
+          <button class="oq-helper-button oq-helper-button--ghost" type="button" data-oq-action="open-history-storage-modal">
+            Gegevens bewaren
+          </button>
         </section>
         ${state.controlNotice ? `<p class="oq-helper-notice">${escapeHtml(state.controlNotice)}</p>` : ""}
         ${state.controlError ? `<p class="oq-helper-error">${escapeHtml(state.controlError)}</p>` : ""}
@@ -840,6 +842,9 @@ import { renderUsageTelemetryConsent, renderUsageTelemetryDisclosure } from "./u
     }
     if (activeStep === "usage-telemetry") {
       return renderUsageTelemetryWorkspace();
+    }
+    if (activeStep === "performance-telemetry") {
+      return renderPerformanceTelemetryWorkspace();
     }
     if (activeStep === "confirm") {
       return renderConfirmWorkspace();
@@ -1053,6 +1058,10 @@ import { renderUsageTelemetryConsent, renderUsageTelemetryDisclosure } from "./u
       ? [["Technische gebruiksstatistieken", isEntityActive("usageTelemetryEnabled") ? "Delen" : "Niet delen"]]
       : [];
 
+    const performanceTelemetryLines = hasEntity("performanceTelemetryEnabled")
+      ? [["Prestatiemetingen delen", isEntityActive("performanceTelemetryEnabled") ? "Aan" : "Uit"]]
+      : [];
+
     const renderReviewList = (lines) => `
       <div class="oq-helper-review-list">
         ${lines
@@ -1087,6 +1096,7 @@ import { renderUsageTelemetryConsent, renderUsageTelemetryDisclosure } from "./u
         ${boilerLines.length ? renderReviewCard("CV-ketel / boiler", boilerLines) : ""}
         ${renderReviewCard("Stille uren", silentLines)}
         ${usageTelemetryLines.length ? renderReviewCard("Gebruiksstatistieken", usageTelemetryLines) : ""}
+        ${performanceTelemetryLines.length ? renderReviewCard("Prestatiemetingen", performanceTelemetryLines) : ""}
       </div>
     `;
   }

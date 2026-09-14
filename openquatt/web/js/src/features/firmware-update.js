@@ -63,12 +63,11 @@ import { render } from "../core/render-scheduler.js";
     const currentTopology = getInstallationTopology();
     const targetTopology = getFirmwareAlternateTopology();
     const currentConnection = getFirmwareBuildConnection();
-    const supportedConnections = hardware === "heatpump_controller_q" ? ["wifi", "eth"] : ["wifi"];
     if (
-      !["heatpump_controller_q", "heatpump_listener", "waveshare"].includes(hardware)
+      hardware !== "heatpump_controller_q"
       || (currentTopology !== "single" && currentTopology !== "duo")
       || !targetTopology
-      || !supportedConnections.includes(currentConnection)
+      || !["wifi", "eth"].includes(currentConnection)
     ) {
       return null;
     }
@@ -215,32 +214,10 @@ import { render } from "../core/render-scheduler.js";
         label: `Heatpump Controller Q ${topologyLabel} ${getFirmwareConnectionLabel(connection)}`,
       };
     }
-    const hardwareMap = {
-      waveshare: {
-        slug: "waveshare",
-        label: "Waveshare",
-      },
-      heatpump_listener: {
-        slug: "heatpump-listener",
-        label: "Heatpump Listener",
-      },
-    };
-    const profile = hardwareMap[hardware];
-    if (!profile || connection !== "wifi") {
-      return {
-        available: false,
-        label: "Onbekend target",
-        error: "Deze firmware meldt geen herkenbaar hardware-, opstelling- of verbindingsprofiel.",
-      };
-    }
-
-    const artifactName = `openquatt-${profile.slug}-${topology}-wifi`;
     return {
-      available: true,
-      artifactName,
-      otaFileName: `${artifactName}.firmware.ota.bin`,
-      manifestFileName: `${artifactName}-ota.manifest.json`,
-      label: `${profile.label} ${topologyLabel} Wi-Fi`,
+      available: false,
+      label: "Onbekend target",
+      error: "Deze firmware meldt geen herkenbaar hardware-, opstelling- of verbindingsprofiel.",
     };
   }
 
@@ -355,6 +332,11 @@ import { render } from "../core/render-scheduler.js";
     if (!target || !current || !parseFirmwareVersion(target) || !parseFirmwareVersion(current)) {
       return false;
     }
+    if (state.updateInstallMode === "channel-switch") {
+      return getFirmwareRunningChannelLabel().toLowerCase() === "dev"
+        && parseFirmwareVersion(current).prereleaseTag.toLowerCase() === "dev"
+        && current.replace(/^v/, "") === target.replace(/^v/, "");
+    }
     const relation = compareFirmwareVersions(current, target);
     return state.updateInstallMode === "downgrade" ? relation === 0 : relation >= 0;
   }
@@ -365,7 +347,10 @@ import { render } from "../core/render-scheduler.js";
     if (!latest || !current) {
       return false;
     }
-    if (isFirmwareDowngradeAvailable(entity)) {
+    if (state.updateInstallMode === "channel-switch") {
+      return hasInstalledFirmwareTargetVersion();
+    }
+    if (isFirmwareDowngradeAvailable(entity) || isFirmwareChannelTransition(entity)) {
       return false;
     }
     return compareFirmwareVersions(current, latest) >= 0;
@@ -806,7 +791,7 @@ import { render } from "../core/render-scheduler.js";
     if (!isFirmwareEntityAlignedWithChannel()) {
       return false;
     }
-    if (isFirmwarePrToDevTransition()) {
+    if (isFirmwareChannelTransition()) {
       return true;
     }
     const relation = getFirmwareVersionRelation();
@@ -850,7 +835,7 @@ import { render } from "../core/render-scheduler.js";
       && relation !== null
       && relation <= 0
       && !isFirmwareDowngradeAvailable(entity)
-      && !isFirmwarePrToDevTransition(entity)
+      && !isFirmwareChannelTransition(entity)
     ) {
       latest = "";
     }
@@ -869,12 +854,13 @@ import { render } from "../core/render-scheduler.js";
     return compareFirmwareVersions(latest, current);
   }
 
-  function isFirmwarePrToDevTransition(entity = getFirmwareUpdateEntity() || {}) {
+  export function isFirmwareChannelTransition(entity = getFirmwareUpdateEntity() || {}) {
     const current = parseFirmwareVersion(getFirmwareCurrentVersion(entity));
     const latest = parseFirmwareVersion(getFirmwareLatestVersion(entity));
     return getFirmwareChannelLabel().toLowerCase() === "dev"
       && isFirmwareEntityAlignedWithChannel(entity, "dev")
-      && current?.prereleaseTag.toLowerCase() === "pr"
+      && (current?.prereleaseTag.toLowerCase() === "pr"
+        || (current?.prereleaseTag === "" && getFirmwareRunningChannelLabel().toLowerCase() === "main"))
       && latest?.prereleaseTag.toLowerCase() === "dev";
   }
 
@@ -1164,8 +1150,10 @@ import { render } from "../core/render-scheduler.js";
       const { current, latest } = getFirmwareUpdateVersions();
       return `De stabiele main-release ${latest} is ouder dan de draaiende dev-build ${current}. Je kunt bewust teruggaan naar main.`;
     }
-    if (isFirmwarePrToDevTransition()) {
-      return "Dev-firmware kan de PR-testfirmware vervangen.";
+    if (isFirmwareChannelTransition()) {
+      return parseFirmwareVersion(getFirmwareCurrentVersion())?.prereleaseTag.toLowerCase() === "pr"
+        ? "Dev-firmware kan de PR-testfirmware vervangen."
+        : "Dev-firmware kan de huidige main-firmware vervangen.";
     }
     if (isFirmwareUpdateAvailable()) {
       return "Er staat een nieuwere firmware klaar.";

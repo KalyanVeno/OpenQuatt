@@ -67,15 +67,17 @@ import { escapeHtml } from "../core/html.js";
     };
 
     const urlField = hasEntity("cicFeedUrl") ? `
-      <article class="oq-settings-integration-card oq-settings-integration-card--wide" data-oq-settings-field="cicFeedUrl">
+      <details class="oq-settings-cic-address"${state.cicAddressOpen ? " open" : ""}>
+        <summary data-oq-action="toggle-cic-address">Adres aanpassen</summary>
+      <article class="oq-settings-integration-card oq-settings-integration-card--wide oq-settings-cic-feed-url" data-oq-settings-field="cicFeedUrl">
         <div class="oq-settings-integration-card-head">
-          <h4>CIC feed URL</h4>
-          <span class="oq-settings-integration-pill">Lokaal</span>
+          <h4>Adres van de CiC JSON-feed</h4>
         </div>
         <label class="oq-settings-control oq-settings-control--text">
           <input
             class="oq-helper-input oq-settings-integration-url-input"
             type="url"
+            aria-label="Adres van de CiC JSON-feed"
             data-oq-field="cicFeedUrl"
             value="${escapeHtml(String(getInputDraftValue("cicFeedUrl") || ""))}"
             placeholder="http://<host>:<poort>/beta/feed/data.json"
@@ -84,8 +86,9 @@ import { escapeHtml } from "../core/html.js";
             ${state.loadingEntities ? "disabled" : ""}
           >
         </label>
-        <p>Gebruik de lokale JSON-feed van de CiC.</p>
+        <p>Vul het IP-adres van jouw CiC in. Dit is het adres van de gegevensbron, niet van OpenQuatt.</p>
       </article>
+      </details>
     ` : "";
 
     const otDiagnosticPanel = renderDiagnosticGroup("OpenTherm thermostaat (OTT)", [
@@ -98,6 +101,7 @@ import { escapeHtml } from "../core/html.js";
       }) : "",
       renderBinaryDiagnosticItem("otThermostatStatusValid", "Statusbericht (ID 0) actueel", "Ja", "Nee"),
       renderBinaryDiagnosticItem("otThermostatChEnable", "Thermostaat CH", "Actief", "Normaal"),
+      renderBinaryDiagnosticItem("otThermostatDhwEnable", "Thermostaat tapwater", "Toegestaan", "Geblokkeerd"),
       renderBinaryDiagnosticItem("otThermostatCoolingEnable", "Thermostaat koeling", "Actief", "Normaal"),
       renderValueDiagnosticItem("otControlSetpoint", "Control setpoint"),
       renderValueDiagnosticItem("otRoomSetpoint", "Room setpoint", { fallbackKey: "roomSetpoint" }),
@@ -157,7 +161,7 @@ import { escapeHtml } from "../core/html.js";
     }
     const otbDiagnosticPanel = renderDiagnosticGroup("OpenTherm ketel (OTB)", otbDiagnosticRows);
 
-    const cicDiagnosticPanel = renderDiagnosticGroup("CIC-feed", [
+    const cicDiagnosticPanel = renderDiagnosticGroup("CiC-feed", [
       hasEntity("cicJsonFeedOk") ? renderDiagnosticItem({
         label: "JSON-feed",
         value: !cicPollingEnabled
@@ -200,16 +204,17 @@ import { escapeHtml } from "../core/html.js";
     return renderSettingsSection(
       "Integratie",
       "OpenTherm en CiC",
-      "Configureer de thermostaatbus, externe CiC-feed en Quatt app-compatibiliteit.",
+      "Kies welke verbindingen je gebruikt.",
       `
-        <div class="oq-settings-integration-grid">
-          <p class="oq-settings-action-note oq-settings-integration-card--wide">
-            De aansluiting van de cv-ketel — OpenTherm of aan/uit via R1 — stel je in onder <strong>Instellingen → Installatie</strong>. Daarom wordt deze hier niet apart weergegeven.
-          </p>
-          ${renderSettingsIntegrationSwitchCard("otEnabled", "OpenTherm-thermostaat", "Thermostaatbus voor warmtevraag en kamerwaarden.")}
-          ${renderSettingsIntegrationSwitchCard("cicPollingEnabled", "CIC-polling", "JSON-feed uitlezen voor setpoint, kamerwaarden en flow.")}
-          ${renderSettingsIntegrationSwitchCard("cicCompatibilityMode", "CiC-compatibiliteit", "Gegevens doorgeven zodat de Quatt app kan blijven meekijken.")}
-          ${urlField}
+        <div class="oq-settings-cic-connections">
+          ${renderSettingsIntegrationSwitchCard("otEnabled", "OpenTherm-thermostaat", "Thermostaat rechtstreeks op OTT.", "Leest de aangesloten thermostaat. Kies onder Sensorselectie welke thermostaatwaarden je gebruikt. De aansluiting van de cv-ketel stel je in onder Instellingen → Installatie.")}
+          ${hasCicConfig ? `
+            <div class="oq-settings-cic-input">
+              ${renderSettingsIntegrationSwitchCard("cicPollingEnabled", "CiC JSON-feed inlezen", "Gegevens uit de CiC gebruiken in OpenQuatt.", "De CiC is de originele Quatt-controller. OpenQuatt leest via je lokale netwerk onder meer kamerwaarden en flow uit de JSON-feed. Stel het feed-adres in en kies onder Sensorselectie welke CiC-waarden je gebruikt. Dit heette eerder CIC-polling.")}
+              ${urlField}
+            </div>
+          ` : ""}
+          ${renderSettingsIntegrationSwitchCard("cicCompatibilityMode", "Quatt-app via CiC", "Buitenunitgegevens laten zien in de Quatt-app.", "Verbind M2 via een aparte RS485-kabel met de Modbuspoort van de CiC. Deze Modbusverbinding geeft alleen buitenunitgegevens door, geen thermostaatgegevens. OpenQuatt blijft regelen. De CiC heeft voeding en netwerk nodig; JSON-feed inlezen hoeft hiervoor niet aan. Dit heette eerder CiC-compatibiliteit.")}
         </div>
         ${diagnosticsPanel}
       `,
@@ -239,6 +244,7 @@ import { escapeHtml } from "../core/html.js";
       mqttOutsideTemperature: "outside_temperature",
       mqttRoomTemperature: "room_temperature",
       mqttRoomSetpoint: "room_setpoint",
+      mqttHeatingSupplyTarget: "heating_supply_target",
       mqttHeatingEnable: "heating_enable",
       mqttCoolingEnable: "cooling_enable",
     };
@@ -247,6 +253,7 @@ import { escapeHtml } from "../core/html.js";
       outside_temperature: "mqttOutsideTemperatureValid",
       room_temperature: "mqttRoomTemperatureValid",
       room_setpoint: "mqttRoomSetpointValid",
+      heating_supply_target: "mqttHeatingSupplyTargetValid",
       heating_enable: "mqttHeatingEnableValid",
       cooling_enable: "mqttCoolingEnableValid",
     };
@@ -799,6 +806,17 @@ import { escapeHtml } from "../core/html.js";
     const externalHeatDemandUsedSource = powerHouseDemandSource === "external"
       ? externalHeatDemandConfiguredSource
       : powerHouseDemandSource === "model" ? "Huismodel" : "—";
+    const heatingSupplyTargetConfiguredSource = formattedSourceValue("heatingSupplyTargetSource", {
+      optionLabels: { "Heating curve": "Stooklijn", "OT thermostat": "OT-thermostaat", "API input": "API-invoer" },
+    });
+    const heatingSupplyTargetActiveSource = String(getSettingsTextStatValue("heatingSupplyTargetActiveSource", "") || "").trim().toLowerCase();
+    const heatingSupplyTargetIsExternal = heatingSupplyTargetActiveSource === "external";
+    const heatingSupplyTargetUsedSource = heatingSupplyTargetIsExternal
+      ? heatingSupplyTargetConfiguredSource
+      : heatingSupplyTargetActiveSource === "curve" ? "Stooklijn" : "—";
+    const heatingSupplyTargetSummaryValue = heatingSupplyTargetIsExternal
+      ? getSettingsStatValue("heatingSupplyTargetSelected")
+      : getSettingsStatValue("curveSupplyTarget");
     const buildRoomSignal = ({ key, title, icon, stem, externalStem, mqttTopic, usedSource }) => {
       const entityStem = `${stem[0].toUpperCase()}${stem.slice(1)}`;
       return buildSourceSignal({
@@ -908,6 +926,14 @@ import { escapeHtml } from "../core/html.js";
             when: currentFlowSource === "Outdoor unit" && hasEntity("qFlowSource"),
           },
           {
+            key: "controllerFlowMeter",
+            label: "Lokale flowmeter",
+            infoId: "controllerFlowMeter-info",
+            infoCopy: "De Huba Control 236-flowmeter wordt normaliter door Quatt geïnstalleerd en is de standaardkeuze. Kies ZJ-B10 alleen als dat type op de controller is aangesloten; zie het Q-edition I/O-overzicht in de documentatie voor aansluiting en kalibratie. Deze instelling bepaalt de omrekening van pulsen naar flow en wordt bewaard na een herstart.",
+            optionLabels: { "Huba Control": "Huba Control (door Quatt geïnstalleerd)" },
+            when: currentFlowSource === "Outdoor unit" && hasEntity("controllerFlowMeter") && currentQFlowSource !== "Outdoor unit",
+          },
+          {
             key: "outdoorUnitFlowMode",
             label: "Meterkeuze",
             infoId: "outdoorUnitFlowMode-info",
@@ -1003,7 +1029,7 @@ import { escapeHtml } from "../core/html.js";
       buildSourceSignal({
         key: "external-heat-demand",
         group: "heating",
-        title: "Externe warmtevraag",
+        title: "Externe warmtevraag (Power House)",
         icon: "zap",
         select: buildExternalSourceSelect("externalHeatDemand", "ExternalHeatDemand", "", {
           optionLabels: { Disabled: "Niet gebruiken", "API input": "API-invoer" },
@@ -1020,6 +1046,26 @@ import { escapeHtml } from "../core/html.js";
           ...renderExternalSourceRows("externalHeatDemandSource", externalHeatDemandUsedSource, buildExternalSourceKeys("externalHeatDemand", "ExternalHeatDemand", false)),
         ],
       }),
+      buildSourceSignal({
+        key: "heating-supply-target",
+        group: "heating",
+        title: "Aanvoertarget (stooklijn)",
+        icon: "target",
+        select: buildExternalSourceSelect("heatingSupplyTarget", "HeatingSupplyTarget", "heating_supply_target", {
+          optionLabels: { "Heating curve": "Stooklijn", "OT thermostat": "OT-thermostaat", "API input": "API-invoer" },
+          infoCopy: "Een externe regelaar bepaalt dan hoe warm het aanvoerwater moet zijn, in plaats van de eigen stooklijn. Handig bij een buffervat of een thermostaat die zelf al rekent. Valt de bron weg of wordt de waarde te oud, dan neemt de stooklijn het vanzelf weer over. Beveiligingen en de warmtepompregeling blijven altijd van OpenQuatt.",
+        }),
+        summaryValue: heatingSupplyTargetSummaryValue,
+        summarySource: heatingSupplyTargetUsedSource,
+        routeWarning: heatingSupplyTargetIsExternal
+          ? invalidSourceValueWarning("heatingSupplyTargetSelected")
+          : invalidSourceValueWarning("curveSupplyTarget"),
+        measurementRows: [
+          renderSourceRow({ label: "Stooklijn", key: "curveSupplyTarget", sourceKind: "local", sourceState: "available", effective: !heatingSupplyTargetIsExternal }),
+          otAvailable ? renderSourceRow({ label: "OpenTherm", key: "otControlSetpoint", sourceKind: "ot", sourceState: "available", effective: sourcesMatch(heatingSupplyTargetUsedSource, "OpenTherm") }) : "",
+          ...renderExternalSourceRows("heatingSupplyTargetSource", heatingSupplyTargetUsedSource, buildExternalSourceKeys("heatingSupplyTarget", "HeatingSupplyTarget")),
+        ],
+      }),
     ].filter(Boolean);
 
     if (!sourceSignals.length) {
@@ -1029,7 +1075,7 @@ import { escapeHtml } from "../core/html.js";
     const sourceCategories = [
       { id: "room-outside", title: "Ruimte & buiten", icon: "home-cog", keys: ["room-temperature", "room-setpoint", "outside-temperature"] },
       { id: "water-circuit", title: "Watercircuit", icon: "droplet", keys: ["water-supply", "flow-source"] },
-      { id: "heating", title: "Verwarmen", icon: "flame", keys: ["external-heat-demand", "heating-enable"] },
+      { id: "heating", title: "Verwarmen", icon: "flame", keys: ["external-heat-demand", "heating-supply-target", "heating-enable"] },
       { id: "cooling", title: "Koelen", icon: "snowflake", keys: ["cooling-enable", "cooling-dew-point"] },
     ];
     const signalByKey = new Map(sourceSignals.map((signal) => [signal.key, signal]));

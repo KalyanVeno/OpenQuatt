@@ -3,7 +3,7 @@
 Technische naslag voor ontwikkeling en diagnose van de Electropaultje Heatpump Controller Q-edition (HCQ). Dit overzicht beschrijft de aansluiting en GPIO-koppeling van de huidige OpenQuatt-firmware. Gebruik voor het veilig aansluiten altijd eerst de [aansluitgids voor de HCQ](q-edition.md).
 
 > [!WARNING]
-> Deze pagina is geen bedradingsinstructie. Schakel de CiC en buitenunit(s) spanningsloos voordat je kabels verplaatst. Twijfel je over de bedrading, laat het werk dan door een vakbekwaam installateur uitvoeren.
+> Schakel de CiC, controller en buitenunit(s) spanningsloos voordat je kabels verplaatst, doormeet of soldeert. De ZJ-B10-aanpassing hieronder is een hardwaremodificatie. Controleer vóór het inschakelen de pinbezetting en alle verbindingen met een multimeter. Twijfel je over de bedrading, laat het werk dan door een vakbekwaam installateur uitvoeren.
 
 ## Externe aansluitingen
 
@@ -16,7 +16,7 @@ Technische naslag voor ontwikkeling en diagnose van de Electropaultje Heatpump C
 | `OTT` | Kamerthermostaat | OpenTherm slave, twee aders |
 | `OTB` | CV-ketel | OpenTherm master, twee aders |
 | `M1` | Quatt-buitenunit(s) | RS485 Modbus: `GND` / `A` / `B` |
-| `M2` | Optionele CiC-compatibiliteit | RS485 Modbus: `GND` / `A` / `B` |
+| `M2` | Quatt-app via CiC (optioneel) | RS485 Modbus: `GND` / `A` / `B` |
 | Ethernet | Netwerk in Ethernet-builds | W5500 met RJ45 |
 | USB | Voeding, Wi-Fi-provisioning, flashen en herstel | USB |
 
@@ -34,7 +34,7 @@ Gebruik voor de CV-ketel altijd precies één route: `OTB` of `R1`, nooit beide 
 | OpenTherm thermostaat | `OTT` | slave: in/uit | in `GPIO21`, uit `GPIO14` |
 | OpenTherm CV-ketel | `OTB` | master: in/uit | in `GPIO47`, uit `GPIO48` |
 | Buitenunit-Modbus | `M1` | UART met RS485 DE/RE | TX `GPIO40`, RX `GPIO42`, DE/RE `GPIO41` |
-| CiC-compatibiliteit | `M2` | UART met RS485 DE/RE | TX `GPIO45`, RX `GPIO39`, DE/RE `GPIO38` |
+| Quatt-app via CiC | `M2` | UART met RS485 DE/RE | TX `GPIO45`, RX `GPIO39`, DE/RE `GPIO38` |
 | Ethernet W5500 | RJ45 | SPI | MOSI `GPIO10`, MISO `GPIO11`, CLK `GPIO12`, CS `GPIO13`, INT `GPIO9` |
 | Status-led geel | Front | GPIO-uitgang | `GPIO1` |
 | Status-led rood | Front | GPIO-uitgang | `GPIO2` |
@@ -46,7 +46,51 @@ Gebruik voor de CV-ketel altijd precies één route: `OTB` of `R1`, nooit beide 
 
 De `Q`-sensorstekker bevat de PT1000 voor de lokale aanvoertemperatuur en de flowmeter-puls van Quatt V1. De PT1000 gebruikt een MAX31865 met een referentieweerstand van 1500 Ω, een nominale weerstand van 1000 Ω en 2-draadsbedrading. De firmware leest hem alleen wanneer **Lokale aanvoertemperatuur** op `PT1000` staat.
 
-De pulslezer op `GPIO15` heeft een interne pull-up en een filter van 100 µs. De firmware rekent de pulsfrequentie om met 0,05 l/min per Hz. Bij V1.5 en V2 gebruikt OpenQuatt normaal de flowmeting uit de buitenunit; de keuze is instelbaar via **Q Flow Source** (`Auto`, `Local` of `Outdoor unit`).
+De 6-polige Molex MX3.0-stekker van de `Q`-aansluiting heeft deze pinbezetting:
+
+| Pin | Functie | Aansluiting |
+|---|---|---|
+| `1` | `+5V` | Rode voedingsdraad van de flowmeter |
+| `2` | PT1000 | Eerste draad van de 2-draads PT1000 |
+| `3` | Flowpuls | Collector van de BC547 bij gebruik van een ZJ-B10 |
+| `4` | `GND` | Zwarte draad van de flowmeter en emitter van de BC547 |
+| `5` | PT1000 | Tweede draad van de 2-draads PT1000 |
+| `6` | Niet gebruikt | Niet aansluiten |
+
+De twee PT1000-draden op pin 2 en 5 mogen worden verwisseld. Bepaal de pinnummers aan de hand van de markeringen op de stekker; ga niet alleen af op links/rechts, omdat dit afhangt van de kijkrichting.
+
+De pulslezer op `GPIO15` heeft een interne pull-up en een filter van 100 µs. Kies in de web-app onder **Instellingen → Bronnen / integraties → Sensorselectie → Flow → Lokale flowmeter** het aangesloten type. In Home Assistant en de standaard ESPHome-webinterface heet deze instelling **Controller Flow Meter**:
+
+- **Huba Control 236** (standaard, normaliter door Quatt geïnstalleerd): behoudt de bestaande omrekening met 0,05 l/min per Hz en eventuele Huba-configuratieaanpassingen.
+- **ZJ-B10**: voor het [TinyTronics-model](https://www.tinytronics.nl/nl/sensoren/vloeistof/yf-b10-water-flow-sensor-messing-g1), met 7,9 Hz per l/min. De firmware deelt het aantal pulsen per minuut door 7,9 om l/h te berekenen. Een pulswaarde van nul blijft nul; de bestaande timeout van 5 seconden blijft behouden.
+
+De keuze blijft bewaard na een herstart. De bestaande middeling over 10 seconden blijft actief; wacht na wisselen tot de meting is bijgewerkt. De keuze past alleen de lokale pulsmeting aan. Bij V1.5 en V2 gebruikt OpenQuatt normaal de flowmeting uit de buitenunit; de keuze is instelbaar via **Q Flow Source** (`Auto`, `Local` of `Outdoor unit`). Kies `Local` om de aangesloten controller-flowmeter expliciet te gebruiken.
+
+#### ZJ-B10 aansluiten
+
+De ZJ-B10 is niet rechtstreeks plug-and-play op de `Q`-aansluiting. Plaats een BC547 NPN-transistor en een weerstand van 4,7 kΩ in de signaalkabel. De transistor maakt van het 5V-signaal van de flowmeter een door de controller opgetrokken pulsingang. De pulsfrequentie blijft daarbij gelijk.
+
+Benodigd:
+
+- BC547 NPN-transistor;
+- weerstand van 4,7 kΩ;
+- geschikte draad, soldeerverbindingen en krimpkous of vergelijkbare isolatie;
+- 6-polige Molex MX3.0-stekker voor de `Q`-aansluiting.
+
+Sluit de draden als volgt aan:
+
+1. Verbind de rode `+5V`-draad van de ZJ-B10 rechtstreeks met pin 1.
+2. Verbind de gele signaaldraad via de weerstand van 4,7 kΩ met de basis (`B`) van de BC547.
+3. Verbind de emitter (`E`) van de BC547 met de zwarte `GND`-draad en met pin 4.
+4. Verbind de collector (`C`) van de BC547 met de flowpulsingang op pin 3.
+5. Verbind de twee draden van de PT1000 met pin 2 en pin 5. De volgorde maakt niet uit.
+6. Laat pin 6 vrij.
+
+Controleer de `C`-, `B`- en `E`-aansluitingen aan de hand van de datasheet van jouw BC547. De pootvolgorde kan per behuizing of fabrikant verschillen.
+
+![Bedradingsschema ZJ-B10-flowmeter naar de Q-stekker](assets/zj-b10-q-aansluiting.svg)
+
+Isoleer na het doormeten iedere soldeerverbinding afzonderlijk. Schakel de controller daarna in, kies **ZJ-B10** als lokale flowmeter en controleer de gemeten flow terwijl de circulatiepomp draait.
 
 ### R1 en R2: relais
 
@@ -66,7 +110,7 @@ Op `OTT` gedraagt de HCQ zich als OpenTherm-slave tegenover de kamerthermostaat.
 
 `M1` is de primaire RS485-poort voor de buitenunit(s). De HCQ is hier Modbus-master met 19200 baud, 8E1 en DE/RE op `GPIO41`.
 
-`M2` is de optionele tweede RS485-poort voor CiC-compatibiliteit. Hier is de HCQ Modbus-server met 19200 baud, 8E1 en DE/RE op `GPIO38`. Na het aansluiten moet **CiC-compatibiliteit** in de web-app worden ingeschakeld als de Quatt-app via de CiC moet blijven meekijken.
+`M2` is de optionele tweede RS485-poort voor **Quatt-app via CiC**. Hier is de HCQ Modbus-server met 19200 baud, 8E1 en DE/RE op `GPIO38`. De CiC leest via deze koppeling alleen buitenunitgegevens; thermostaatgegevens gaan niet naar de CiC. Schakel na het aansluiten **Quatt-app via CiC** in als de Quatt-app via de CiC moet blijven meekijken. Dit staat los van **CiC JSON-feed inlezen**.
 
 ### Ethernet, leds en herstelknop
 

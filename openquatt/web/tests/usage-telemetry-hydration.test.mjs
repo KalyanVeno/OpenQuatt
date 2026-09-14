@@ -14,6 +14,7 @@ const {
 } = await import("../js/src/core/usage-telemetry-domain.js");
 const {
   createUsageTelemetryPreview,
+  configuredSourceWireValue,
   flowSourceConfigWireValue,
   loadUsageTelemetryPreviewMqttEnabled,
   USAGE_TELEMETRY_PREVIEW_ENTITY_KEYS,
@@ -54,6 +55,7 @@ test("usage telemetry preview maps live entity values to the wire contract", () 
     coolingEnableSource: "CIC or HA input",
     coolingDewPointSource: "MQTT",
     externalHeatDemandSource: "API input",
+    heatingSupplyTargetSource: "Heating curve",
     heapFree: 178432,
     heapMinFree: 151008,
     heapLargestBlock: 98304,
@@ -99,6 +101,7 @@ test("usage telemetry preview maps live entity values to the wire contract", () 
     cooling_enable_source: "cic_or_home_assistant",
     cooling_dew_point_source: "mqtt",
     external_heat_demand_source: "api_input",
+    heating_supply_target_source: "heating_curve",
     heap_free_b: 178432,
     heap_min_free_b: 151008,
     heap_largest_block_b: 98304,
@@ -121,6 +124,7 @@ test("usage telemetry preview maps live entity values to the wire contract", () 
   });
   assert.equal(flowSourceConfigWireValue("Outdoor unit", "Auto", true), "outdoor_unit");
   assert.equal(flowSourceConfigWireValue("Outdoor unit", undefined, false), "outdoor_unit");
+  assert.equal(configuredSourceWireValue("Schedule"), "schedule");
   assert.ok(USAGE_TELEMETRY_PREVIEW_ENTITY_KEYS.includes("psramFree"));
   assert.ok(!USAGE_TELEMETRY_PREVIEW_ENTITY_KEYS.includes("webServerLogHistoryEnabled"));
 });
@@ -367,12 +371,13 @@ test("usage telemetry disclosure matches the hourly payload scope", async () => 
     "cooling_enable_source",
     "cooling_dew_point_source",
     "external_heat_demand_source",
+    "heating_supply_target_source",
   ];
   for (const field of configFields) {
     assert.match(previewSource, new RegExp(field));
     assert.match(telemetryCpp, new RegExp(`"${field}"`));
   }
-  assert.match(disclosureSource, /oq-usage-disclosure--collapsible/);
+  assert.match(disclosureSource, /oq-usage-consent-details/);
   assert.match(disclosureSource, /data-oq-action="toggle-usage-telemetry-details"/);
   assert.match(disclosureSource, /technisch wel het bron-IP-adres zien/);
   assert.match(disclosureSource, /OpenQuatt slaat dit IP-adres niet op/);

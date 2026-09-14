@@ -23,6 +23,7 @@ const MQTT_SOURCE_SELECTS = [
   ["heatingEnableSource", "heating-enable"],
   ["coolingEnableSource", "cooling-enable"],
   ["coolingDewPointSource", "cooling-dew-point"],
+  ["heatingSupplyTargetSource", "heating-supply-target"],
 ];
 
 function getSelectMarkup(markup, key) {
@@ -84,6 +85,7 @@ function setSourceSelectionState(mqttEnabled) {
       outside_temperature: true,
       room_temperature: true,
       room_setpoint: true,
+      heating_supply_target: true,
       heating_enable: true,
       cooling_enable: true,
     },
@@ -97,12 +99,25 @@ function setSourceSelectionState(mqttEnabled) {
     localWaterSupplyTempSource: { value: "PT1000", option: ["PT1000", "DS18B20"] },
     flowSource: { value: "Outdoor unit", option: ["Outdoor unit", "CIC"] },
     qFlowSource: { value: "Auto", option: ["Auto", "Local", "Outdoor unit"] },
+    controllerFlowMeter: { value: "Huba Control", option: ["Huba Control", "ZJ-B10"] },
     outdoorUnitFlowMode: { value: "Local aggregate HP1/HP2", option: ["Flowmeter HP1", "Flowmeter HP2", "Local aggregate HP1/HP2"] },
     outsideTempSource: { value: "Outdoor unit", option: ["Auto", "Outdoor unit", "HA input", "API input", "MQTT"] },
     heatingEnableSource: { value: "Disabled", option: ["Disabled", "OT thermostat", "CIC", "HA input", "API input", "MQTT"] },
-    coolingEnableSource: { value: "Disabled", option: ["Disabled", "OT thermostat", "HA input", "API input", "MQTT"] },
+    coolingEnableSource: { value: "Disabled", option: ["Disabled", "OT thermostat", "HA input", "API input", "MQTT", "Schedule"] },
     coolingDewPointSource: { value: "Auto", option: ["Auto", "Home Assistant", "API input", "MQTT"] },
     externalHeatDemandSource: { value: "Disabled", option: ["Disabled", "HA input", "API input"] },
+    heatingSupplyTargetSource: { value: "Heating curve", option: ["Heating curve", "OT thermostat", "HA input", "API input", "MQTT"] },
+    curveSupplyTarget: valueEntity(33.0, "°C"),
+    heatingSupplyTargetSelected: valueEntity(33.0, "°C"),
+    heatingSupplyTargetActiveSource: valueEntity("curve"),
+    heatingSupplyTargetHa: valueEntity(42.0, "°C"),
+    heatingSupplyTargetHaValid: binaryEntity(false),
+    apiInputHeatingSupplyTarget: valueEntity(42.0, "°C"),
+    apiInputHeatingSupplyTargetValid: binaryEntity(false),
+    mqttHeatingSupplyTarget: { value: 42.0, uom: "°C" },
+    mqttHeatingSupplyTargetValid: { value: false, state: "OFF" },
+    otControlSetpoint: valueEntity(30.0, "°C"),
+    otThermostatControlSetpointValid: binaryEntity(false),
     roomTemp: valueEntity(21.8, "°C"),
     roomTempEffectiveSource: valueEntity("OT thermostat"),
     roomSetpoint: valueEntity(20, "°C"),
@@ -135,6 +150,7 @@ function setSourceSelectionState(mqttEnabled) {
     otRoomTemp: valueEntity(21.8, "°C"),
     otRoomSetpoint: valueEntity(20, "°C"),
     otThermostatChEnable: binaryEntity(true),
+    otThermostatDhwEnable: binaryEntity(true),
     otThermostatCoolingEnable: binaryEntity(false),
     roomTempHa: valueEntity(21.6, "°C"),
     roomTempHaValid: binaryEntity(true),
@@ -190,13 +206,13 @@ test("focuspaneel groepeert alle signalen in vaste volgorde en rendert één ins
 
   assert.match(markup, /data-oq-source-workspace/);
   assert.equal((markup.match(/data-source-category=/g) || []).length, 4);
-  assert.equal((markup.match(/data-oq-action="select-settings-source"/g) || []).length, 9);
-  assert.equal((markup.match(/data-oq-focus-key="settings-source-[^"]+"/g) || []).length, 10);
+  assert.equal((markup.match(/data-oq-action="select-settings-source"/g) || []).length, 10);
+  assert.equal((markup.match(/data-oq-focus-key="settings-source-[^"]+"/g) || []).length, 11);
   assert.equal((markup.match(/\sdata-oq-source-inspector(?:\s|>)/g) || []).length, 1);
   const expectedSources = [
     ["room-outside", ["room-temperature", "room-setpoint", "outside-temperature"]],
     ["water-circuit", ["water-supply", "flow-source"]],
-    ["heating", ["external-heat-demand", "heating-enable"]],
+    ["heating", ["external-heat-demand", "heating-supply-target", "heating-enable"]],
     ["cooling", ["cooling-enable", "cooling-dew-point"]],
   ];
   assertMarkupOrder(markup, expectedSources.map(([category]) => `data-source-category="${category}"`));
@@ -437,6 +453,36 @@ test("Power House vertaalt de firmwarebron naar de werkelijk gebruikte externe r
   assert.match(markup, /aria-label="Ingesteld: API-invoer\. Gebruikt: —"/);
 });
 
+test("aanvoertarget toont stooklijn als bron en schakelt zichtbaar naar extern", () => {
+  setSourceSelectionState(true);
+
+  let markup = renderFocusedSource("heating-supply-target");
+  assert.match(markup, /aria-label="Ingesteld: Stooklijn\. Gebruikt: Stooklijn"/);
+  assert.match(getInspectorMarkup(markup), /<strong>33 °C<\/strong>/);
+
+  Object.assign(state.entities, {
+    heatingSupplyTargetSource: { value: "API input", option: ["Heating curve", "OT thermostat", "HA input", "API input", "MQTT"] },
+    apiInputHeatingSupplyTarget: valueEntity(42.0, "°C"),
+    apiInputHeatingSupplyTargetValid: binaryEntity(true),
+    heatingSupplyTargetSelected: valueEntity(42.0, "°C"),
+    heatingSupplyTargetActiveSource: valueEntity("external"),
+  });
+
+  markup = renderFocusedSource("heating-supply-target");
+  assert.match(markup, /aria-label="Ingesteld: API-invoer\. Gebruikt: API-invoer"/);
+  assert.match(getInspectorMarkup(markup), /data-source-kind="api"\s+data-source-state="valid"\s+data-source-effective="true"/);
+  assert.match(getInspectorMarkup(markup), /<strong>42 °C<\/strong>/);
+
+  state.entities.heatingSupplyTargetActiveSource = valueEntity("curve");
+  markup = renderFocusedSource("heating-supply-target");
+  assert.match(markup, /aria-label="Ingesteld: API-invoer\. Gebruikt: Stooklijn"/);
+  assert.doesNotMatch(getInspectorMarkup(markup), /data-source-kind="api"[^>]+data-source-effective="true"/);
+
+  delete state.entities.heatingSupplyTargetActiveSource;
+  markup = renderFocusedSource("heating-supply-target");
+  assert.match(markup, /aria-label="Ingesteld: API-invoer\. Gebruikt: —"/);
+});
+
 test("ongeldige Home Assistant-dauwpuntbron blijft zichtbaar als gekozen bronprobleem", () => {
   setSourceSelectionState(true);
   Object.assign(state.entities, {
@@ -484,6 +530,22 @@ test("uitgeschakelde CIC en OpenTherm verdwijnen uit keuzes en metingen", () => 
   assert.doesNotMatch(getSelectMarkup(markup, "coolingEnableSource"), />CIC \(legacy\)<\/option>/);
 });
 
+test("dagelijks koelvenster blijft als lokale toestemmingsbron beschikbaar", () => {
+  setSourceSelectionState(false);
+  state.entities.cicPollingEnabled = binaryEntity(false);
+  state.entities.otEnabled = binaryEntity(false);
+  state.entities.coolingEnableSource.value = "Schedule";
+  state.entities.coolingEnableEffectiveSource = valueEntity("Schedule + Manual");
+  state.entities.coolingEnableValid = binaryEntity(true);
+
+  const markup = renderFocusedSource("cooling-enable");
+  const options = getSelectMarkup(markup, "coolingEnableSource");
+  const inspector = getInspectorMarkup(markup);
+
+  assert.match(options, /<option value="Schedule" selected>Dagelijks tijdvenster<\/option>/);
+  assert.match(inspector, /Dagelijks tijdvenster \+ handmatig/);
+});
+
 test("secundaire bronselecties blijven alleen zichtbaar wanneer hun hoofdkeuze ze gebruikt", () => {
   setSourceSelectionState(true);
 
@@ -507,6 +569,29 @@ test("secundaire bronselecties blijven alleen zichtbaar wanneer hun hoofdkeuze z
   state.entities.flowSource.value = "CIC";
   markup = renderFocusedSource("flow-source");
   assert.doesNotMatch(getInspectorMarkup(markup), /data-oq-field="qFlowSource"|data-oq-field="outdoorUnitFlowMode"/);
+});
+
+test("lokale flowmeter toont beide modellen en volgt de beschikbare flowroute", () => {
+  setSourceSelectionState(true);
+  assert.ok(SETTINGS_GROUP_KEY_MAP.integrations.includes("controllerFlowMeter"));
+  let markup = renderFocusedSource("flow-source");
+  assert.match(getSelectMarkup(markup, "controllerFlowMeter"), /<option value="Huba Control" selected>/);
+  assert.match(getSelectMarkup(markup, "controllerFlowMeter"), /Huba Control \(door Quatt geïnstalleerd\)/);
+  assert.match(getSelectMarkup(markup, "controllerFlowMeter"), /<option value="ZJ-B10"/);
+
+  state.entities.qFlowSource.value = "Local";
+  state.entities.controllerFlowMeter.value = "ZJ-B10";
+  markup = renderFocusedSource("flow-source");
+  assert.match(getSelectMarkup(markup, "controllerFlowMeter"), /<option value="ZJ-B10" selected>/);
+
+  state.entities.qFlowSource.value = "Outdoor unit";
+  assert.doesNotMatch(getInspectorMarkup(renderFocusedSource("flow-source")), /data-oq-field="controllerFlowMeter"/);
+  state.entities.qFlowSource.value = "Local";
+  state.entities.flowSource.value = "CIC";
+  assert.doesNotMatch(getInspectorMarkup(renderFocusedSource("flow-source")), /data-oq-field="controllerFlowMeter"/);
+  state.entities.flowSource.value = "Outdoor unit";
+  delete state.entities.controllerFlowMeter;
+  assert.doesNotMatch(getInspectorMarkup(renderFocusedSource("flow-source")), /data-oq-field="controllerFlowMeter"/);
 });
 
 test("MQTT verdwijnt uit alle bronselecties en metingen wanneer de integratie uitstaat", () => {

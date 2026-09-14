@@ -9,11 +9,13 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 
+#include "OpenQuattAbortDetails.h"
 #include "OpenQuattCrashTelemetryPolicy.h"
 #include "OpenQuattCrashTelemetryRecord.h"
 #include "OpenQuattFlashLayout.h"
 #include "PsramBuffer.h"
 #include "esphome/components/binary_sensor/binary_sensor.h"
+#include "esphome/components/select/select.h"
 #include "esphome/components/switch/switch.h"
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/time/real_time_clock.h"
@@ -46,6 +48,8 @@ class OpenQuattCrashTelemetry : public Component {
   void set_hardware_profile(const std::string& value) { this->hardware_profile_ = value; }
   void set_topology(const std::string& value) { this->topology_ = value; }
   void set_connection(const std::string& value) { this->connection_ = value; }
+  void set_active_connection_sensor(text_sensor::TextSensor* value) { this->active_connection_sensor_ = value; }
+  void set_connection_preference_select(select::Select* value) { this->connection_preference_select_ = value; }
 
   void setup() override;
   void loop() override;
@@ -68,16 +72,10 @@ class OpenQuattCrashTelemetry : public Component {
   static constexpr uint32_t TIME_SYNC_WAIT_MS = 60000UL;
   static constexpr uint32_t WORKER_STALL_LOG_MS = 30UL * 1000UL;
   static constexpr uint32_t WORKER_CLEANUP_RETRY_MS = 1000UL;
-#if defined(CONFIG_IDF_TARGET_ESP32S3)
-  // PSRAM-backed worker stack, mirroring usage telemetry. Sizes stay
-  // conservative until HIL watermarks prove they can shrink.
+  // Q-edition workers use PSRAM-backed stacks. Sizes stay conservative until
+  // HIL watermarks prove they can shrink.
   static constexpr uint32_t MQTT_WORKER_TASK_STACK_SIZE = 16384U;
   static constexpr bool MQTT_WORKER_STACK_IN_PSRAM = true;
-#else
-  // Classic ESP32 cannot safely run Wi-Fi/ROM-using tasks from a PSRAM stack.
-  static constexpr uint32_t MQTT_WORKER_TASK_STACK_SIZE = 8192U;
-  static constexpr bool MQTT_WORKER_STACK_IN_PSRAM = false;
-#endif
   static constexpr int MQTT_TASK_STACK_SIZE = 12288;
   static_assert(sizeof(StackType_t) == 1U, "ESP-IDF StaticTask stack sizes are configured in bytes");
 
@@ -157,6 +155,8 @@ class OpenQuattCrashTelemetry : public Component {
   switch_::Switch* usage_switch_{nullptr};
   text_sensor::TextSensor* installation_id_sensor_{nullptr};
   binary_sensor::BinarySensor* setup_complete_sensor_{nullptr};
+  text_sensor::TextSensor* active_connection_sensor_{nullptr};
+  select::Select* connection_preference_select_{nullptr};
   time::RealTimeClock* clock_{nullptr};
 
   StaticSemaphore_t gate_mutex_storage_{};
@@ -184,6 +184,7 @@ class OpenQuattCrashTelemetry : public Component {
   size_t payload_size_{0U};
 
   bool capture_active_{false};
+  detail::AbortReplayContext capture_context_{};
   std::atomic<bool> setup_complete_{false};
   std::atomic<bool> consent_enabled_{false};
   std::atomic<bool> time_synchronized_{false};

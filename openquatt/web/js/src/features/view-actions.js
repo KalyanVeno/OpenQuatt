@@ -10,6 +10,7 @@ import { setTrendWindowHours } from "../core/trend-window.js";
 import { setEnergyHistoryPeriodToNow, setEnergyHistoryView, shiftEnergyHistoryPeriod } from "../views/energy.js";
 import { refreshTrendHistoryData } from "./storage-history.js";
 import { refreshOduRuntimeFrequencyStatuses } from "./odu-runtime-frequency.js";
+import { refreshOduSettingsStatuses } from "./odu-settings.js";
 
 function openServiceSettings() {
   state.systemModal = "";
@@ -150,14 +151,29 @@ const viewActionHandlers = {
   "toggle-integration-diagnostics": (button, event) => {
     toggleDetails(event, button, ".oq-settings-integration-diagnostics", "integrationDiagnosticsOpen");
   },
-  "toggle-odu-runtime-frequency-details": (button, event) => {
-    toggleDetails(event, button, ".oq-settings-odu-runtime-details", "oduRuntimeFrequencyDetailsOpen");
-    if (state.oduRuntimeFrequencyDetailsOpen) {
-      void refreshOduRuntimeFrequencyStatuses({ force: true });
-    }
+  "toggle-cic-address": (button, event) => {
+    toggleDetails(event, button, ".oq-settings-cic-address", "cicAddressOpen");
+  },
+  "open-odu-bottom-plate-settings": () => {
+    state.controlNotice = "";
+    state.systemModal = "odu-bottom-plate-settings";
+    render();
+    void refreshOduSettingsStatuses({ force: true });
+  },
+  "open-odu-frequency-settings": () => {
+    state.controlNotice = "";
+    state.systemModal = "odu-frequency-settings";
+    render();
+    void refreshOduRuntimeFrequencyStatuses({ force: true });
+  },
+  "toggle-odu-frequency-technical-details": (button, event) => {
+    toggleDetails(event, button, ".oq-settings-odu-technical", "oduRuntimeFrequencyTechnicalDetailsOpen");
   },
   "toggle-usage-telemetry-details": (button, event) => {
-    toggleDetails(event, button, ".oq-usage-disclosure--collapsible", "usageTelemetryDetailsOpen");
+    toggleDetails(event, button, ".oq-usage-consent-details", "usageTelemetryDetailsOpen");
+  },
+  "toggle-performance-telemetry-details": (button, event) => {
+    toggleDetails(event, button, ".oq-usage-consent-details", "performanceTelemetryDetailsOpen");
   },
   "toggle-storage-technical-details": (button, event) => {
     toggleDetails(event, button, ".oq-settings-storage-technical", "settingsStorageDetailsOpen");

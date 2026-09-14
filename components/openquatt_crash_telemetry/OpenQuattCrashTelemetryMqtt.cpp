@@ -109,7 +109,21 @@ bool OpenQuattCrashTelemetry::build_crash_payload_() {
   append_json_key(writer, "topology");
   writer.append_json_string(record.topology);
   append_json_key(writer, "connection");
-  writer.append_json_string(record.connection);
+  const bool active_connection_available =
+      this->active_connection_sensor_ != nullptr && this->active_connection_sensor_->has_state();
+  const char* active_connection =
+      active_connection_available ? active_connection_wire_value(this->active_connection_sensor_->state) : nullptr;
+  writer.append_json_string(active_connection == nullptr ? record.connection : active_connection);
+  append_json_key(writer, "connection_preference");
+  const bool connection_preference_available =
+      this->connection_preference_select_ != nullptr && this->connection_preference_select_->has_state();
+  const auto connection_preference_option =
+      connection_preference_available ? this->connection_preference_select_->current_option() : StringRef{};
+  const char* connection_preference =
+      connection_preference_available ? connection_preference_wire_value(std::string_view(
+                                            connection_preference_option.c_str(), connection_preference_option.size()))
+                                      : nullptr;
+  writer.append_json_string(connection_preference == nullptr ? record.connection : connection_preference);
   append_json_key(writer, "captured_by_reporting_build");
   writer.append(record.captured_by_reporting_build != 0U ? "true" : "false");
   append_json_key(writer, "report_truncated");
@@ -299,9 +313,6 @@ void OpenQuattCrashTelemetry::worker_task_(void* arg) {
                static_cast<unsigned>(uxTaskGetStackHighWaterMark(nullptr)));
       self->cleanup_task_complete_.store(true);
       App.wake_loop_threadsafe();
-      if (!MQTT_WORKER_STACK_IN_PSRAM) {
-        vTaskSuspend(nullptr);
-      }
       continue;
     }
 
@@ -439,18 +450,6 @@ void OpenQuattCrashTelemetry::loop() {
     this->start_task_running_.store(false);
   }
   if (this->cleanup_task_complete_.exchange(false)) {
-    if (!MQTT_WORKER_STACK_IN_PSRAM) {
-      const TaskHandle_t handle = this->worker_task_state_.get_handle();
-      if (handle != nullptr && eTaskGetState(handle) != eSuspended) {
-        // The classic-ESP32 worker publishes completion immediately before it
-        // parks itself. Do not free a static stack that may still be executing
-        // on the other core.
-        this->cleanup_task_complete_.store(true);
-        return;
-      }
-      this->worker_task_state_.deallocate();
-      this->worker_task_region_valid_ = false;
-    }
     this->finalize_session_();
   }
   if (this->start_task_running_.load() || this->finishing_session_.load()) {

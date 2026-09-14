@@ -135,8 +135,6 @@
     ],
     hardware: [
       { value: "heatpump_controller_q", label: "Q-edition" },
-      { value: "heatpump_listener", label: "Listener" },
-      { value: "waveshare", label: "Waveshare" },
     ],
     connection: [
       { value: "wifi", label: "Wi-Fi" },
@@ -154,6 +152,11 @@
       { value: "hydraulics", label: "Hydrauliek" },
       { value: "connections", label: "Verbindingen" },
       { value: "hp-fault", label: "Warmtepompstoring" },
+    ],
+    oduWriteState: [
+      { value: "scenario", label: "Scenario volgen" },
+      { value: "standby", label: "Standby · 0 Hz" },
+      { value: "running", label: "Heating · 30 Hz" },
     ],
     oduGeneration: [
       { value: "V1", label: "V1 (0x0037)" },

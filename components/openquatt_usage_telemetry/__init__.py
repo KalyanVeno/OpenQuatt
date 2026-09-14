@@ -14,11 +14,9 @@ from esphome.components import (
 from esphome.components.esp32 import (
     add_idf_sdkconfig_option,
     add_idf_component,
-    get_esp32_variant,
     idf_version,
     include_builtin_idf_component,
 )
-from esphome.components.esp32.const import VARIANT_ESP32S3
 from esphome.const import ENTITY_CATEGORY_CONFIG
 from esphome.core import CORE
 
@@ -54,6 +52,7 @@ CONF_HEATING_ENABLE_SOURCE_SELECT = "heating_enable_source_select"
 CONF_COOLING_ENABLE_SOURCE_SELECT = "cooling_enable_source_select"
 CONF_COOLING_DEW_POINT_SOURCE_SELECT = "cooling_dew_point_source_select"
 CONF_EXTERNAL_HEAT_DEMAND_SOURCE_SELECT = "external_heat_demand_source_select"
+CONF_HEATING_SUPPLY_TARGET_SOURCE_SELECT = "heating_supply_target_source_select"
 CONF_LOOP_TIME_SENSOR = "loop_time_sensor"
 CONF_INTERNAL_TEMPERATURE_SENSOR = "internal_temperature_sensor"
 CONF_WIFI_SIGNAL_SENSOR = "wifi_signal_sensor"
@@ -120,6 +119,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Required(CONF_COOLING_ENABLE_SOURCE_SELECT): cv.use_id(select.Select),
             cv.Required(CONF_COOLING_DEW_POINT_SOURCE_SELECT): cv.use_id(select.Select),
             cv.Required(CONF_EXTERNAL_HEAT_DEMAND_SOURCE_SELECT): cv.use_id(select.Select),
+            cv.Required(CONF_HEATING_SUPPLY_TARGET_SOURCE_SELECT): cv.use_id(select.Select),
             cv.Required(CONF_LOOP_TIME_SENSOR): cv.use_id(sensor.Sensor),
             cv.Required(CONF_INTERNAL_TEMPERATURE_SENSOR): cv.use_id(sensor.Sensor),
             cv.Optional(CONF_WIFI_SIGNAL_SENSOR): cv.use_id(sensor.Sensor),
@@ -143,8 +143,7 @@ CONFIG_SCHEMA = cv.All(
 
 async def to_code(config):
     if CORE.is_esp32:
-        if get_esp32_variant() == VARIANT_ESP32S3:
-            psram.request_external_task_stack()
+        psram.request_external_task_stack()
         if idf_version() >= cv.Version(6, 0, 0):
             add_idf_component(name="espressif/mqtt", ref="1.0.0")
         else:
@@ -221,6 +220,10 @@ async def to_code(config):
         config[CONF_EXTERNAL_HEAT_DEMAND_SOURCE_SELECT]
     )
     cg.add(var.set_external_heat_demand_source_select(external_heat_demand_source_select))
+    heating_supply_target_source_select = await cg.get_variable(
+        config[CONF_HEATING_SUPPLY_TARGET_SOURCE_SELECT]
+    )
+    cg.add(var.set_heating_supply_target_source_select(heating_supply_target_source_select))
     loop_time_sensor = await cg.get_variable(config[CONF_LOOP_TIME_SENSOR])
     cg.add(var.set_loop_time_sensor(loop_time_sensor))
     internal_temperature_sensor = await cg.get_variable(config[CONF_INTERNAL_TEMPERATURE_SENSOR])
